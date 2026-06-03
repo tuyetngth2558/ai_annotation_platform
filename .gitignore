@@ -1,0 +1,39 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
+
+# Env files
+.env
+.env.*
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Coverage / reports
+coverage/
+htmlcov/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Generated exports
+exports/
+artifacts/
