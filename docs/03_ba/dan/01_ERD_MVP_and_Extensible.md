@@ -1,24 +1,19 @@
-# 01. ERD MVP and Extensible — PDF-ready Data Model
+# 01. ERD MVP and Extensible — PDF-native Import
 
 **Owner:** Phạm Đan Kha  
-**Phiên bản:** v0.3  
-**Mục tiêu:** Thiết kế ERD cho MVP text/Vivipedia, có bổ sung raw PDF input bundle để trace được từ output CSV về PDF gốc.
+**Phiên bản:** v0.4  
+**Mục tiêu:** ERD cho MVP khi input chính thức là PDF bundle.
 
 ---
 
 ## 1. Nguyên tắc thiết kế
 
-- MVP chỉ build text/Vivipedia.
-- Input thực tế hiện tại là PDF bundle.
-- Platform MVP có thể import normalized CSV/JSON, nhưng data model vẫn cần lưu được raw file reference.
-- Một Project có nhiều Batch.
-- Một Batch có nhiều Raw Input Bundle.
-- Một Raw Input Bundle gồm nhiều Raw Input File.
-- Một Raw Input Bundle tạo ra một Parent Task.
-- Một Parent Task sinh nhiều Claim Task.
-- Một Claim Task có một hoặc nhiều Source Reference.
-- Một Claim Task có LLM Pre-score, Annotator Submission, và QA Review.
-- Export CSV claim-level phải trace ngược được về `bundle_id`, `article_code`, và file PDF gốc.
+- Input chính của MVP là PDF bundle.
+- CSV/JSON không còn là import chính.
+- Sau upload, hệ thống parse PDF thành dữ liệu nội bộ có cấu trúc.
+- Export cuối là CSV claim-level.
+- Mọi claim/export phải trace được về file PDF gốc.
+- MVP build text/PDF only nhưng data model vẫn giữ hướng mở rộng multi-project/multi-modality.
 
 ---
 
@@ -27,15 +22,16 @@
 ```mermaid
 erDiagram
     PROJECT ||--o{ BATCH : contains
-    PROJECT ||--o{ RUBRIC_VERSION : defines
     PROJECT ||--o{ USER_PROJECT_ROLE : assigns
+    PROJECT ||--o{ RUBRIC_VERSION : defines
 
-    BATCH ||--o{ RAW_INPUT_BUNDLE : imports
-    RAW_INPUT_BUNDLE ||--o{ RAW_INPUT_FILE : contains
-    RAW_INPUT_BUNDLE ||--|| PARENT_TASK : normalizes_to
+    BATCH ||--o{ PDF_BUNDLE : contains
+    PDF_BUNDLE ||--o{ PDF_FILE : contains
+    PDF_BUNDLE ||--o{ PDF_PARSE_RESULT : has
+    PDF_BUNDLE ||--|| PARENT_TASK : creates
 
-    PARENT_TASK ||--o{ CLAIM_TASK : has
-    PARENT_TASK ||--o{ SOURCE_REFERENCE : has_source_list
+    PARENT_TASK ||--o{ SOURCE_REFERENCE : has_sources
+    PARENT_TASK ||--o{ CLAIM_TASK : has_claims
 
     CLAIM_TASK ||--o{ CLAIM_SOURCE_MAP : maps_to
     SOURCE_REFERENCE ||--o{ CLAIM_SOURCE_MAP : supports
@@ -65,36 +61,48 @@ erDiagram
       uuid batch_id PK
       uuid project_id FK
       string batch_name
-      string import_mode
-      string import_format
+      string import_type
       int total_bundles
       int valid_bundles
       int invalid_bundles
-      datetime imported_at
+      datetime created_at
     }
 
-    RAW_INPUT_BUNDLE {
+    PDF_BUNDLE {
       uuid bundle_id PK
       uuid batch_id FK
       string bundle_name
       string article_code
       string title
-      string status
+      string bundle_status
       uuid uploaded_by FK
       datetime uploaded_at
       json metadata_json
     }
 
-    RAW_INPUT_FILE {
+    PDF_FILE {
       uuid file_id PK
       uuid bundle_id FK
-      string file_type
+      string file_role
       string original_filename
       string storage_path
+      string mime_type
+      int file_size_bytes
       string parse_status
-      text extracted_text_reference
-      json parse_warnings_json
       datetime uploaded_at
+    }
+
+    PDF_PARSE_RESULT {
+      uuid parse_result_id PK
+      uuid bundle_id FK
+      string parser_version
+      text answer_text_raw
+      text answer_text_normalized
+      json metadata_extracted_json
+      json source_list_extracted_json
+      json parse_warnings_json
+      string parse_status
+      datetime parsed_at
     }
 
     PARENT_TASK {
@@ -107,7 +115,6 @@ erDiagram
       string tier
       decimal confidence_score
       date created_date
-      text answer_text_raw
       text answer_text_normalized
       string answer_reference
       string status
@@ -123,15 +130,16 @@ erDiagram
       string source_tier
       text source_url
       uuid source_file_id FK
-      text source_text_reference
+      text source_text_extract
+      string source_parse_status
       string access_status
-      string parse_status
     }
 
     CLAIM_TASK {
       uuid claim_id PK
       uuid parent_task_id FK
       int claim_order
+      string section_name
       text claim_text_original
       text claim_text_final
       string citation_markers
@@ -179,8 +187,8 @@ erDiagram
       decimal rel
       decimal comp
       decimal composite_score
-      text annotator_note
       string source_access_status
+      text annotator_note
       string status
       datetime submitted_at
     }
@@ -240,48 +248,46 @@ erDiagram
 
 | Entity | Build MVP? | Mục đích |
 |---|---:|---|
-| PROJECT | Có | Lưu project Vivipedia, giữ khả năng multi-project |
-| BATCH | Có | Một lần import data |
-| RAW_INPUT_BUNDLE | Có | Một bộ PDF input gốc |
-| RAW_INPUT_FILE | Có / tối thiểu metadata | Lưu từng PDF trong bundle |
-| PARENT_TASK | Có | Một bài/câu trả lời gốc sau normalize |
-| SOURCE_REFERENCE | Có | Danh sách nguồn được đánh số |
-| CLAIM_TASK | Có | Đơn vị annotation chính |
-| CLAIM_SOURCE_MAP | Có | Map claim với source order/source id |
+| PROJECT | Có | Project Vivipedia, giữ hướng multi-project |
+| BATCH | Có | Một lần upload nhiều PDF bundle |
+| PDF_BUNDLE | Có | Một bài input gồm nhiều PDF |
+| PDF_FILE | Có | Lưu từng PDF: answer, source ref, source content |
+| PDF_PARSE_RESULT | Có | Kết quả parse/normalize từ PDF |
+| PARENT_TASK | Có | Bài/answer sau parse |
+| SOURCE_REFERENCE | Có | Source order/title/tier/text/url |
+| CLAIM_TASK | Có | Đơn vị annotation |
+| CLAIM_SOURCE_MAP | Có | Map claim-source |
 | LLM_PRE_SCORE | Có | Điểm LLM gợi ý |
 | ANNOTATION_SUBMISSION | Có | Điểm annotator |
 | QA_REVIEW | Có | Approve/Return |
-| RUBRIC_VERSION | Có, đơn giản | 6 tiêu chí fixed v1 |
-| USER_ACCOUNT | Có | User hệ thống |
-| USER_PROJECT_ROLE | Có | RBAC cơ bản |
-| AUDIT_LOG | Có, tối thiểu | Log action chính |
+| RUBRIC_VERSION | Có đơn giản | 6 tiêu chí fixed v1 |
+| USER_ACCOUNT | Có | User |
+| USER_PROJECT_ROLE | Có | RBAC |
+| AUDIT_LOG | Có tối thiểu | Trace action chính |
 
 ---
 
-## 4. Extensibility notes
+## 4. Design notes
 
-Để hỗ trợ audio/image/table sau MVP, giữ các field sau:
+### Vì sao cần PDF_BUNDLE?
 
-| Field | Lý do |
-|---|---|
-| `project.modality` | text / image / audio / table / video |
-| `project.project_type` | vivipedia_claim_review, image_region_review, audio_segment_review |
-| `raw_input_file.file_type` | answer_pdf, source_ref_pdf, source_content_pdf, image, audio, table |
-| `parent_task.metadata_json` | Lưu metadata đặc thù theo modality |
-| `source_reference.source_text_reference` | Có thể thay bằng transcript, OCR text, table extract |
-| `claim_task.claim_text_*` | Với image/audio có thể mở rộng thành annotation unit text/label |
-| `claim_source_map.mapping_method` | citation_marker, llm_mapping, manual_mapping |
-| `rubric_version.dimensions_json` | Mỗi project/modality có rubric khác nhau |
+Vì một article input không còn là một row CSV mà là một nhóm file PDF. `PDF_BUNDLE` cho phép hệ thống quản lý một đơn vị input hoàn chỉnh.
 
----
+### Vì sao cần PDF_FILE?
 
-## 5. Quyết định thiết kế quan trọng
+Để lưu từng file trong bundle:
+- `answer_pdf`
+- `source_ref_pdf`
+- `source_content_pdf`
 
-| ID | Decision | Lý do |
-|---|---|---|
-| ERD-D01 | Thêm `RAW_INPUT_BUNDLE` và `RAW_INPUT_FILE` | Trace được từ export về PDF gốc |
-| ERD-D02 | Tách `SOURCE_REFERENCE` khỏi `CLAIM_TASK` | Một source có thể support nhiều claim |
-| ERD-D03 | Dùng `CLAIM_SOURCE_MAP` | Một claim có thể map nhiều source |
-| ERD-D04 | Không lặp full `answer_text` trong export claim-level | Giảm kích thước CSV, dùng `answer_reference` |
-| ERD-D05 | Lưu cả `answer_text_raw` và `answer_text_normalized` | Debug parser và phục vụ LLM |
-| ERD-D06 | QA MVP chỉ lưu decision/comment | Theo scope 4 tuần Approve/Return |
+### Vì sao cần PDF_PARSE_RESULT?
+
+Để tách dữ liệu raw khỏi dữ liệu normalized:
+- `answer_text_raw`: text parse thô.
+- `answer_text_normalized`: text đã clean dùng cho claim extraction.
+- `source_list_extracted_json`: danh sách source parse từ PDF ref.
+- `parse_warnings_json`: warning về noise, thiếu URL, OCR required.
+
+### Vì sao vẫn cần internal normalization?
+
+Dù không export/import CSV/JSON, hệ thống vẫn cần dữ liệu có cấu trúc trong database để chạy claim extraction, scoring, review, QA và export.

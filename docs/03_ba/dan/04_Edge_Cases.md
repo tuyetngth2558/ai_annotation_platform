@@ -1,87 +1,98 @@
-# 04. Edge Cases — PDF-ready MVP
+# 04. Edge Cases — PDF-native MVP
 
 **Owner:** Phạm Đan Kha  
-**Phiên bản:** v0.3
+**Phiên bản:** v0.4
 
 ---
 
-## 1. PDF Input / Parsing Edge Cases
+## 1. PDF Bundle Upload Edge Cases
 
 | ID | Scenario | Expected Behavior | Priority |
 |---|---|---|---|
-| EC-PDF-001 | Answer PDF có nhiều UI noise từ portal | Lưu `answer_text_raw`; tạo `answer_text_normalized`; flag warning nếu noise cao | High |
-| EC-PDF-002 | Answer PDF thiếu mã bài | Tạo internal article code, flag warning | Medium |
-| EC-PDF-003 | Answer PDF thiếu confidence score | Set null, không block | Low |
-| EC-PDF-004 | Answer PDF không parse được text | Bundle invalid hoặc OCR-required, không tạo parent task | High |
-| EC-PDF-005 | PDF bị lỗi encoding tiếng Việt | Flag parsing warning, cần manual correction | Medium |
-| EC-PDF-006 | PDF là scan/image | Mark `parse_status = ocr_required`; MVP có thể reject nếu chưa OCR | High |
-| EC-PDF-007 | Có nhiều file source content trong một bundle | Lưu nhiều RawInputFile, map sau bằng source_order/source_title | Medium |
-| EC-PDF-008 | File bị đặt tên không theo pattern `1`, `1-Ref`, `1-1` | Không dựa hoàn toàn vào filename; cần file_type khi upload/preprocess | Medium |
+| EC-UP-001 | Bundle thiếu answer PDF | Block upload/import | High |
+| EC-UP-002 | Bundle thiếu source reference PDF | Block upload/import | High |
+| EC-UP-003 | Bundle không có source content PDF | Block hoặc allow with warning tùy quyết định PO; đề xuất block | High |
+| EC-UP-004 | Có nhiều answer PDF trong 1 bundle | Block, yêu cầu chọn đúng 1 answer PDF | High |
+| EC-UP-005 | File đặt tên không theo pattern | Không phụ thuộc filename; user phải chọn file_role | Medium |
+| EC-UP-006 | PDF quá lớn | Block nếu vượt max size | Medium |
+| EC-UP-007 | PDF lỗi/corrupt | Block file, bundle invalid | High |
 
 ---
 
-## 2. Source List / Mapping Edge Cases
+## 2. PDF Parsing Edge Cases
 
 | ID | Scenario | Expected Behavior | Priority |
 |---|---|---|---|
-| EC-SRC-001 | Source Ref PDF có source title nhưng không có URL | Lưu source_order/title/tier, `source_url = null`, không block nếu có source text/PDF ref | High |
-| EC-SRC-002 | Source list có 14 nguồn nhưng answer chỉ cite 1–4 | Lưu full source list; claim mapping chỉ dùng cited sources | Medium |
-| EC-SRC-003 | Citation `[5]` xuất hiện nhưng source list không có source 5 | Flag `citation_source_missing`; claim vào source_mapping_required hoặc warning tùy config | High |
-| EC-SRC-004 | Source order bị trùng trong source list | Block import/normalization | High |
-| EC-SRC-005 | Source content PDF không rõ tương ứng source nào | Mark `source_content_mapping_unknown`; cần manual mapping | High |
-| EC-SRC-006 | Same source xuất hiện nhiều lần | Deduplicate optional, nhưng giữ original order để trace | Medium |
-| EC-SRC-007 | Source tier thiếu hoặc lạ | Set `unknown`; không block | Low |
-| EC-SRC-008 | URL source không truy cập được | Mark inaccessible; note bắt buộc khi annotate; source-related score theo rule | High |
+| EC-PARSE-001 | Answer PDF có UI noise từ portal | Lưu raw text, clean normalized text | High |
+| EC-PARSE-002 | Không parse được article_code | Generate internal article code, warning | Medium |
+| EC-PARSE-003 | Không parse được confidence score | Set null, không block | Low |
+| EC-PARSE-004 | PDF là scan/image | Mark OCR required; MVP có thể reject nếu chưa OCR | High |
+| EC-PARSE-005 | Text tiếng Việt lỗi encoding | Flag warning, cần manual correction | Medium |
+| EC-PARSE-006 | Section heading bị lẫn với content | Parser giữ heading nếu detect được; claim extraction dùng section_name | Medium |
+| EC-PARSE-007 | Answer PDF quá dài | Parse vẫn OK; claim extraction chunk theo section | Medium |
 
 ---
 
-## 3. Claim Extraction Edge Cases
+## 3. Source Edge Cases
 
 | ID | Scenario | Expected Behavior | Priority |
 |---|---|---|---|
-| EC-CE-001 | Answer rất dài, nhiều section | Claim extraction giữ `section_name` nếu có, claim_order toàn bài | Medium |
-| EC-CE-002 | Một đoạn có nhiều claim nhưng citation ở cuối | Mỗi claim inherit citation candidates từ đoạn | High |
-| EC-CE-003 | Heading/section title bị tách thành claim | Flag low confidence hoặc bỏ qua nếu không phải factual claim | Medium |
-| EC-CE-004 | Claim quá nhỏ, thiếu context | Cho phép annotator sửa/gộp trong MVP nếu UI hỗ trợ; nếu không, note issue | Medium |
-| EC-CE-005 | Claim quá dài, chứa nhiều ý | Cho phép annotator sửa/tách sau MVP; MVP flag extraction_quality_issue | Medium |
-| EC-CE-006 | Claim không có mapped source | Set `source_mapping_required`; không đẩy thẳng sang annotation | High |
-| EC-CE-007 | Claim extraction sinh 0 claim | Parent task `extraction_failed`; cần manual review | High |
+| EC-SRC-001 | Source Ref PDF chỉ có title/tier, không có URL | Lưu source_url null; dùng source_file/source_text nếu có | High |
+| EC-SRC-002 | Citation `[5]` nhưng không có source_order 5 | Flag citation_source_missing | High |
+| EC-SRC-003 | Source list có nhiều nguồn không được cite | Lưu full list; chỉ map claim với cited source | Medium |
+| EC-SRC-004 | Source content PDF không map rõ source nào | Mark mapping_unknown, cần manual mapping | High |
+| EC-SRC-005 | Source content PDF parse fail | source_parse_status = unparsed | High |
+| EC-SRC-006 | Same source title lặp lại | Giữ original order, optional deduplicate later | Medium |
+| EC-SRC-007 | Source tier không rõ | Set unknown | Low |
+| EC-SRC-008 | Nguồn là trang cần login/paywall | access_status = inaccessible/restricted; note required | Medium |
 
 ---
 
-## 4. LLM Pre-scoring Edge Cases
+## 4. Claim Extraction Edge Cases
 
 | ID | Scenario | Expected Behavior | Priority |
 |---|---|---|---|
-| EC-LLM-001 | LLM response thiếu một dimension score | Task `pre_scoring_failed`; không đẩy annotator | High |
-| EC-LLM-002 | LLM score ngoài 0–1 | Reject/normalize only if rule approved; default reject schema | High |
-| EC-LLM-003 | LLM rationale quá dài | Truncate for UI, keep raw response reference | Low |
-| EC-LLM-004 | LLM dùng source không nằm trong mapped sources | Flag `unexpected_source_usage` | Medium |
-| EC-LLM-005 | LLM API timeout | Retry theo config; fail sau max retries | Medium |
+| EC-CE-001 | Một paragraph chứa nhiều claim và citation cuối đoạn | Tách nhiều claim, inherit citation candidates | High |
+| EC-CE-002 | Heading bị tách thành claim | Flag low confidence hoặc bỏ qua | Medium |
+| EC-CE-003 | Claim quá dài | Cho annotator sửa claim text; flag extraction_quality_issue | Medium |
+| EC-CE-004 | Claim quá ngắn/thiếu context | Cho annotator sửa; keep parent context | Medium |
+| EC-CE-005 | Không sinh được claim | Parent task extraction_failed | High |
+| EC-CE-006 | Claim không map được source | status source_mapping_required | High |
 
 ---
 
-## 5. Annotator / QA Edge Cases
+## 5. LLM Pre-scoring Edge Cases
 
 | ID | Scenario | Expected Behavior | Priority |
 |---|---|---|---|
-| EC-ANN-001 | Annotator submit thiếu score | Block submit | High |
-| EC-ANN-002 | Annotator nhập score `1.234` | Block, báo lỗi max 2 decimals | High |
-| EC-ANN-003 | Source inaccessible nhưng không nhập note | Block submit, yêu cầu note `Không truy cập được` | High |
-| EC-ANN-004 | Annotator sửa claim text | Lưu original/final và audit log | High |
-| EC-QA-001 | QA Return không comment | Block action | High |
-| EC-QA-002 | QA Approve task chưa submitted | Block action | High |
-| EC-QA-003 | Returned task được submit lại nhiều lần | MVP cho phép, lưu submission version hoặc latest submission | Medium |
-| EC-QA-004 | QA muốn sửa trực tiếp score | MVP plan hiện chưa build; log as scope decision needed | Medium |
+| EC-LLM-001 | LLM output thiếu dimension | pre_scoring_failed | High |
+| EC-LLM-002 | LLM score ngoài 0–1 | Reject schema | High |
+| EC-LLM-003 | LLM dùng source không nằm trong mapped source | Flag unexpected_source_usage | Medium |
+| EC-LLM-004 | LLM timeout | Retry, fail after max retries | Medium |
+| EC-LLM-005 | Source text unparsed nhưng LLM vẫn cần score | Score with available data or block depending config; recommend block for source-dependent scoring | High |
 
 ---
 
-## 6. Export Edge Cases
+## 6. Annotator / QA Edge Cases
 
 | ID | Scenario | Expected Behavior | Priority |
 |---|---|---|---|
-| EC-EXP-001 | Export khi chưa có approved claim | Trả CSV header-only hoặc thông báo no data | Medium |
-| EC-EXP-002 | Claim approved nhưng thiếu bundle_id | Block export, data integrity error | High |
-| EC-EXP-003 | Claim có nhiều source | Join source_order/title/tier bằng delimiter `;` | Medium |
-| EC-EXP-004 | Text chứa xuống dòng/dấu phẩy | CSV quote đúng chuẩn UTF-8 | High |
-| EC-EXP-005 | Stakeholder cần XLSX như quy trình cũ | MVP export CSV; XLSX là later scope hoặc convert ngoài app | Medium |
+| EC-ANN-001 | Annotator submit thiếu score | Block | High |
+| EC-ANN-002 | Score có >2 decimals | Block | High |
+| EC-ANN-003 | Source unparsed/inaccessible nhưng không note | Block | High |
+| EC-ANN-004 | Annotator sửa claim text | Save before/after + audit | High |
+| EC-QA-001 | QA Return không comment | Block | High |
+| EC-QA-002 | QA muốn sửa trực tiếp score | Not MVP unless PO approves scope change | Medium |
+| EC-QA-003 | Returned task resubmit | Keep submission history or latest + audit | Medium |
+
+---
+
+## 7. Export Edge Cases
+
+| ID | Scenario | Expected Behavior | Priority |
+|---|---|---|---|
+| EC-EXP-001 | No approved claims | Header-only CSV or no data message | Medium |
+| EC-EXP-002 | Claim thiếu bundle_id | Block export | High |
+| EC-EXP-003 | Claim có nhiều sources | Join with delimiter `;` | Medium |
+| EC-EXP-004 | Text có newline/comma/quotes | CSV quoting UTF-8 chuẩn | High |
+| EC-EXP-005 | Stakeholder cần XLSX như workflow cũ | MVP export CSV; XLSX later hoặc convert ngoài app | Medium |
