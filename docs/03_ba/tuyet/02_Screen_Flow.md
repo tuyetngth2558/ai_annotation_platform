@@ -2,7 +2,7 @@
 
 **Owner:** Tuyết  
 **Phiên bản:** 2.0  
-**Ngày:** 03/06/2026  
+**Ngày:** 06/06/2026  
 **Trạng thái:** Ready for cross-review  
 
 ---
@@ -45,8 +45,10 @@ ADMIN
 Login
   → Dashboard
   → Tạo Project
-  → Import Dataset
+  → Import PDF Bundle
+  → Hệ thống parse PDF + normalize
   → Hệ thống chạy Claim Extraction
+  → Hệ thống chạy Source Mapping
   → Hệ thống chạy LLM Pre-scoring
   → Phân công Annotator / QA
 
@@ -79,7 +81,7 @@ ADMIN / QA
 Login
 → Dashboard
 → Project Setup
-→ Import Dataset
+→ Import PDF Bundle
 → Theo dõi tiến độ cơ bản tại Project Detail
 → Export CSV
 → Audit Log
@@ -110,7 +112,7 @@ Login
 
 ---
 
-## 5. Flow màn hình #1 — Project Setup và Import Dataset
+## 5. Flow màn hình #1 — Project Setup và Import PDF Bundle
 
 ### 5.1. Luồng chính
 
@@ -118,11 +120,11 @@ Login
 [ADMIN] Chọn "Tạo dự án mới"
   → Bước 1: Nhập thông tin project
   → Bước 2: Cấu hình LLM
-  → Bước 3: Upload file CSV/JSON
-  → Bước 4: Validate schema
-  → Bước 5: Preview dữ liệu
+  → Bước 3: Upload PDF Bundle (Answer + Source Ref + Source Content)
+  → Bước 4: Gán file role và validate bundle
+  → Bước 5: Preview metadata/parse result
   → Bước 6: Xác nhận import
-  → Hệ thống chạy claim extraction + pre-scoring nền
+  → Hệ thống parse PDF → claim extraction → source mapping → pre-scoring nền
   → Bước 7: Phân công Annotator và QA
   → Hoàn tất, quay về Project Detail
 ```
@@ -137,17 +139,20 @@ Project Setup
   → Nhập endpoint + API key + prompt template
   → Next
 
-Import Dataset
-  → Upload CSV/JSON
-  → Validate file format
-  → Validate schema
-  → Preview 5 dòng đầu
+Import PDF Bundle
+  → Upload nhiều file PDF (hoặc upload theo batch manifest)
+  → Gán file_role: answer_pdf / source_ref_pdf / source_content_pdf
+  → Validate bundle (đủ 3 loại file, PDF hợp lệ, không trùng role)
+  → Preview parse: article_code, title, source list, parse warnings
   → Confirm Import
 
 System Background Processing
-  → Parse dữ liệu
-  → Tạo Work Item
+  → Parse PDF files
+  → Normalize answer/source text
+  → Tạo Parent Task
+  → Extract Source References
   → Tách Claim Task
+  → Map citation `[n]` ↔ source_order
   → Gọi LLM pre-scoring
 
 Assignment
@@ -160,18 +165,24 @@ Assignment
 
 | Tình huống | Kết quả |
 |---|---|
-| File sai định dạng | Hiển thị lỗi, không cho import |
-| Thiếu cột bắt buộc | Hiển thị lỗi chi tiết theo cột |
-| `answer_text` trống | Hiển thị lỗi theo dòng |
-| `source_urls` trống | Cho import nhưng task sẽ được flag `Source Mapping Required` nếu team giữ rule này |
+| File không phải PDF hoặc PDF corrupt | Hiển thị lỗi, không cho import |
+| Bundle thiếu `answer_pdf` hoặc `source_ref_pdf` | Block import, báo thiếu file role |
+| Bundle không có `source_content_pdf` | Block import (theo rule VR-UP-003) |
+| Không parse được answer text | Bundle invalid, báo `Cannot extract answer text` |
+| Không parse được source list | Block hoặc flag bundle invalid |
+| `source_url` không parse được từ PDF | Cho import, `source_url = null`, hiển thị warning |
+| Claim không map được source | Claim task vào `Source Mapping Required` |
+| PDF scan/image (OCR required) | Flag `ocr_required`; MVP có thể reject nếu chưa hỗ trợ OCR |
 | LLM pre-scoring lỗi | Task vào `Pre-scoring Failed`, Admin thấy trạng thái lỗi |
 
 ### 5.4. Kết quả cuối flow
 
 - Project được tạo
-- Batch được lưu
-- Claim Task được tạo
-- Task sẵn sàng vào queue của annotator sau khi pre-scoring xong
+- Batch được lưu với `import_type = pdf_bundle`
+- PDF Bundle và file references được lưu
+- Parent Task được tạo sau parse
+- Claim Task được tạo sau extraction
+- Task sẵn sàng vào queue annotator sau khi pre-scoring xong
 
 ---
 
@@ -183,10 +194,11 @@ Assignment
 [ANNOTATOR] Vào My Tasks
   → Chọn 1 task
   → Mở Annotation Workspace
-  → Xem answer context
-  → Xem claim text
+  → Xem answer context (từ Answer PDF)
+  → Xem metadata bài (article_code, title, category)
+  → Xem claim text + citation markers
   → Review LLM pre-scores
-  → Kiểm tra source
+  → Kiểm tra source (order/title/tier, source text từ PDF)
   → Chỉnh điểm nếu cần
   → Nhập lý do nếu lệch ngưỡng
   → Submit
@@ -307,8 +319,12 @@ Nếu Return
 
 | Trạng thái | Ai kích hoạt | Ý nghĩa |
 |---|---|---|
-| Imported | System | Dữ liệu vừa import |
+| Uploaded | System | PDF bundle vừa upload |
+| Parsing | System | Đang parse PDF |
+| Parse Failed | System | Không parse được answer/source bắt buộc |
+| Parsed | System | Parse xong, có normalized data |
 | Claim Extracted | System | Đã tách claim |
+| Source Mapping Required | System | Claim chưa map được source |
 | Pre-scoring Running | System | Đang gọi LLM |
 | Pre-scoring Failed | System | LLM lỗi |
 | Ready for Annotation | System | Sẵn sàng cho annotator |
@@ -324,20 +340,9 @@ Nếu Return
 
 | Màn hình | Vai trò | Mục đích |
 |---|---|---|
-| Project Setup / Import | ADMIN | tạo project, nhập dữ liệu, khởi động pipeline |
+| Project Setup / Import PDF Bundle | ADMIN | tạo project, upload PDF bundle, khởi động parse + pipeline |
 | Annotation Workspace | ANN | review claim và submit |
 | QA Review Workspace | QA | review output annotator |
 | Export | ADMIN, QA | xuất CSV claim-level |
 
----
 
-## 11. Điểm cần review chéo
-
-- **Quang:** flow này có khớp workflow/BPMN và business rules không
-- **Đan:** flow có yêu cầu thêm state hoặc validation nào từ data model không
-- **Trí:** flow đã đủ để vẽ wireframe chưa
-- **Nhung/Hưng:** flow có đủ để viết test scenario và regression checklist không
-
----
-
-*Tài liệu này phải được dùng song song với `03_Screen_Specification.md`. Nếu có xung đột, Screen Spec ưu tiên về hành vi UI chi tiết; Screen Flow ưu tiên về logic điều hướng tổng thể.*

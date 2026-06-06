@@ -1,8 +1,8 @@
 # Screen Specification — VSF AI Annotation Platform MVP
 
 **Owner:** Tuyết  
-**Phiên bản:** 2.0  
-**Ngày:** 03/06/2026  
+**Phiên bản:** 2.1  
+**Ngày:** 06/06/2026  
 **Trạng thái:** Ready for cross-review  
 
 > Tài liệu này đặc tả chi tiết các màn hình chính trong MVP.  
@@ -14,7 +14,7 @@
 
 ### 1.1. Màn hình nằm trong phạm vi build
 
-1. `Project Setup / Import Dataset`
+1. `Project Setup / Import PDF Bundle`
 2. `Annotation Workspace`
 3. `QA Review Workspace`
 4. `Export`
@@ -22,7 +22,9 @@
 ### 1.2. Thuật ngữ dùng trong spec
 
 - `Task` trong màn hình MVP = `Claim Task`
-- `Answer Context` = câu trả lời LLM gốc của work item
+- `PDF Bundle` = một bài input gồm Answer PDF + Source Reference PDF + Source Content PDF
+- `Parent Task` = đơn vị nghiệp vụ gốc sau parse PDF (tương ứng một bài)
+- `Answer Context` = câu trả lời LLM gốc được extract từ Answer PDF
 - `Pre-score` = điểm do LLM gợi ý
 - `Final score` = điểm được chấp nhận cuối cùng sau QA approve
 
@@ -35,11 +37,11 @@
 
 ---
 
-## 2. Màn hình 1 — Project Setup / Import Dataset
+## 2. Màn hình 1 — Project Setup / Import PDF Bundle
 
 **URL:** `/projects/new` và `/projects/:id/import`  
 **Vai trò:** ADMIN  
-**Mục đích:** Tạo project mới và import dữ liệu để bắt đầu pipeline annotation.
+**Mục đích:** Tạo project mới và upload PDF bundle để bắt đầu pipeline parse → claim extraction → annotation.
 
 ### 2.1. Project Setup Form
 
@@ -59,7 +61,7 @@
 
 | Action | Điều kiện | Kết quả |
 |---|---|---|
-| Tiếp tục | Các field bắt buộc hợp lệ | Sang bước Import |
+| Tiếp tục | Các field bắt buộc hợp lệ | Sang bước Import PDF Bundle |
 | Hủy | Luôn có | Confirm dialog rồi quay về Dashboard |
 
 #### States
@@ -80,65 +82,94 @@
 
 ---
 
-### 2.2. Import Dataset
+### 2.2. Import PDF Bundle
 
 #### Components
 
 | Component | Mô tả |
 |---|---|
-| Upload zone | Drag & drop hoặc chọn file |
-| Format indicator | Hiển thị file `CSV` hoặc `JSON` |
-| Schema validator | Tự chạy sau khi chọn file |
-| Preview table | Hiển thị 5 dòng đầu |
-| Error panel | Danh sách lỗi validate |
-| Confirm Import button | Chỉ enable khi file hợp lệ |
+| Upload zone | Drag & drop hoặc chọn nhiều file PDF |
+| Bundle builder | Nhóm file thành bundle, gán `file_role` |
+| File role selector | `answer_pdf` / `source_ref_pdf` / `source_content_pdf` |
+| Bundle validator | Kiểm tra đủ file role, PDF hợp lệ, không trùng role |
+| Parse preview panel | Hiển thị metadata parse, source list, warnings |
+| Error panel | Danh sách lỗi validate/parse |
+| Confirm Import button | Chỉ enable khi bundle hợp lệ |
 
-#### Schema CSV tối thiểu
+#### PDF Bundle schema (theo `docs/03_ba/dan/02_Import_Export_Schema.md`)
 
-| Cột | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+Mỗi bundle bắt buộc có:
+
+| file_role | Số lượng | Mô tả |
+|---|---:|---|
+| `answer_pdf` | 1 | PDF câu trả lời nguyên bản từ portal |
+| `source_ref_pdf` | 1 | PDF danh sách nguồn (order, title, tier) |
+| `source_content_pdf` | 1+ | PDF nội dung nguồn để đối chiếu |
+
+Tùy chọn hỗ trợ upload batch qua manifest CSV (`sample_pdf_bundle_manifest.csv`).
+
+#### Fields bundle-level
+
+| Field | Loại | Bắt buộc | Ghi chú |
 |---|---|---|---|
-| `answer_id` | String | Có | ID đầu vào |
-| `answer_text` | String | Có | Nội dung câu trả lời LLM |
-| `source_urls` | String | Có | Separator do Đan chốt |
-| `domain` | String | Không | Chủ đề |
-| `question_text` | String | Không | Câu hỏi gốc |
+| `bundle_name` | Text | Có | Tên bundle, ví dụ `ODA Article 001` |
+| `article_code_hint` | Text | Không | Gợi ý mã bài nếu admin biết trước |
 
 #### Validation rules
 
-| Rule | Hành vi |
+| Rule | Hành vi | Ref |
+|---|---|---|
+| File không phải PDF hoặc corrupt | Block import | VR-UP-004 |
+| Thiếu `answer_pdf` hoặc `source_ref_pdf` | Block import | VR-UP-001, VR-UP-002 |
+| Không có `source_content_pdf` | Block import | VR-UP-003 |
+| Trùng file role bắt buộc trong 1 bundle | Block import | VR-UP-001, VR-UP-002 |
+| `bundle_name` rỗng | Block import | VR-UP-006 |
+| File vượt max size | Block import | VR-UP-005 |
+| Không parse được answer text | Bundle invalid | VR-PARSE-001 |
+| `source_url` không parse được | Warning, cho import | VR-SRC-006 |
+| Không parse được source list | Block hoặc bundle invalid | VR-SRC-001 |
+
+#### Parse preview (sau validate upload)
+
+| Element hiển thị | Nguồn |
 |---|---|
-| File không phải CSV/JSON | Hiển thị lỗi, không cho import |
-| Thiếu cột bắt buộc | Hiển thị tên cột thiếu |
-| `answer_text` rỗng | Hiển thị lỗi theo dòng |
-| `source_urls` rỗng | Cảnh báo hoặc tạo trạng thái `Source Mapping Required` theo rule team chốt |
-| File > 10MB | Chặn import |
-| Duplicate `answer_id` | Báo lỗi trùng ID |
+| `article_code`, `title`, `category`, `tier` | Metadata từ Answer PDF |
+| `confidence_score`, `created_date` | Metadata từ Answer PDF (nếu parse được) |
+| Source list preview | `source_order`, `source_title`, `source_tier` từ Source Ref PDF |
+| Parse warnings | Ví dụ `SOURCE_URL_MISSING`, noise còn lại |
+| Linked source content files | Mapping file PDF nguồn |
 
 #### Actions
 
 | Action | Điều kiện | Kết quả |
 |---|---|---|
-| Chọn file | Luôn có | Tải file lên bộ nhớ tạm |
-| Validate | Tự động sau khi chọn file | Hiển thị pass/fail |
-| Xác nhận Import | File hợp lệ | Tạo batch, work item, trigger pipeline nền |
+| Chọn file PDF | Luôn có | Tải file lên bộ nhớ tạm |
+| Gán file role | Sau upload | Cập nhật bundle builder |
+| Validate bundle | Tự động sau gán role | Hiển thị pass/fail |
+| Preview parse | Bundle hợp lệ | Gọi parse preview (hoặc parse nhẹ) |
+| Xác nhận Import | Bundle + parse preview OK | Tạo batch, PDF bundle, parent task, trigger pipeline nền |
 
 #### States
 
 | State | Mô tả |
 |---|---|
-| Uploading | Đang tải file |
-| Validating | Đang kiểm tra schema |
+| Uploading | Đang tải file PDF |
+| Assigning Roles | Admin đang gán file_role |
+| Validating | Đang kiểm tra bundle rules |
 | Validation Failed | Hiển thị lỗi |
+| Parsing Preview | Đang parse preview |
 | Validation Passed | Hiển thị preview + enable import |
-| Importing | Đang tạo dữ liệu |
-| Background Processing | Đang claim extraction + pre-scoring |
+| Importing | Đang lưu bundle và tạo parent task |
+| Background Processing | Parse đầy đủ → claim extraction → source mapping → pre-scoring |
 | Done | Redirect về Project Detail |
 
 #### Data dependencies
 
 | Dữ liệu | Nguồn |
 |---|---|
-| Import schema chuẩn | Đan owner |
+| PDF bundle schema | `docs/03_ba/dan/02_Import_Export_Schema.md` |
+| Validation rules | `docs/03_ba/dan/03_Validation_Rules.md` |
+| Sample manifest | `docs/03_ba/dan/sample_pdf_bundle_manifest.csv` |
 | LLM pre-scoring config | Project Setup step trước |
 
 ---
@@ -157,7 +188,7 @@
 | Action | Kết quả |
 |---|---|
 | Hoàn tất | Tạo assignment, quay về Project Detail |
-| Quay lại | Trở về bước Import, giữ dữ liệu |
+| Quay lại | Trở về bước Import PDF Bundle, giữ dữ liệu |
 
 ---
 
@@ -171,7 +202,7 @@
 
 | Element | Mô tả |
 |---|---|
-| Breadcrumb | Project > Batch > Task |
+| Breadcrumb | Project > Batch > Parent Task > Claim |
 | Claim counter | Ví dụ `Claim 3 / 12` |
 | Timer | Bắt đầu khi mở task |
 | Previous / Next | Điều hướng claim trong cùng parent item |
@@ -181,10 +212,12 @@
 
 | Element | Mô tả |
 |---|---|
-| Title | Câu trả lời gốc |
-| Full answer text | Scrollable |
-| Highlight claim | Highlight đoạn liên quan nếu có mapping |
-| Domain badge | Hiển thị domain nếu có |
+| Article metadata | `article_code`, title, category, tier, confidence score |
+| PDF trace link | Tên file Answer PDF gốc (`answer_pdf_filename`) |
+| Full answer text | `answer_text_normalized` từ parse, scrollable |
+| Section headings | Tóm tắt, phân tích, hồ sơ, lưu ý... nếu parser detect được |
+| Highlight claim | Highlight đoạn liên quan claim đang review |
+| Citation markers | Hiển thị `[1]`, `[2]` trong answer nếu có |
 
 ### 3.3. Panel giữa — Claim & Scoring
 
@@ -193,6 +226,9 @@
 | Element | Mô tả |
 |---|---|
 | Claim text | Hiển thị `claim_text_original` |
+| Section name | Section chứa claim (nếu extraction detect được) |
+| Citation markers | `[n]` gắn với claim |
+| Mapped source orders | Danh sách `source_order` candidate |
 | Edit icon | Cho phép sửa claim |
 | Save edited claim | Lưu thành `claim_text_final`, ghi audit log |
 | AI Draft badge | Luôn hiển thị trên claim/pre-score |
@@ -227,24 +263,29 @@
 
 ### 3.4. Panel phải — Source Viewer & Reference
 
-#### Source list
+#### Source list (từ PDF parse)
 
 | Element | Mô tả |
 |---|---|
-| URL list | Mỗi URL một dòng |
-| Domain label | Hiển thị domain |
-| Open in app | Nếu site cho phép |
-| Open new tab | Fallback |
+| Source order | Số thứ tự nguồn `[1]`, `[2]`... |
+| Source title | Tiêu đề từ Source Reference PDF |
+| Source tier | Tier 1 / Tier 3 / unknown |
+| Source URL | Hiển thị nếu parse được; nếu null hiển thị badge `URL not in PDF` |
+| Source text extract | Nội dung từ Source Content PDF, scrollable |
+| Source file ref | Tên file PDF nguồn liên quan |
+| Parse status badge | `parsed` / `unparsed` / `ocr_required` |
 
-#### Source status options
+#### Source status options (`source_access_status`)
 
 | Option | Tác động |
 |---|---|
+| `source_text_parsed` | Nguồn đã có text từ PDF, annotator đối chiếu được |
 | Truy cập được - hỗ trợ rõ | Không có auto rule |
 | Truy cập được - hỗ trợ một phần | Gợi ý SC thấp hơn |
 | Truy cập được - không hỗ trợ | Gợi ý SC rất thấp hoặc 0 |
-| Không truy cập được | Note bắt buộc |
+| `inaccessible` / Không truy cập được | Note bắt buộc (VR-ANN-004) |
 | Không liên quan | Gợi ý SC rất thấp |
+| `unknown` | Mặc định khi chưa xác nhận |
 
 #### Reference tabs
 
@@ -268,7 +309,7 @@
 |---|---|
 | Thiếu dimension | Yêu cầu điền đủ |
 | Chưa xác nhận source status tối thiểu | Yêu cầu chọn trạng thái nguồn |
-| Thiếu note khi nguồn không truy cập được nếu team giữ rule đó | Yêu cầu điền note |
+| Source unparsed/inaccessible mà thiếu note | Yêu cầu điền note (VR-ANN-004) |
 | Thiếu lý do thay đổi khi vượt ngưỡng | Yêu cầu điền reason |
 
 ### 3.7. Returned state
@@ -283,9 +324,13 @@
 
 | Dữ liệu | Nguồn |
 |---|---|
-| `answer_text`, `claim_text_original`, `claim_text_final` | Backend task detail API |
+| `article_code`, title, category, tier | PDF parse metadata |
+| `answer_text_normalized` | PDF parse result |
+| `claim_text_original`, `claim_text_final` | Claim extraction + annotator edit |
+| citation markers, mapped source orders | Claim extraction + source mapping |
 | pre-scores | LLM pre-scoring output |
-| source urls | Import pipeline |
+| source list (order/title/tier/url/text) | PDF parse + source reference extraction |
+| `bundle_id`, PDF filenames | PDF bundle import |
 | rubric anchors | Seed config hoặc static config |
 | guideline content | Static content hoặc DB |
 
@@ -327,7 +372,7 @@
 |---|---|
 | Claim text | Bản cuối từ annotator nếu có sửa |
 | Edited indicator | Badge nếu claim đã bị sửa |
-| Source list | URL + source status |
+| Source list | source order/title/tier, source text, URL (nếu có), source status |
 | Annotator notes | Ghi chú của annotator |
 
 ### 4.5. QA actions
@@ -383,7 +428,7 @@
 
 **URL:** `/export/new`  
 **Vai trò:** ADMIN, QA được cấp quyền  
-**Mục đích:** Export dữ liệu claim-level dưới dạng CSV.
+**Mục đích:** Export dữ liệu claim-level dưới dạng CSV, có trace về PDF bundle gốc.
 
 ### 5.1. Fields
 
@@ -421,8 +466,9 @@
 
 | Dữ liệu | Nguồn |
 |---|---|
-| export schema | Đan owner |
+| export schema | `docs/03_ba/dan/02_Import_Export_Schema.md` §10 |
 | approved task list | Backend |
+| `bundle_id`, PDF filenames, `article_code` | PDF bundle import (bắt buộc trong export) |
 | export history | Backend |
 
 ---
@@ -438,13 +484,4 @@
 
 ---
 
-## 7. Điểm cần review chéo
 
-- **Quang:** AC và business rules có khớp với spec không
-- **Đan:** field/data dependencies có đủ cho backend model không
-- **Trí:** spec có đủ để dựng wireframe/final UI không
-- **Nhung/Hưng:** validation và states có đủ để viết test case không
-
----
-
-*Nếu dev cần rút gọn thêm scope, ưu tiên giữ nguyên logic màn `Annotation Workspace` và `QA Review`, rồi tối giản ở `Dashboard`, `User Management`, `Audit Log UI`.*

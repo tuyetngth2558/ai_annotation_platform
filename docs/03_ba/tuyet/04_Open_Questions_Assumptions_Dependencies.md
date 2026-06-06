@@ -2,9 +2,10 @@
 # VSF AI Annotation Platform MVP
 
 **Owner:** Tuyết  
-**Phiên bản:** 2.0  
-**Ngày cập nhật:** 03/06/2026  
+**Phiên bản:** 2.0
+**Ngày cập nhật:** 06/06/2026  
 **Trạng thái:** Active log for Week 1  
+
 
 ---
 
@@ -32,17 +33,17 @@ Log này dùng để:
 
 ## 3. Open Questions
 
-### OQ-001 — Format input: CSV hay JSON?
+### OQ-001 — Format input chính của MVP là gì?
 
 | Field | Nội dung |
 |---|---|
-| Câu hỏi | MVP import dùng CSV hay JSON là format chính? |
+| Câu hỏi | MVP import dùng format nào làm input chính? |
 | Ảnh hưởng | Import schema, validator, UI upload |
-| Owner chốt | Tuyết + Đan + mentor |
-| Deadline chốt | 04/06/2026 |
-| Gợi ý | Chốt CSV là format chính cho MVP; JSON giữ như option phụ nếu dev muốn hỗ trợ sớm |
-| Trạng thái | 🔴 Chưa chốt |
-| Ảnh hưởng nếu trễ | Block import schema, block UI upload |
+| Owner chốt | Mentor + Đan + Tuyết |
+| Deadline chốt | 06/06/2026 |
+| Quyết định | **PDF Bundle Upload** — Answer PDF + Source Reference PDF + ít nhất 1 Source Content PDF |
+| Trạng thái | ✅ Đã chốt |
+| Ghi chú | CSV/JSON không còn là user-facing import chính; export vẫn là CSV claim-level. Tham chiếu `docs/03_ba/dan` DRD-001, DRD-002 |
 
 ### OQ-002 — LLM provider cụ thể là gì?
 
@@ -136,8 +137,8 @@ Log này dùng để:
 | Ảnh hưởng | Export schema, test verification |
 | Owner chốt | Đan + mentor |
 | Deadline chốt | 06/06/2026 |
-| Draft | `claim_id`, `answer_id`, `claim_text_final`, 6 final scores, `composite_score`, `annotator_id`, `approved_at` |
-| Trạng thái | 🟡 Pending |
+| Draft | Theo `docs/03_ba/dan/02_Import_Export_Schema.md` §10: `bundle_id`, `article_code`, `claim_id`, `claim_text_final`, mapped source info, 6 ann scores, `composite_score`, PDF filenames |
+| Trạng thái | 🟡 Pending confirm |
 | Ảnh hưởng nếu trễ | Block export UI và test data verification |
 
 ### OQ-010 — Separator cho nhiều source URL là gì?
@@ -148,8 +149,51 @@ Log này dùng để:
 | Ảnh hưởng | Import schema, parser |
 | Owner chốt | Đan + người cung cấp data |
 | Deadline chốt | 05/06/2026 |
+| Trạng thái | ⛔ Không áp dụng cho MVP hiện tại |
+| Ghi chú | Input chính là PDF; `source_url` optional sau parse. Câu hỏi chỉ còn liên quan nếu team bật lại CSV import hoặc export mapping |
+
+### OQ-PDF-001 — Một bundle bắt buộc có bao nhiêu file?
+
+| Field | Nội dung |
+|---|---|
+| Câu hỏi | Answer + Ref + ít nhất 1 Source Content đúng không? |
+| Ảnh hưởng | Upload validation UI |
+| Owner chốt | PO/BA |
+| Draft | Đúng — theo `VR-UP-001` đến `VR-UP-003` |
+| Trạng thái | 🟡 Pending confirm |
+| Tham chiếu | `docs/03_ba/dan` OQ-PDF-001 |
+
+### OQ-PDF-002 — Source Content PDF upload từng file hay gộp?
+
+| Field | Nội dung |
+|---|---|
+| Câu hỏi | Mỗi nguồn một PDF riêng hay gộp nhiều nguồn? |
+| Ảnh hưởng | Bundle builder UI, storage, source mapping |
+| Owner chốt | Engineering/BA |
+| Trạng thái | 🟡 Pending |
+| Tham chiếu | `docs/03_ba/dan` OQ-PDF-002 |
+
+### OQ-PDF-003 — Nếu source URL không parse được, annotator làm gì?
+
+| Field | Nội dung |
+|---|---|
+| Câu hỏi | Annotator có cần mở nguồn ngoài không? |
+| Ảnh hưởng | Source Viewer UI, source verification flow |
+| Owner chốt | PO/QA |
+| Draft | Ưu tiên đối chiếu `source_text_extract` từ PDF; mở ngoài chỉ khi cần |
+| Trạng thái | 🟡 Pending |
+| Tham chiếu | `docs/03_ba/dan` OQ-PDF-003 |
+
+### OQ-PDF-004 — PDF scan/image có trong MVP không?
+
+| Field | Nội dung |
+|---|---|
+| Câu hỏi | OCR có nằm trong scope 4 tuần không? |
+| Ảnh hưởng | Parse flow, reject/warning UI |
+| Owner chốt | PO/Engineering |
+| Draft | Đề xuất reject hoặc flag `ocr_required` nếu chưa OCR |
 | Trạng thái | 🔴 Chưa chốt |
-| Ảnh hưởng nếu trễ | Block parser/validator |
+| Tham chiếu | `docs/03_ba/dan` OQ-PDF-004 |
 
 ---
 
@@ -157,7 +201,9 @@ Log này dùng để:
 
 | ID | Assumption | Rủi ro nếu sai | Trạng thái |
 |---|---|---|---|
-| AS-001 | MVP chỉ implement text; audio/image chỉ design | Scope nở mạnh | 🟡 Chờ mentor confirm |
+| AS-001 | MVP chỉ implement text/PDF; audio/image chỉ design | Scope nở mạnh | ✅ Đã chốt theo scope |
+| AS-011 | Input chính là PDF Bundle Upload, không phải CSV/JSON | Toàn bộ import UI/parser lệch nếu sai | ✅ Đã chốt 06/06/2026 |
+| AS-012 | `source_url` optional sau PDF parse; source_order/title/tier required | Source Viewer UI phải hiển thị text từ PDF | 🟡 Theo `docs/03_ba/dan` DRD-006 |
 | AS-002 | Chỉ dùng 1 LLM provider, không fallback | Pipeline dừng nếu provider lỗi | 🔴 Phụ thuộc OQ-002 |
 | AS-003 | Annotator submit là task vào QA queue | Queue logic thay đổi | 🟡 Pending |
 | AS-004 | Auto-save 30 giây là đủ; không làm offline sync | Có thể mất dữ liệu khi mất mạng | 🔴 Cần dev confirm |
@@ -178,7 +224,7 @@ Log này dùng để:
 | DEP-002 | Screen Flow → Wireframe | Trí | Tuyết | 05/06 | 🟡 Đang làm | Block wireframe |
 | DEP-003 | Screen Spec → Design handoff | Trí | Tuyết | 10/06 | 🟡 Đang làm | Block final UI handoff |
 | DEP-004 | Acceptance Criteria → Test Plan | Nhung | Quang | 06/06 | 🔴 Chưa xong | Block test case viết sớm |
-| DEP-005 | Import Schema → Parser/backend | Dev | Đan | 05/06 | 🔴 Chưa xong | Block import flow |
+| DEP-005 | PDF Bundle Schema + Validation Rules → Parser/backend | Dev | Đan | 05/06 | 🟡 Đã có draft v0.4 | Block import flow nếu chưa implement |
 | DEP-006 | Dev environment → Tất cả dev build | Dev team | Khải | 04/06 | 🔴 Chưa xong | Block triển khai tuần 2 |
 | DEP-007 | LLM provider chốt → Project setup/backend | BA + Dev | Mentor | 04/06 | ⛔ Blocked | Block integration |
 | DEP-008 | State machine → QA workflow build | Dev | Quang | 05/06 | 🔴 Chưa xong | Block workflow logic |
@@ -201,6 +247,9 @@ Log này dùng để:
 | DEC-008 | Export MVP chỉ export CSV claim-level | 03/06/2026 | Đồng bộ theo scope và spec |
 | DEC-009 | Không build Save Draft riêng và Skip riêng trong MVP | 03/06/2026 | Đồng bộ lại flow để giảm state |
 | DEC-010 | Không build QA direct correction trong MVP | 03/06/2026 | Giảm phức tạp workflow |
+| DEC-011 | Input chính MVP là **PDF Bundle Upload** | 06/06/2026 | Mentor chốt; đồng bộ `docs/03_ba/dan` v0.4 |
+| DEC-012 | Không dùng CSV/JSON làm user-facing import chính | 06/06/2026 | Portal chưa cung cấp CSV/JSON |
+| DEC-013 | Export CSV claim-level phải trace về `bundle_id` và PDF filenames | 06/06/2026 | Theo DRD-005 |
 
 ---
 
@@ -208,7 +257,7 @@ Log này dùng để:
 
 | OQ | Action | Owner | Deadline |
 |---|---|---|---|
-| OQ-001 | Xác nhận format import chính với mentor | Tuyết | 04/06 |
+| OQ-001 | ~~Xác nhận format import~~ → Đã chốt PDF Bundle | Tuyết | ✅ Done |
 | OQ-002 | Xác nhận LLM provider và endpoint | Tuyết | 04/06 |
 | OQ-003 | Họp BA + Dev chốt claim extraction flow | Quang | 05/06 |
 | OQ-004 | Chốt ngưỡng ±0.20 trong business rules | Quang | 06/06 |
@@ -216,7 +265,9 @@ Log này dùng để:
 | OQ-006 | DevOps đề xuất security baseline | Khải | 05/06 |
 | OQ-007 | Chốt 100% review hay sampling khác | Quang | 06/06 |
 | OQ-009 | Draft export schema và review team | Đan | 06/06 |
-| OQ-010 | Chốt separator source URL với nguồn data | Đan | 05/06 |
+| OQ-010 | ~~Separator URL~~ → Không áp dụng với PDF input | — | N/A |
+| OQ-PDF-001 | Confirm rule bundle file tối thiểu | Tuyết + Đan | 07/06 |
+| OQ-PDF-004 | Chốt OCR scope với mentor/engineering | Tuyết | 07/06 |
 
 ---
 
@@ -231,4 +282,3 @@ Log này dùng để:
 
 ---
 
-*Log này phải được dùng chung trong họp sync BA, UI/UX, DevOps và Test để tránh mỗi nhóm hiểu scope khác nhau.*

@@ -2,8 +2,9 @@
 
 **Owner:** Tuyết  
 **Phiên bản:** 2.0  
-**Ngày:** 03/06/2026  
+**Ngày:** 06/06/2026  
 **Trạng thái:** Ready for cross-review  
+
 
 ---
 
@@ -32,7 +33,8 @@ Tài liệu này là input trực tiếp cho:
 - 1 modality duy nhất: `text`
 - 1 use case duy nhất: `Vivipedia`
 - desktop web
-- import thủ công bằng `CSV/JSON`
+- import **PDF Bundle** (Answer PDF + Source Reference PDF + ít nhất 1 Source Content PDF)
+- hệ thống parse PDF → normalized data nội bộ → claim extraction → pre-scoring
 - annotation workspace cho claim-level review
 - QA review cơ bản với `Approve` và `Return`
 - export `CSV` claim-level
@@ -62,7 +64,8 @@ Tài liệu này là input trực tiếp cho:
 |---|---|
 | Project | Một dự án annotation thuộc 1 use case |
 | Batch | Một lần import dữ liệu vào project |
-| Work Item | Đơn vị nghiệp vụ gốc, tương ứng một câu trả lời LLM đầu vào |
+| PDF Bundle | Một bài input gồm các file PDF liên quan (answer, source ref, source content) |
+| Parent Task | Đơn vị nghiệp vụ gốc sau parse PDF, tương ứng một bài/câu trả lời LLM |
 | Claim Task | Đơn vị annotation chính trong MVP |
 | Annotation Workspace | Màn hình annotator chấm và submit claim |
 | QA Review Workspace | Màn hình QA review kết quả annotator |
@@ -103,7 +106,7 @@ VSF AI Annotation Platform
 │   ├── Project List
 │   ├── Project Setup
 │   ├── Project Detail
-│   ├── Import Dataset
+│   ├── Import PDF Bundle
 │   ├── Batch List
 │   └── Team Assignment
 │
@@ -160,7 +163,7 @@ VSF AI Annotation Platform
 |---|---|---|---|
 | Project Setup | `/projects/new` | ADMIN | Màn chính #1 |
 | Project Detail | `/projects/:id` | ADMIN | Theo dõi tiến độ cơ bản |
-| Import Dataset | `/projects/:id/import` | ADMIN | Màn chính #1 |
+| Import PDF Bundle | `/projects/:id/import` | ADMIN | Màn chính #1 |
 | Task List | `/tasks` | ANN | Danh sách claim task |
 | Annotation Workspace | `/tasks/:id/annotate` | ANN | Màn chính #2 |
 | QA Queue List | `/qa` | QA, ADMIN | Danh sách task cần review |
@@ -174,8 +177,8 @@ VSF AI Annotation Platform
 ### 7.1. Luồng ADMIN
 
 ```text
-Login → Dashboard → Project Setup → Import Dataset
-→ Theo dõi xử lý → Export → Audit Log
+Login → Dashboard → Project Setup → Import PDF Bundle
+→ Theo dõi parse/extraction → Export → Audit Log
 ```
 
 ### 7.2. Luồng ANNOTATOR
@@ -213,7 +216,7 @@ Login → Dashboard / QA Queue → Chọn task
 | Project List | Danh sách project, trạng thái, số batch, số task |
 | Project Setup | Tạo project mới với modality cố định là text |
 | Project Detail | Overview cơ bản, import entry point, batch list, team assignment |
-| Import Dataset | Upload file, validate schema, preview, xác nhận import |
+| Import PDF Bundle | Upload bundle PDF, gán file role, validate, preview parse, xác nhận import |
 
 ### 8.3. My Tasks
 
@@ -259,7 +262,7 @@ Login → Dashboard / QA Queue → Chọn task
 
 | Màn hình | Tính năng trong MVP | Chưa build |
 |---|---|---|
-| Project Setup / Import | Tạo project, nhập file, validate, chạy pipeline nền | multi-modality config |
+| Project Setup / Import PDF Bundle | Tạo project, upload PDF bundle, parse, claim extraction, pre-scoring | multi-modality config, CSV/JSON user import |
 | Annotation Workspace | review claim, chấm 6 dimension, source verification, submit | dispute, audio/image workspace |
 | QA Review Workspace | review diff, approve, return | dispute, sampling engine UI nâng cao |
 | Export | CSV claim-level | XLSX/JSON, bulk export |
@@ -278,12 +281,15 @@ Mỗi role chỉ nhìn thấy các module liên quan trực tiếp đến công 
 Annotator và QA vào app là đi nhanh tới nơi làm việc chính trong tối đa 3 click.
 
 3. **Context-first workspace**  
-Workspace luôn giữ context của câu trả lời gốc và nguồn tham chiếu trong khi chấm điểm.
+Workspace luôn giữ context câu trả lời gốc (từ Answer PDF), metadata bài (`article_code`, title, category), và nguồn tham chiếu (source order/title/tier, source text từ PDF) trong khi chấm điểm.
 
-4. **Extensible structure**  
+4. **PDF traceability**  
+Mọi claim task và export phải trace được về `bundle_id` và tên file PDF gốc.
+
+5. **Extensible structure**  
 URL và module phải mở rộng được cho dispute, policies, analytics về sau mà không phá cấu trúc hiện tại.
 
-5. **MVP-safe**  
+6. **MVP-safe**  
 Không đưa vào IA các module khiến team hiểu nhầm là phải build trong 4 tuần, trừ khi được đánh dấu rõ là future phase.
 
 ---
@@ -298,13 +304,6 @@ Không đưa vào IA các module khiến team hiểu nhầm là phải build tro
 | Audio/Image Workspace | Chỉ design khung | Phase 2+ |
 | Notification Center | Chưa build | Phase 2 |
 
----
-
-## 12. Điểm cần review chéo
-
-- **Quang:** kiểm tra IA có khớp workflow và state machine không
-- **Đan:** kiểm tra thuật ngữ `Project / Batch / Work Item / Claim Task` có khớp data model không
-- **Trí:** dùng tài liệu này để dựng wireframe và xác nhận độ sâu điều hướng
 
 ---
 
