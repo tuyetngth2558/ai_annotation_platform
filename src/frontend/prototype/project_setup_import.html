@@ -6,24 +6,24 @@
   <title>VSF AI Annotation Platform MVP</title>
   <style>
     :root {
-      --bg: #f5f3ff;
+      --bg: #eff6ff;
       --surface: #ffffff;
-      --surface-2: #eef2ff;
-      --ink: #1e1b4b;
-      --muted: #64748b;
-      --line: #dbeafe;
-      --primary: #6366f1;
-      --primary-2: #06b6d4;
-      --purple: #8b5cf6;
-      --cta: #10b981;
+      --surface-2: #f8fafc;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #dbe5f2;
+      --primary: #1e40af;
+      --primary-2: #3b82f6;
+      --accent: #0f766e;
+      --cta: #22c55e;
       --good: #16a34a;
       --warn: #d97706;
       --bad: #dc2626;
       --info: #0369a1;
-      --shadow: 0 18px 50px rgba(15, 23, 42, .08);
+      --shadow: none;
       --radius: 8px;
       --sidebar: 280px;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     * { box-sizing: border-box; }
@@ -31,11 +31,9 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background:
-        radial-gradient(circle at 10% 0%, rgba(99, 102, 241, .18), transparent 30rem),
-        radial-gradient(circle at 88% 8%, rgba(6, 182, 212, .16), transparent 28rem),
-        linear-gradient(180deg, #ffffff 0%, var(--bg) 42%, #f0f9ff 100%);
+      background: var(--bg);
       color: var(--ink);
+      overflow-x: hidden;
     }
 
     button, input, textarea, select { font: inherit; }
@@ -45,7 +43,7 @@
     }
 
     button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .nav-item:focus-visible, .tab:focus-visible, .user-pill:focus-visible {
-      outline: 3px solid rgba(79, 70, 229, .28);
+      outline: 3px solid rgba(59, 130, 246, .28);
       outline-offset: 2px;
     }
 
@@ -53,13 +51,14 @@
       display: grid;
       grid-template-columns: var(--sidebar) minmax(0, 1fr);
       min-height: 100vh;
+      overflow-x: hidden;
     }
 
     .sidebar {
       position: sticky;
       top: 0;
       height: 100vh;
-      background: linear-gradient(180deg, #ffffff 0%, #eef2ff 58%, #ecfeff 100%);
+      background: #ffffff;
       color: var(--ink);
       border-right: 1px solid var(--line);
       padding: 22px 18px;
@@ -82,7 +81,7 @@
       border-radius: 8px;
       display: grid;
       place-items: center;
-      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      background: var(--primary);
       color: white;
       font-weight: 800;
       letter-spacing: .04em;
@@ -118,8 +117,8 @@
       width: 100%;
     }
 
-    .nav-item:hover { background: rgba(224, 242, 254, .72); color: #312e81; border-color: #bae6fd; }
-    .nav-item.active { background: linear-gradient(135deg, rgba(99, 102, 241, .16), rgba(6, 182, 212, .14)); border-color: #a5b4fc; color: #312e81; }
+    .nav-item:hover { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
+    .nav-item.active { background: #eff6ff; border-color: #93c5fd; color: #1e3a8a; }
     .nav-icon {
       width: 18px;
       height: 18px;
@@ -131,14 +130,14 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
     }
 
     .topbar {
       position: sticky;
       top: 0;
       z-index: 20;
-      background: rgba(255, 255, 255, .86);
-      backdrop-filter: blur(12px);
+      background: #f8fbff;
       border-bottom: 1px solid var(--line);
       padding: 16px 24px;
       display: flex;
@@ -154,6 +153,7 @@
       gap: 8px;
       align-items: center;
       flex-wrap: wrap;
+      overflow-wrap: anywhere;
     }
 
     .page-title {
@@ -181,7 +181,7 @@
       gap: 9px;
       border: 1px solid var(--line);
       background: var(--surface);
-      border-radius: 999px;
+      border-radius: var(--radius);
       padding: 7px 11px;
       color: var(--muted);
       font-size: 13px;
@@ -189,9 +189,9 @@
     }
 
     .user-pill:hover {
-      border-color: #a5b4fc;
-      background: rgba(224, 242, 254, .72);
-      color: #312e81;
+      border-color: #93c5fd;
+      background: #eff6ff;
+      color: #1e3a8a;
     }
 
     .user-caret {
@@ -212,7 +212,7 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--surface);
-      box-shadow: 0 16px 40px rgba(15, 23, 42, .14);
+      box-shadow: none;
     }
 
     .account-dropdown.open {
@@ -231,7 +231,7 @@
       display: grid;
       place-items: center;
       color: white;
-      background: linear-gradient(135deg, var(--primary-2), var(--purple));
+      background: var(--primary-2);
       font-size: 12px;
       font-weight: 800;
     }
@@ -239,6 +239,7 @@
     .content {
       padding: 24px;
       min-width: 0;
+      max-width: 100%;
     }
 
     .view { display: none; }
@@ -257,7 +258,9 @@
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+      box-shadow: none;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .card.padded { padding: 16px; }
@@ -268,6 +271,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+      flex-wrap: wrap;
     }
 
     .card-header h2, .card-header h3, .section-title {
@@ -307,15 +311,15 @@
       font-weight: 650;
     }
 
-    .btn:hover { border-color: #a5b4fc; background: #eef2ff; }
+    .btn:hover { border-color: #93c5fd; background: #eff6ff; }
     .btn.primary {
-      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      background: var(--primary);
       color: white;
       border-color: transparent;
-      box-shadow: 0 10px 24px rgba(79, 70, 229, .18);
+      box-shadow: none;
     }
-    .btn.primary:hover { box-shadow: 0 14px 30px rgba(79, 70, 229, .24); }
-    .btn.cta { background: var(--cta); border-color: var(--cta); color: white; }
+    .btn.primary:hover { background: var(--primary-2); box-shadow: none; }
+    .btn.cta { background: var(--cta); border-color: var(--cta); color: #052e16; }
     .btn.danger { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
     .btn.ghost { background: transparent; }
     .btn:disabled, select:disabled { opacity: .55; cursor: not-allowed; }
@@ -332,15 +336,15 @@
       white-space: nowrap;
     }
 
-    .badge.imported { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
+    .badge.imported { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
     .badge.running { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
     .badge.ready { background: #ecfdf5; color: #047857; border-color: #bbf7d0; }
     .badge.work { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
-    .badge.submitted { background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
+    .badge.submitted { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
     .badge.returned { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
     .badge.approved { background: #ecfdf5; color: #15803d; border-color: #bbf7d0; }
     .badge.exported { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    .badge.neutral { background: #f8faff; color: #475569; border-color: #c7d2fe; }
+    .badge.neutral { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
 
     table {
       width: 100%;
@@ -358,12 +362,12 @@
     th {
       color: #475569;
       font-weight: 750;
-      background: #f8faff;
+      background: #f8fafc;
     }
 
     tr:hover td { background: #fbfdff; }
 
-    .table-wrap { overflow: auto; }
+    .table-wrap { overflow: auto; max-width: 100%; }
 
     .form-grid {
       display: grid;
@@ -399,7 +403,7 @@
 
     .stepper {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 8px;
       margin-bottom: 16px;
     }
@@ -412,14 +416,14 @@
       transition: border-color .18s ease, background .18s ease;
     }
 
-    .step.active { border-color: var(--primary); background: #eef2ff; }
+    .step.active { border-color: var(--primary); background: #eff6ff; }
     .step.done { border-color: #bbf7d0; background: #f0fdf4; }
     .step span { display: block; font-size: 11px; color: var(--muted); }
     .step strong { font-size: 13px; }
 
     .upload-zone {
-      border: 1.5px dashed #a5b4fc;
-      background: #f8faff;
+      border: 1.5px dashed #94a3b8;
+      background: #f8fafc;
       border-radius: var(--radius);
       min-height: 150px;
       display: grid;
@@ -428,7 +432,7 @@
       padding: 18px;
       transition: background .18s ease, border-color .18s ease;
     }
-    .upload-zone:hover { background: #eef2ff; border-color: var(--primary); }
+    .upload-zone:hover { background: #eff6ff; border-color: var(--primary); }
 
     .error-panel {
       display: grid;
@@ -455,6 +459,7 @@
       grid-template-columns: minmax(260px, .85fr) minmax(420px, 1.35fr) minmax(280px, .95fr);
       gap: 16px;
       align-items: start;
+      min-width: 0;
     }
 
     .panel {
@@ -462,6 +467,7 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
 
     .panel-body {
@@ -528,7 +534,13 @@
       background: #fff;
       transition: border-color .18s ease, background .18s ease;
     }
-    .source-card:hover { border-color: #a5b4fc; background: #fbfdff; }
+    .source-card:hover { border-color: #93c5fd; background: #f8fafc; }
+
+    .source-card .badge {
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
 
     .tabs {
       display: flex;
@@ -590,7 +602,7 @@
     }
 
     .timeline-item {
-      border-left: 2px solid #c7d2fe;
+      border-left: 2px solid #93c5fd;
       padding-left: 12px;
       display: grid;
       gap: 4px;
@@ -611,7 +623,7 @@
       width: min(540px, 100%);
       background: white;
       border-radius: 10px;
-      box-shadow: var(--shadow);
+      box-shadow: none;
       overflow: hidden;
     }
 
@@ -639,10 +651,10 @@
     .toast {
       min-width: 300px;
       max-width: 420px;
-      border: 1px solid #c7d2fe;
+      border: 1px solid #cbd5e1;
       background: white;
       border-left: 4px solid var(--primary);
-      box-shadow: var(--shadow);
+      box-shadow: none;
       border-radius: var(--radius);
       padding: 12px 14px;
       animation: slideUp .18s ease;
@@ -668,7 +680,7 @@
       font-weight: 700;
       transition: background .18s ease, border-color .18s ease;
     }
-    .chip.active { border-color: var(--primary); background: #eef2ff; color: #3730a3; }
+    .chip.active { border-color: #93c5fd; background: #eff6ff; color: #1e3a8a; }
 
     .quick-actions {
       display: flex;
@@ -676,6 +688,22 @@
       gap: 10px;
       margin-top: 14px;
     }
+
+    .mt-8 { margin-top: 8px; }
+    .mt-10 { margin-top: 10px; }
+    .mt-12 { margin-top: 12px; }
+    .mt-14 { margin-top: 14px; }
+    .mt-16 { margin-top: 16px; }
+    .mb-12 { margin-bottom: 12px; }
+    .mb-14 { margin-bottom: 14px; }
+    .mb-16 { margin-bottom: 16px; }
+    .pt-12 { padding-top: 12px; }
+    .brand-compact {
+      border-bottom: 0;
+      padding: 0 0 18px;
+    }
+    .top-actions.between { justify-content: space-between; }
+    .top-actions.start { justify-content: flex-start; }
 
     .auth-wrap {
       min-height: calc(100vh - 150px);
@@ -686,11 +714,10 @@
 
     .auth-card {
       width: min(520px, 100%);
-      border: 1px solid rgba(199, 210, 254, .92);
-      background: rgba(255, 255, 255, .88);
-      backdrop-filter: blur(14px);
-      border-radius: 12px;
-      box-shadow: 0 24px 70px rgba(99, 102, 241, .16);
+      border: 1px solid #d8dee7;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: none;
       padding: 24px;
     }
 
@@ -711,38 +738,13 @@
       gap: 7px;
       padding: 12px;
       border-radius: var(--radius);
-      background: #f8faff;
-      border: 1px solid #c7d2fe;
+      background: #f8fafc;
+      border: 1px solid #d8dee7;
       color: #475569;
       font-size: 13px;
     }
 
     .hidden { display: none !important; }
-
-    @media (max-width: 1180px) {
-      .app-shell { grid-template-columns: 86px minmax(0, 1fr); }
-      .sidebar { padding: 18px 10px; }
-      .brand div:not(.brand-mark), .nav-item span.label { display: none; }
-      .brand { justify-content: center; padding-left: 0; padding-right: 0; }
-      .workspace { grid-template-columns: 1fr; }
-      .panel { min-height: auto; }
-    }
-
-    @media (max-width: 860px) {
-      .topbar { align-items: flex-start; flex-direction: column; }
-      .content { padding: 16px; }
-      .grid-2, .grid-3, .grid-4, .form-grid, .split-diff { grid-template-columns: 1fr; }
-      .stepper { grid-template-columns: 1fr; }
-      .app-shell { grid-template-columns: 1fr; }
-      .sidebar {
-        position: static;
-        height: auto;
-        display: block;
-      }
-      .nav-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .brand div:not(.brand-mark), .nav-item span.label { display: inline; }
-      .brand { justify-content: flex-start; }
-    }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -852,8 +854,13 @@
 
     const dimensions = ["SF", "SC", "NH", "SQ", "REL", "COMP"];
     const statusClass = {
+      "Uploaded": "imported",
+      "Parsing": "running",
+      "Parse Failed": "returned",
+      "Parsed": "ready",
       "Imported": "imported",
       "Claim Extracted": "running",
+      "Source Mapping Required": "work",
       "Pre-scoring Running": "running",
       "Pre-scoring Failed": "returned",
       "Ready for Annotation": "ready",
@@ -865,11 +872,13 @@
     };
 
     const sourceOptions = [
+      "source_text_parsed",
       "Truy cập được - hỗ trợ rõ",
       "Truy cập được - hỗ trợ một phần",
       "Truy cập được - không hỗ trợ",
-      "Không truy cập được",
-      "Không liên quan"
+      "inaccessible / Không truy cập được",
+      "Không liên quan",
+      "unknown"
     ];
 
     const pageConfig = (() => {
@@ -884,8 +893,8 @@
         "admin-project-list.html": { role: "ADMIN", view: "projects", projectMode: "list" },
         "admin-project-setup.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 1 },
         "admin-import-dataset.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 3 },
-        "admin-team-assignment.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 4 },
-        "admin-project-detail.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 5, datasetValidated: true },
+        "admin-team-assignment.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 7 },
+        "admin-project-detail.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 8, bundleValidated: true },
         "admin-qa-queue.html": { role: "ADMIN", view: "qa" },
         "admin-export.html": { role: "ADMIN", view: "export" },
         "admin-users.html": { role: "ADMIN", view: "users" },
@@ -898,7 +907,14 @@
         "qa-review-workspace.html": { role: "QA", view: "qaReview" },
         "qa-export.html": { role: "QA", view: "export" }
       };
-      return map[page] || {};
+      const config = { ...(map[page] || {}) };
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("role")) config.role = params.get("role").toUpperCase();
+      if (params.has("view")) config.view = params.get("view");
+      if (params.has("projectMode")) config.projectMode = params.get("projectMode");
+      if (params.has("wizardStep")) config.wizardStep = Number(params.get("wizardStep"));
+      if (params.has("bundleValidated")) config.bundleValidated = params.get("bundleValidated") === "true";
+      return config;
     })();
 
     const state = {
@@ -906,7 +922,7 @@
       view: pageConfig.view || "dashboard",
       projectMode: pageConfig.projectMode || "list",
       wizardStep: pageConfig.wizardStep || 1,
-      datasetValidated: pageConfig.datasetValidated || false,
+      bundleValidated: pageConfig.bundleValidated || false,
       selectedTaskId: "CT-001",
       qaTaskId: "CT-002",
       activeReferenceTab: "rubric",
@@ -916,7 +932,7 @@
       ],
       audit: [
         { user: "Admin Trí", action: "Create Project", entity: "PRJ-001", time: "04/06/2026 08:10", detail: "Tạo project Vivipedia Text Trust" },
-        { user: "Admin Trí", action: "Import Dataset", entity: "BAT-001", time: "04/06/2026 08:22", detail: "Import 4 work item, schema hợp lệ" },
+        { user: "Admin Trí", action: "Import PDF Bundle", entity: "BND-001", time: "04/06/2026 08:22", detail: "Answer PDF, Source Reference PDF và 3 Source Content PDF hợp lệ" },
         { user: "Annotator Mai", action: "Submit Annotation", entity: "CT-002", time: "04/06/2026 09:11", detail: "Task chuyển sang Submitted" },
         { user: "QA Linh", action: "Approve Task", entity: "CT-004", time: "04/06/2026 09:33", detail: "Task đủ điều kiện export" },
         { user: "QA Linh", action: "Create Export Job", entity: "EXP-2026-001", time: "04/06/2026 09:42", detail: "Export CSV claim-level cho Approved task" }
@@ -927,6 +943,12 @@
       id: "PRJ-001",
       name: "Vivipedia Text Trust",
       batch: "BAT-001",
+      bundleId: "BND-001",
+      bundleName: "ODA Article 001",
+      importType: "pdf_bundle",
+      answerPdf: "answer_oda_article_001.pdf",
+      sourceRefPdf: "source_reference_oda_article_001.pdf",
+      sourceContentPdfs: ["source_001_worldbank.pdf", "source_002_oecd.pdf", "source_003_vsf_archive.pdf"],
       status: "Active",
       createdAt: "04/06/2026",
       deadline: "12/06/2026",
@@ -938,94 +960,147 @@
     const tasks = [
       {
         id: "CT-001",
-        answerId: "ANS-1001",
+        answerId: "PT-001",
+        bundleId: "BND-001",
+        articleCode: "ODA-001",
+        title: "Tổng quan vốn ODA cho hạ tầng",
+        category: "Kinh tế phát triển",
+        tier: "Tier 1",
+        confidenceScore: .87,
+        sectionName: "Tóm tắt",
+        citationMarkers: ["[1]", "[2]"],
+        mappedSourceOrders: [1, 2],
+        answerPdf: "answer_oda_article_001.pdf",
         status: "Ready for Annotation",
-        domain: "Sinh học",
+        domain: "Kinh tế phát triển",
         annotator: "Annotator Mai",
         qa: "QA Linh",
         submittedAt: "",
         returnCount: 0,
-        question: "Quá trình quang hợp có vai trò gì trong hệ sinh thái?",
-        answer: "Quang hợp là quá trình thực vật, tảo và một số vi khuẩn sử dụng ánh sáng để chuyển đổi carbon dioxide và nước thành glucose. Quá trình này giải phóng oxy và tạo nền tảng năng lượng cho nhiều chuỗi thức ăn. Trong hệ sinh thái, quang hợp giúp duy trì nồng độ oxy, hấp thụ carbon dioxide và tạo sinh khối cho sinh vật tiêu thụ.",
-        claimOriginal: "Quang hợp giải phóng oxy và tạo nền tảng năng lượng cho nhiều chuỗi thức ăn.",
-        claimFinal: "Quang hợp giải phóng oxy và tạo nền tảng năng lượng cho nhiều chuỗi thức ăn.",
+        question: "Nguồn vốn ODA hỗ trợ hạ tầng công cộng như thế nào?",
+        answer: "Nguồn vốn ODA thường được dùng để hỗ trợ các dự án hạ tầng công cộng có thời gian hoàn vốn dài như cầu, đường, cấp nước và xử lý nước thải. Trong giai đoạn 2015-2024, nhiều chương trình ODA tại Việt Nam tập trung vào kết nối giao thông và cải thiện dịch vụ đô thị [1]. Một số khoản vay ưu đãi cũng đi kèm yêu cầu minh bạch đấu thầu và báo cáo tiến độ định kỳ [2].",
+        claimOriginal: "Nhiều chương trình ODA tại Việt Nam tập trung vào kết nối giao thông và cải thiện dịch vụ đô thị [1].",
+        claimFinal: "Nhiều chương trình ODA tại Việt Nam tập trung vào kết nối giao thông và cải thiện dịch vụ đô thị [1].",
         edited: false,
         pre: { SF: .82, SC: .78, NH: .86, SQ: .76, REL: .88, COMP: .80 },
         ann: { SF: .82, SC: .78, NH: .86, SQ: .76, REL: .88, COMP: .80 },
-        sourceStatus: "",
+        sourceStatus: "unknown",
         sourceNote: "",
         reason: "",
         notes: "",
-        urls: ["https://vivipedia.local/sinh-hoc/quang-hop", "https://nguonmau.local/photosynthesis-overview"],
+        sources: [
+          { order: 1, title: "World Bank Vietnam Urban Upgrading Program", tier: "Tier 1", url: "https://worldbank.org/example/urban-upgrading", file: "source_001_worldbank.pdf", parseStatus: "parsed", text: "The program supported urban infrastructure, drainage, roads and access to basic services in selected Vietnamese cities." },
+          { order: 2, title: "OECD Development Co-operation Profile", tier: "Tier 1", url: null, file: "source_002_oecd.pdf", parseStatus: "parsed", text: "Development co-operation projects may include procurement transparency, reporting obligations and concessional financing terms." }
+        ],
+        urls: ["https://worldbank.org/example/urban-upgrading"],
         qaComment: ""
       },
       {
         id: "CT-002",
-        answerId: "ANS-1002",
+        answerId: "PT-001",
+        bundleId: "BND-001",
+        articleCode: "ODA-001",
+        title: "Tổng quan vốn ODA cho hạ tầng",
+        category: "Kinh tế phát triển",
+        tier: "Tier 1",
+        confidenceScore: .87,
+        sectionName: "Phân tích",
+        citationMarkers: ["[2]"],
+        mappedSourceOrders: [2],
+        answerPdf: "answer_oda_article_001.pdf",
         status: "Submitted",
-        domain: "Lịch sử",
+        domain: "Kinh tế phát triển",
         annotator: "Annotator Mai",
         qa: "QA Linh",
         submittedAt: "04/06/2026 09:11",
         returnCount: 0,
-        question: "Văn Miếu Quốc Tử Giám được xây dựng vào thời nào?",
-        answer: "Văn Miếu được xây dựng năm 1070 dưới thời vua Lý Thánh Tông để thờ Khổng Tử và các bậc hiền triết Nho giáo. Quốc Tử Giám được lập năm 1076, thường được xem là trường đại học đầu tiên của Việt Nam.",
-        claimOriginal: "Quốc Tử Giám được lập năm 1076 và thường được xem là trường đại học đầu tiên của Việt Nam.",
-        claimFinal: "Quốc Tử Giám được lập năm 1076 và thường được xem là trường đại học đầu tiên của Việt Nam.",
+        question: "Vốn vay ưu đãi thường đi kèm yêu cầu gì?",
+        answer: "Nguồn vốn ODA thường được dùng để hỗ trợ các dự án hạ tầng công cộng có thời gian hoàn vốn dài như cầu, đường, cấp nước và xử lý nước thải. Trong giai đoạn 2015-2024, nhiều chương trình ODA tại Việt Nam tập trung vào kết nối giao thông và cải thiện dịch vụ đô thị [1]. Một số khoản vay ưu đãi cũng đi kèm yêu cầu minh bạch đấu thầu và báo cáo tiến độ định kỳ [2].",
+        claimOriginal: "Một số khoản vay ưu đãi đi kèm yêu cầu minh bạch đấu thầu và báo cáo tiến độ định kỳ [2].",
+        claimFinal: "Một số khoản vay ưu đãi đi kèm yêu cầu minh bạch đấu thầu và báo cáo tiến độ định kỳ [2].",
         edited: false,
-        pre: { SF: .91, SC: .87, NH: .80, SQ: .84, REL: .89, COMP: .86 },
-        ann: { SF: .93, SC: .88, NH: .80, SQ: .83, REL: .90, COMP: .87 },
-        sourceStatus: "Truy cập được - hỗ trợ rõ",
+        pre: { SF: .74, SC: .68, NH: .88, SQ: .72, REL: .82, COMP: .76 },
+        ann: { SF: .78, SC: .70, NH: .88, SQ: .72, REL: .82, COMP: .77 },
+        sourceStatus: "Truy cập được - hỗ trợ một phần",
         sourceNote: "",
         reason: "",
-        notes: "Nguồn khớp năm thành lập Quốc Tử Giám, không thấy mâu thuẫn đáng kể.",
-        urls: ["https://vivipedia.local/lich-su/van-mieu-quoc-tu-giam"],
+        notes: "Nguồn có nêu điều kiện quản trị nhưng không dùng đúng cụm từ trong claim.",
+        sources: [
+          { order: 2, title: "OECD Development Co-operation Profile", tier: "Tier 1", url: null, file: "source_002_oecd.pdf", parseStatus: "parsed", text: "Concessional loans can include reporting and governance requirements tied to implementation milestones." }
+        ],
+        urls: [],
         qaComment: ""
       },
       {
         id: "CT-003",
-        answerId: "ANS-1003",
+        answerId: "PT-001",
+        bundleId: "BND-001",
+        articleCode: "ODA-001",
+        title: "Tổng quan vốn ODA cho hạ tầng",
+        category: "Kinh tế phát triển",
+        tier: "Tier 3",
+        confidenceScore: .64,
+        sectionName: "Lưu ý",
+        citationMarkers: [],
+        mappedSourceOrders: [],
+        answerPdf: "answer_oda_article_001.pdf",
         status: "Returned",
-        domain: "Địa lý",
-        annotator: "Annotator Nam",
+        domain: "Kinh tế phát triển",
+        annotator: "Annotator Mai",
         qa: "QA Linh",
         submittedAt: "03/06/2026 17:30",
         returnCount: 1,
-        question: "Đồng bằng sông Cửu Long có đặc điểm nổi bật nào?",
-        answer: "Đồng bằng sông Cửu Long là vùng đồng bằng lớn ở phía Nam Việt Nam, được bồi tụ bởi hệ thống sông Mê Kông. Khu vực này có mạng lưới sông ngòi dày đặc, đất phù sa màu mỡ và là vùng sản xuất lúa gạo quan trọng.",
-        claimOriginal: "Đồng bằng sông Cửu Long là vùng sản xuất lúa gạo quan trọng của Việt Nam.",
-        claimFinal: "Đồng bằng sông Cửu Long là vùng sản xuất lúa gạo quan trọng hàng đầu của Việt Nam.",
-        edited: true,
-        pre: { SF: .77, SC: .69, NH: .72, SQ: .70, REL: .81, COMP: .73 },
-        ann: { SF: .86, SC: .88, NH: .74, SQ: .77, REL: .86, COMP: .82 },
-        sourceStatus: "Truy cập được - hỗ trợ một phần",
+        question: "Có phải mọi dự án ODA đều không cần hoàn trả?",
+        answer: "Nguồn vốn ODA bao gồm viện trợ không hoàn lại, vay ưu đãi và hỗn hợp tài trợ. Không phải mọi dự án ODA đều là viện trợ không hoàn lại; nhiều chương trình hạ tầng dùng khoản vay ưu đãi cần hoàn trả theo thời hạn dài [3].",
+        claimOriginal: "Mọi dự án ODA đều là viện trợ không hoàn lại.",
+        claimFinal: "Mọi dự án ODA đều là viện trợ không hoàn lại.",
+        edited: false,
+        pre: { SF: .60, SC: .54, NH: .82, SQ: .62, REL: .74, COMP: .58 },
+        ann: { SF: .72, SC: .66, NH: .84, SQ: .66, REL: .76, COMP: .64 },
+        sourceStatus: "Truy cập được - không hỗ trợ",
         sourceNote: "",
-        reason: "Nguồn có hỗ trợ vai trò sản xuất lúa nhưng cụm từ hàng đầu cần kiểm tra thêm.",
-        notes: "Đã sửa claim để gần với cách diễn đạt trong nguồn.",
-        urls: ["https://vivipedia.local/dia-ly/dong-bang-song-cuu-long", "https://nguonmau.local/mekong-delta-rice"],
-        qaComment: "Source Mismatch: Cụm từ hàng đầu cần nguồn hỗ trợ trực tiếp hơn hoặc giảm độ mạnh của claim."
+        reason: "Annotator nâng điểm sau khi đối chiếu nguồn, cần QA kiểm tra lại.",
+        notes: "Cần xác nhận lại với source PDF.",
+        sources: [
+          { order: 3, title: "VSF Archive - ODA financing notes", tier: "Tier 3", url: null, file: "source_003_vsf_archive.pdf", parseStatus: "parsed", text: "ODA may be provided as grants, concessional loans or blended finance. Loan components are repayable." }
+        ],
+        urls: [],
+        qaComment: "Source Mismatch: điểm SC/SF cao hơn nội dung nguồn, cần sửa claim hoặc hạ điểm."
       },
       {
         id: "CT-004",
-        answerId: "ANS-1004",
+        answerId: "PT-001",
+        bundleId: "BND-001",
+        articleCode: "ODA-001",
+        title: "Tổng quan vốn ODA cho hạ tầng",
+        category: "Kinh tế phát triển",
+        tier: "Tier 1",
+        confidenceScore: .87,
+        sectionName: "Hồ sơ",
+        citationMarkers: ["[1]"],
+        mappedSourceOrders: [1],
+        answerPdf: "answer_oda_article_001.pdf",
         status: "Approved",
-        domain: "Y tế",
+        domain: "Kinh tế phát triển",
         annotator: "Annotator Mai",
         qa: "QA Linh",
         submittedAt: "04/06/2026 08:55",
         returnCount: 0,
-        question: "Vì sao rửa tay bằng xà phòng giúp giảm lây nhiễm?",
-        answer: "Rửa tay bằng xà phòng giúp loại bỏ bụi bẩn, dầu và nhiều vi sinh vật khỏi da. Khi thực hiện đúng cách, hành động này làm giảm nguy cơ truyền mầm bệnh qua tiếp xúc tay.",
-        claimOriginal: "Rửa tay bằng xà phòng đúng cách làm giảm nguy cơ truyền mầm bệnh qua tiếp xúc tay.",
-        claimFinal: "Rửa tay bằng xà phòng đúng cách làm giảm nguy cơ truyền mầm bệnh qua tiếp xúc tay.",
+        question: "Các chương trình đô thị ODA hỗ trợ nhóm hoạt động nào?",
+        answer: "Nguồn vốn ODA thường được dùng để hỗ trợ các dự án hạ tầng công cộng có thời gian hoàn vốn dài như cầu, đường, cấp nước và xử lý nước thải. Trong giai đoạn 2015-2024, nhiều chương trình ODA tại Việt Nam tập trung vào kết nối giao thông và cải thiện dịch vụ đô thị [1].",
+        claimOriginal: "Các chương trình đô thị ODA có thể hỗ trợ thoát nước, đường đô thị và dịch vụ cơ bản [1].",
+        claimFinal: "Các chương trình đô thị ODA có thể hỗ trợ thoát nước, đường đô thị và dịch vụ cơ bản [1].",
         edited: false,
         pre: { SF: .90, SC: .86, NH: .84, SQ: .88, REL: .91, COMP: .89 },
         ann: { SF: .91, SC: .88, NH: .85, SQ: .88, REL: .91, COMP: .90 },
-        sourceStatus: "Truy cập được - hỗ trợ rõ",
+        sourceStatus: "source_text_parsed",
         sourceNote: "",
         reason: "",
         notes: "Claim rõ, nguồn hỗ trợ trực tiếp.",
-        urls: ["https://vivipedia.local/y-te/rua-tay-xa-phong"],
+        sources: [
+          { order: 1, title: "World Bank Vietnam Urban Upgrading Program", tier: "Tier 1", url: "https://worldbank.org/example/urban-upgrading", file: "source_001_worldbank.pdf", parseStatus: "parsed", text: "The program supported drainage, roads and access to basic services in selected Vietnamese cities." }
+        ],
+        urls: ["https://worldbank.org/example/urban-upgrading"],
         qaComment: ""
       }
     ];
@@ -1033,9 +1108,9 @@
     const navByRole = {
       ADMIN: [
         ["dashboard", "Dashboard", "dashboard"],
-        ["projects", "Projects / Import", "project"],
+        ["projects", "Projects / PDF Import", "project"],
         ["qa", "QA Queue", "qa"],
-        ["export", "Export CSV", "export"],
+        ["export", "Export", "export"],
         ["users", "Users", "user"],
         ["audit", "Audit Log", "audit"]
       ],
@@ -1048,7 +1123,7 @@
         ["dashboard", "Dashboard", "dashboard"],
         ["qa", "QA Queue", "qa"],
         ["qaReview", "QA Review Workspace", "project"],
-        ["export", "Export CSV", "export"]
+        ["export", "Export", "export"]
       ]
     };
 
@@ -1093,7 +1168,7 @@
     }
     function titleForView(view) {
       if (view === "projects") {
-        return state.projectMode === "list" ? "Project List" : "Project Setup / Import Dataset";
+        return state.projectMode === "list" ? "Project List" : "Project Setup / Import PDF Bundle";
       }
       const map = {
         login: "Login",
@@ -1103,7 +1178,7 @@
         annotation: "Annotation Workspace",
         qa: "QA Queue",
         qaReview: "QA Review Workspace",
-        export: "Export CSV",
+        export: "Export",
         users: "User Management",
         audit: "Audit Log"
       };
@@ -1140,7 +1215,7 @@
       let metrics = "";
       let shortcuts = "";
       if (state.role === "ADMIN") {
-        metrics = metric("Project", counts.project, "Vivipedia đang chạy") + metric("Batch", counts.batch, "Import thủ công CSV/JSON") + metric("Task Approved", counts.approved, "Đủ điều kiện export") + metric("Task Submitted", counts.submitted, "Đang chờ QA");
+        metrics = metric("Project", counts.project, "Vivipedia đang chạy") + metric("Batch", counts.batch, "PDF Bundle import") + metric("Task Approved", counts.approved, "Đủ điều kiện export") + metric("Task Submitted", counts.submitted, "Đang chờ QA");
         shortcuts = `<button class="btn primary" data-go="projects">Tạo Project / Import</button><button class="btn cta" data-go="export">Export CSV</button><button class="btn" data-go="audit">Xem Audit Log</button>`;
       } else if (state.role === "ANNOTATOR") {
         metrics = metric("Task được giao", counts.assigned, "Chỉ task của annotator hiện tại") + metric("Đang làm", counts.inWork, "Auto-save mỗi 30 giây") + metric("Bị return", counts.returned, "Cần resubmit") + metric("Submitted", counts.submitted, "Đã vào QA Queue");
@@ -1151,15 +1226,12 @@
       }
       byId("dashboard").innerHTML = `
         <div class="grid grid-4">${metrics}</div>
-        <div class="grid grid-2" style="margin-top:16px;">
-          <section class="card padded">
-            <h2 class="section-title">Luồng MVP theo role</h2>
-            <p class="body-copy">${flowText()}</p>
-            <div class="quick-actions">${shortcuts}</div>
-          </section>
-          ${assumptionPanel()}
-        </div>
-        <section class="card" style="margin-top:16px;">
+        <section class="card padded mt-16">
+          <h2 class="section-title">Luồng MVP theo role</h2>
+          <p class="body-copy">${flowText()}</p>
+          <div class="quick-actions">${shortcuts}</div>
+        </section>
+        <section class="card mt-16">
           <div class="card-header"><h2>Task status snapshot</h2><span class="badge neutral">Mock Vivipedia</span></div>
           ${taskTable(tasks)}
         </section>`;
@@ -1169,7 +1241,7 @@
       byId("login").innerHTML = `
         <div class="auth-wrap">
           <section class="auth-card">
-            <div class="brand" style="border-bottom:0;padding:0 0 18px;">
+            <div class="brand brand-compact">
               <div class="brand-mark">VSF</div>
               <div>
                 <strong>AI Annotation Platform</strong>
@@ -1185,7 +1257,7 @@
             <div class="quick-actions">
               <button class="btn primary" id="submitLogin">Login</button>
             </div>
-            <p class="small muted" style="margin-top:14px;">Login mock sẽ đưa user về Dashboard theo role hiện tại.</p>
+            <p class="small muted mt-14">Login mock sẽ đưa user về Dashboard theo role hiện tại.</p>
           </section>
         </div>`;
     }
@@ -1220,34 +1292,19 @@
     }
 
     function flowText() {
-      if (state.role === "ADMIN") return "Login/Dashboard -> Tạo Project -> Import Dataset -> Validate Schema -> Preview dữ liệu -> Assignment -> Project Detail -> Export CSV cho task Approved.";
+      if (state.role === "ADMIN") return "Login/Dashboard -> Tạo Project -> Upload PDF Bundle -> Gán file role / Validate -> Preview parse -> Confirm Import -> Pipeline nền -> Assignment -> Project Detail -> Export CSV cho task Approved.";
       if (state.role === "ANNOTATOR") return "Dashboard/My Tasks -> Claim Task -> Annotation Workspace -> Submit -> Task vào QA Queue. Nếu Returned, annotator xem QA comment và Resubmit.";
       return "Dashboard/QA Queue -> Chọn Task -> QA Review Workspace -> Approve hoặc Return. Task Approved có thể được export CSV.";
     }
 
-    function assumptionPanel() {
-      const items = [
-        "CSV hay JSON là format chính",
-        "LLM provider chưa chốt",
-        "Claim extraction tách riêng hay gộp với pre-scoring",
-        "Ngưỡng reason đang draft là ±0.20",
-        "QA review 100% hay sampling",
-        "Export schema tối thiểu pending",
-        "Separator source URL chưa chốt"
-      ];
-      return `<section class="card padded">
-        <h2 class="section-title">MVP Assumption / Pending Decision</h2>
-        <div class="chip-row" style="margin-top:12px;">${items.map(item => `<span class="chip">${item}</span>`).join("")}</div>
-      </section>`;
-    }
-
     function taskTable(list) {
       return `<div class="table-wrap"><table>
-        <thead><tr><th>Task</th><th>Answer ID</th><th>Domain</th><th>Annotator</th><th>Status</th><th>Composite</th><th>Action</th></tr></thead>
+        <thead><tr><th>Claim Task</th><th>Parent Task</th><th>Article</th><th>Source map</th><th>Annotator</th><th>Status</th><th>Composite</th><th>Action</th></tr></thead>
         <tbody>${list.map(t => `<tr class="task-row">
           <td><strong>${t.id}</strong><div class="small muted">${escapeHtml(t.question)}</div></td>
           <td>${t.answerId}</td>
-          <td><span class="badge neutral">${t.domain}</span></td>
+          <td><span class="badge neutral">${t.articleCode || "-"}</span><div class="small muted">${escapeHtml(t.sectionName || t.category || "")}</div></td>
+          <td>${(t.mappedSourceOrders || []).length ? (t.mappedSourceOrders || []).map(order => `<span class="badge neutral">[${order}]</span>`).join(" ") : `<span class="badge work">Mapping required</span>`}</td>
           <td>${t.annotator}</td>
           <td>${badge(t.status)}</td>
           <td><span class="score-pill ${scoreClass(composite(t))}">${fmtScore(composite(t))}</span></td>
@@ -1268,12 +1325,12 @@
         return;
       }
       byId("projects").innerHTML = `
-        <div class="top-actions" style="justify-content:space-between;margin-bottom:14px;">
+        <div class="top-actions between mb-14">
           <button class="btn" data-project-list>Quay lại Project List</button>
-          <div class="chip-row"><span class="chip active">Project Setup</span><span class="chip">Import Dataset</span><span class="chip">Team Assignment</span><span class="chip">Project Detail</span></div>
+          <div class="chip-row"><span class="chip active">Project Setup</span><span class="chip">Import PDF Bundle</span><span class="chip">Pipeline</span><span class="chip">Team Assignment</span><span class="chip">Project Detail</span></div>
         </div>
         <div class="stepper">
-          ${["Thông tin project", "Cấu hình LLM", "Upload CSV/JSON", "Assignment", "Done"].map((label, i) => {
+          ${["Thông tin project", "Cấu hình LLM", "Upload PDF", "Gán role / Validate", "Preview parse", "Confirm import", "Assignment"].map((label, i) => {
             const step = i + 1;
             return `<button class="step ${state.wizardStep === step ? "active" : ""} ${state.wizardStep > step ? "done" : ""}" data-step="${step}"><span>Bước ${step}</span><strong>${label}</strong></button>`;
           }).join("")}
@@ -1295,7 +1352,7 @@
           ${metric("Approved", approved, "Đủ điều kiện export")}
           ${metric("Returned", returned, "Cần annotator resubmit")}
         </div>
-        <section class="card" style="margin-top:16px;">
+        <section class="card mt-16">
           <div class="card-header">
             <div>
               <h2>Project List</h2>
@@ -1304,7 +1361,7 @@
             <button class="btn primary" data-new-project>Tạo project mới</button>
           </div>
           <div class="panel-body">
-            <div class="form-grid" style="margin-bottom:14px;">
+            <div class="form-grid mb-14">
               <div class="field"><label>Tìm project</label><input value="Vivipedia" aria-label="Tìm project"></div>
               <div class="field"><label>Status</label><select><option>All status</option><option selected>Active</option><option>Completed</option></select></div>
             </div>
@@ -1314,7 +1371,7 @@
                 <tr>
                   <td><strong>${project.name}</strong><div class="small muted">${project.id} · Created ${project.createdAt}</div></td>
                   <td><span class="badge neutral">Vivipedia</span> <span class="badge imported">Text</span></td>
-                  <td>${project.batch}<div class="small muted">vivipedia_batch_001.csv</div></td>
+                  <td>${project.batch}<div class="small muted">${project.bundleId} · ${project.importType}</div></td>
                   <td>
                     <div class="chip-row">
                       <span class="chip">Ready ${tasks.filter(t => t.status === "Ready for Annotation").length}</span>
@@ -1326,7 +1383,7 @@
                   <td><div class="small">${project.annotators.join(", ")}</div><div class="small muted">QA: ${project.qa}</div></td>
                   <td>${project.deadline}</td>
                   <td>
-                    <div class="top-actions" style="justify-content:flex-start;">
+                    <div class="top-actions start">
                       <button class="btn" data-project-detail>Mở Detail</button>
                       <button class="btn" data-project-import>Import</button>
                     </div>
@@ -1340,7 +1397,7 @@
     }
 
     function wizardTitle() {
-      return ["", "Bước 1: Thông tin project", "Bước 2: Cấu hình LLM", "Bước 3: Upload CSV/JSON", "Bước 4: Assignment", "Bước 5: Done / Project Detail"][state.wizardStep];
+      return ["", "Bước 1: Thông tin project", "Bước 2: Cấu hình LLM", "Bước 3: Upload PDF Bundle", "Bước 4: Gán file role và validate", "Bước 5: Preview metadata / parse result", "Bước 6: Xác nhận import và pipeline nền", "Bước 7: Assignment", "Project Detail"][state.wizardStep];
     }
 
     function wizardBody() {
@@ -1357,7 +1414,7 @@
           <div class="field full"><label>LLM Endpoint URL</label><input value="https://llm-provider.example/v1/prescore"></div>
           <div class="field"><label>API Key</label><input type="password" value="vsf-demo-key"></div>
           <div class="field"><label>Provider</label><select><option>Provider chưa chốt - dùng endpoint cấu hình</option></select></div>
-          <div class="field full"><label>Prompt template</label><textarea>Trích xuất claim từ answer_text và chấm 6 dimension SF, SC, NH, SQ, REL, COMP theo rubric MVP.</textarea></div>
+          <div class="field full"><label>Prompt template</label><textarea>Trích xuất claim từ Answer Context đã parse từ PDF và chấm 6 dimension SF, SC, NH, SQ, REL, COMP theo rubric MVP.</textarea></div>
         </div>
         <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Tiếp tục</button></div>`;
       if (state.wizardStep === 3) return `
@@ -1365,70 +1422,128 @@
           <div>
             <div class="upload-zone" id="uploadZone">
               <div>
-                <strong>Thả file hoặc chọn CSV/JSON</strong>
-                <p class="muted small">Prototype dùng mock file vivipedia_batch_001.csv, giới hạn 10MB.</p>
-                <button class="btn primary" id="validateDataset">Validate schema</button>
+                <strong>Thả PDF Bundle hoặc chọn nhiều file PDF</strong>
+                <p class="muted small">${project.answerPdf}, ${project.sourceRefPdf}, ${project.sourceContentPdfs.length} source content PDF.</p>
+                <button class="btn primary" data-next-step>Tiếp tục gán file role</button>
               </div>
             </div>
-            <div class="chip-row" style="margin-top:12px;">
-              <span class="chip active">CSV</span><span class="chip">JSON option phụ</span><span class="chip">answer_id</span><span class="chip">answer_text</span><span class="chip">source_urls</span><span class="chip">domain</span><span class="chip">question_text</span>
+            <div class="chip-row mt-12">
+              <span class="chip">${project.answerPdf}</span><span class="chip">${project.sourceRefPdf}</span><span class="chip">${project.sourceContentPdfs.length} source content PDF</span><span class="chip">PDF only</span>
             </div>
           </div>
+          <div class="success-panel"><strong>Files staged in browser memory.</strong> Chưa gọi backend thật. Bước tiếp theo gán file_role và chạy bundle validator.</div>
+        </div>
+        <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Tiếp tục</button></div>`;
+      if (state.wizardStep === 4) return `
+        <div class="grid grid-2">
+          <section class="card padded">
+            <h3 class="section-title">Bundle builder</h3>
+            <div class="table-wrap mt-14"><table>
+              <thead><tr><th>File</th><th>file_role</th><th>Validation</th></tr></thead>
+              <tbody>
+                <tr><td>${project.answerPdf}</td><td><span class="badge ready">answer_pdf</span></td><td>Required, unique</td></tr>
+                <tr><td>${project.sourceRefPdf}</td><td><span class="badge ready">source_ref_pdf</span></td><td>Required, unique</td></tr>
+                ${project.sourceContentPdfs.map(file => `<tr><td>${file}</td><td><span class="badge ready">source_content_pdf</span></td><td>At least 1 required</td></tr>`).join("")}
+              </tbody>
+            </table></div>
+            <div class="quick-actions"><button class="btn primary" id="validateBundle">Validate bundle</button></div>
+          </section>
           <div id="validationBox">${validationBox()}</div>
         </div>
-        <div style="margin-top:16px;">${previewTable()}</div>
-        <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" ${state.datasetValidated ? "" : "disabled"} data-next-step>Xác nhận Import</button></div>`;
-      if (state.wizardStep === 4) return `
+        <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" ${state.bundleValidated ? "" : "disabled"} data-next-step>Preview parse</button></div>`;
+      if (state.wizardStep === 5) return `
+        ${previewTable()}
+        <div class="banner blue mt-14">Preview parse hiển thị article_code, title, source list và warning trước khi Admin xác nhận import.</div>
+        <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Xác nhận Import</button></div>`;
+      if (state.wizardStep === 6) return `
+        ${pipelineStatusPanel()}
+        <div class="banner blue mt-14">Sau khi confirm, hệ thống nền tạo Batch, PDF Bundle, Parent Task, Claim Task rồi chạy source mapping và LLM pre-scoring.</div>
+        <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Phân công Annotator / QA</button></div>`;
+      if (state.wizardStep === 7) return `
         <div class="form-grid">
           <div class="field"><label>Chọn Annotator</label><select multiple size="4"><option selected>Annotator Mai - mai@vsf.local</option><option selected>Annotator Nam - nam@vsf.local</option></select></div>
           <div class="field"><label>Chọn QA Specialist</label><select><option selected>QA Linh - linh@vsf.local</option><option>QA Hương - huong@vsf.local</option></select></div>
         </div>
-        <div class="banner blue" style="margin-top:14px;">Pipeline nền: Imported -> Claim Extracted -> Pre-scoring Running -> Ready for Annotation. Task lỗi sẽ vào Pre-scoring Failed.</div>
-        <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Hoàn tất</button></div>`;
+        <div class="banner blue mt-14">Confirm assignment đưa task đã pre-score xong vào queue của Annotator và chờ QA review sau khi Annotator submit.</div>
+        <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Hoàn tất, mở Project Detail</button></div>`;
       return `
-        <div class="success-panel"><strong>Project Detail sẵn sàng.</strong> Batch BAT-001 đã import, assignment đã tạo cho 2 annotator và 1 QA specialist.</div>
-        <div class="grid grid-3" style="margin-top:16px;">
+        <div class="success-panel"><strong>Project Detail sẵn sàng.</strong> ${project.bundleId} đã import, assignment đã tạo cho 2 annotator và 1 QA specialist.</div>
+        <div class="grid grid-3 mt-16">
           ${metric("Project", project.id, project.name)}
-          ${metric("Batch", project.batch, "vivipedia_batch_001.csv")}
+          ${metric("Bundle", project.bundleId, project.bundleName)}
           ${metric("Claim Tasks", tasks.length, "Text-only MVP")}
         </div>
-        <section class="card" style="margin-top:16px;"><div class="card-header"><h3>Project Detail</h3>${badge("Ready for Annotation")}</div>${taskTable(tasks)}</section>
+        <section class="card mt-16"><div class="card-header"><h3>Project Detail</h3>${badge("Ready for Annotation")}</div>${taskTable(tasks)}</section>
         <div class="quick-actions"><button class="btn primary" data-go="dashboard">Về Dashboard</button><button class="btn cta" data-go="export">Export Approved</button></div>`;
     }
 
     function validationBox() {
-      if (!state.datasetValidated) {
+      if (!state.bundleValidated) {
         return `<div class="error-panel">
-          <strong>Validation mock cases</strong>
-          <div>File sai định dạng: chặn import.</div>
-          <div>Thiếu cột bắt buộc: answer_id, answer_text, source_urls.</div>
-          <div>answer_text rỗng: lỗi theo dòng.</div>
-          <div>source_urls rỗng: cảnh báo.</div>
-          <div>File > 10MB hoặc Duplicate answer_id: chặn import.</div>
+          <strong>Bundle validation</strong>
+          <div>Thiếu answer_pdf hoặc source_ref_pdf: block import.</div>
+          <div>Không có source_content_pdf: block import.</div>
+          <div>PDF corrupt hoặc không phải PDF: block import.</div>
+          <div>source_url không parse được: warning, vẫn cho import.</div>
+          <div>PDF scan/image: flag ocr_required.</div>
         </div>`;
       }
-      return `<div class="success-panel"><strong>Validation Passed.</strong> Schema hợp lệ, có 1 cảnh báo source_urls rỗng ở dòng 4 nhưng vẫn cho preview theo rule draft.</div>`;
+      return `<div class="success-panel"><strong>Validation Passed.</strong> Bundle đủ 3 loại file. Preview parse có 1 warning SOURCE_URL_MISSING ở source [2].</div>`;
     }
 
     function previewTable() {
       const rows = [
-        ["ANS-1001", "Quang hợp là quá trình...", "https://vivipedia.local/sinh-hoc/quang-hop", "Sinh học", "Quang hợp có vai trò gì?"],
-        ["ANS-1002", "Văn Miếu được xây dựng...", "https://vivipedia.local/lich-su/van-mieu", "Lịch sử", "Văn Miếu xây thời nào?"],
-        ["ANS-1003", "Đồng bằng sông Cửu Long...", "https://vivipedia.local/dia-ly/mekong", "Địa lý", "Đặc điểm nổi bật?"],
-        ["ANS-1004", "Rửa tay bằng xà phòng...", "https://vivipedia.local/y-te/rua-tay", "Y tế", "Vì sao rửa tay giảm lây nhiễm?"],
-        ["ANS-1005", "Mẫu preview mở rộng...", "", "Công nghệ", "Dữ liệu thiếu source?"]
+        ["article_code", "ODA-001", "Answer PDF", project.answerPdf],
+        ["title", "Tổng quan vốn ODA cho hạ tầng", "Source Ref PDF", project.sourceRefPdf],
+        ["source [1]", "World Bank Vietnam Urban Upgrading Program", "Tier 1", "source_001_worldbank.pdf"],
+        ["source [2]", "OECD Development Co-operation Profile", "Tier 1", "source_002_oecd.pdf"],
+        ["warning", "SOURCE_URL_MISSING", "source_url", "null"]
       ];
-      return `<section class="card"><div class="card-header"><h3>Preview 5 dòng đầu</h3><span class="badge neutral">CSV schema tối thiểu</span></div><div class="table-wrap"><table>
-        <thead><tr><th>answer_id</th><th>answer_text</th><th>source_urls</th><th>domain</th><th>question_text</th></tr></thead>
+      return `<section class="card"><div class="card-header"><h3>Parse preview</h3><span class="badge neutral">PDF Bundle</span></div><div class="table-wrap"><table>
+        <thead><tr><th>Element</th><th>Value</th><th>Source</th><th>File / Status</th></tr></thead>
         <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${escapeHtml(c || "Cảnh báo: rỗng")}</td>`).join("")}</tr>`).join("")}</tbody>
       </table></div></section>`;
+    }
+
+    function pipelineStatusPanel() {
+      const rows = [
+        ["Uploaded", "PDF bundle vừa upload", "Done"],
+        ["Parsing", "Parse Answer PDF và Source Reference PDF", "Done"],
+        ["Parsed", "Normalized answer/source text", "Done"],
+        ["Claim Extracted", "Tách Claim Task từ Parent Task", "Done"],
+        ["Source Mapping Required", "CT-003 chưa có citation marker rõ", "Needs review"],
+        ["Pre-scoring Running", "Gọi LLM pre-score cho 6 dimension", "Done"],
+        ["Ready for Annotation", "Task hợp lệ vào queue annotator", "Done"]
+      ];
+      const errors = [
+        ["Parse Failed", "Cannot extract answer text", "Block bundle"],
+        ["Parse Failed", "Không parse được source list", "Block hoặc bundle invalid"],
+        ["Pre-scoring Failed", "LLM endpoint lỗi hoặc schema sai", "Admin thấy trạng thái lỗi"],
+        ["ocr_required", "PDF scan/image", "Flag để reject hoặc xử lý OCR sau"]
+      ];
+      return `<div class="grid grid-2">
+        <section class="card">
+          <div class="card-header"><h3>Background processing</h3><span class="badge running">System</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>State</th><th>Ý nghĩa</th><th>Kết quả</th></tr></thead>
+            <tbody>${rows.map(r => `<tr><td>${badge(r[0])}</td><td>${escapeHtml(r[1])}</td><td>${escapeHtml(r[2])}</td></tr>`).join("")}</tbody>
+          </table></div>
+        </section>
+        <section class="card">
+          <div class="card-header"><h3>Error state demo</h3><span class="badge returned">Block / warning</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>State</th><th>Case</th><th>UI behavior</th></tr></thead>
+            <tbody>${errors.map(r => `<tr><td><span class="badge returned">${escapeHtml(r[0])}</span></td><td>${escapeHtml(r[1])}</td><td>${escapeHtml(r[2])}</td></tr>`).join("")}</tbody>
+          </table></div>
+        </section>
+      </div>`;
     }
 
     function renderTasks() {
       byId("tasks").innerHTML = `
         <section class="card">
           <div class="card-header"><h2>My Tasks</h2><span class="badge neutral">Annotator chỉ thấy task được giao</span></div>
-          ${taskTable(tasks.filter(t => t.annotator.includes("Mai") || t.status === "Returned"))}
+          ${taskTable(tasks.filter(t => t.annotator === "Annotator Mai"))}
         </section>`;
     }
 
@@ -1437,31 +1552,45 @@
       const submitLabel = t.status === "Returned" ? "Resubmit" : "Submit";
       byId("annotation").innerHTML = `
         ${t.status === "Returned" ? `<div class="banner red"><strong>Task bị Return.</strong><span>${escapeHtml(t.qaComment)}</span></div>` : ""}
-        <div class="card padded" style="margin-bottom:16px;">
-          <div class="breadcrumb">Project ${project.id} / Batch ${project.batch} / ${t.id}</div>
-          <div class="top-actions" style="justify-content:space-between;margin-top:10px;">
-            <div class="chip-row"><span class="badge work">${t.status === "Returned" ? "Returned" : "In Annotation"}</span><span class="badge neutral">Claim 1 / 1</span><span class="badge neutral">Timer 12:34</span></div>
+        <div class="card padded mb-16">
+          <div class="breadcrumb">Project ${project.id} / Batch ${project.batch} / Parent Task ${t.answerId} / Claim ${t.id}</div>
+          <div class="top-actions between mt-10">
+            <div class="chip-row"><span class="badge work">${t.status === "Returned" ? "Returned" : "In Annotation"}</span><span class="badge neutral">Claim ${tasks.indexOf(t) + 1} / ${tasks.length}</span><span class="badge neutral">Timer 12:34</span></div>
             <div class="small muted">Đã tự động lưu 30 giây trước</div>
           </div>
         </div>
         <div class="workspace">
           <section class="card panel">
-            <div class="card-header"><h2>Answer Context</h2><span class="badge neutral">${t.domain}</span></div>
-            <div class="panel-body"><p class="small muted">${escapeHtml(t.question)}</p><div class="answer-box">${highlightClaim(t.answer, t.claimOriginal)}</div></div>
+            <div class="card-header"><h2>Answer Context</h2><span class="badge neutral">${t.articleCode}</span></div>
+            <div class="panel-body">
+              <div class="chip-row mb-12">
+                <span class="badge neutral">${escapeHtml(t.category)}</span>
+                <span class="badge neutral">${escapeHtml(t.tier)}</span>
+                <span class="badge neutral">confidence ${fmtScore(t.confidenceScore)}</span>
+              </div>
+              <p class="small muted">${escapeHtml(t.title)} · ${escapeHtml(t.answerPdf)}</p>
+              <p class="small muted">${escapeHtml(t.question)}</p>
+              <div class="answer-box">${highlightClaim(t.answer, t.claimOriginal)}</div>
+            </div>
           </section>
           <section class="card panel">
             <div class="card-header"><h2>Claim & Scoring</h2><span class="badge submitted">AI Draft</span></div>
             <div class="panel-body">
               <div class="claim-card">
-                <div class="top-actions" style="justify-content:space-between;"><strong>Claim text</strong><button class="btn" id="editClaim">Sửa claim</button></div>
+                <div class="top-actions between"><strong>Claim text</strong><button class="btn" id="editClaim">Sửa claim</button></div>
+                <div class="chip-row">
+                  <span class="badge neutral">${escapeHtml(t.sectionName)}</span>
+                  ${t.citationMarkers.map(marker => `<span class="badge neutral">${marker}</span>`).join("")}
+                  ${(t.mappedSourceOrders || []).map(order => `<span class="badge ready">source ${order}</span>`).join("")}
+                </div>
                 <textarea id="claimText">${escapeHtml(t.claimFinal)}</textarea>
               </div>
-              <div style="margin-top:14px;">${scoreTable(t)}</div>
-              <div class="grid grid-2" style="margin-top:14px;">
-                <div class="card padded"><span class="muted small">Composite score</span><div style="margin-top:8px;"><span id="compositeScore" class="score-pill ${scoreClass(composite(t))}">${fmtScore(composite(t))}</span></div></div>
+              <div class="mt-14">${scoreTable(t)}</div>
+              <div class="grid grid-2 mt-14">
+                <div class="card padded"><span class="muted small">Composite score</span><div class="mt-8"><span id="compositeScore" class="score-pill ${scoreClass(composite(t))}">${fmtScore(composite(t))}</span></div></div>
                 <div class="card padded"><span class="muted small">Rule</span><div class="body-copy">Nếu lệch pre-score quá ±0.20, bắt buộc nhập lý do thay đổi.</div></div>
               </div>
-              <div class="field" style="margin-top:14px;"><label>Lý do thay đổi</label><textarea id="reasonText" placeholder="Bắt buộc nếu delta vượt ±0.20">${escapeHtml(t.reason)}</textarea></div>
+              <div class="field mt-14"><label>Lý do thay đổi</label><textarea id="reasonText" placeholder="Bắt buộc nếu delta vượt ±0.20">${escapeHtml(t.reason)}</textarea></div>
               <div class="field"><label>Ghi chú annotator</label><textarea id="annotatorNotes" placeholder="Ghi chú bổ sung cho QA">${escapeHtml(t.notes)}</textarea></div>
               <div class="quick-actions"><button class="btn primary" id="submitAnnotation">${submitLabel}</button></div>
             </div>
@@ -1469,14 +1598,33 @@
           <section class="card panel">
             <div class="card-header"><h2>Source Viewer & Reference</h2><span class="badge neutral">Nguồn</span></div>
             <div class="panel-body">
-              ${t.urls.map(url => `<div class="source-card"><strong>${escapeHtml(url)}</strong><span class="badge neutral">${t.domain}</span><div class="top-actions" style="justify-content:flex-start;"><button class="btn">Open in app</button><button class="btn">Open new tab</button></div></div>`).join("")}
+              ${sourceCards(t)}
               <div class="field"><label>Source status</label><select id="sourceStatus"><option value="">Chọn trạng thái nguồn</option>${sourceOptions.map(o => `<option ${t.sourceStatus === o ? "selected" : ""}>${o}</option>`).join("")}</select></div>
               <div class="field"><label>Source note</label><textarea id="sourceNote" placeholder="Bắt buộc nếu không truy cập được">${escapeHtml(t.sourceNote)}</textarea></div>
               <div class="tabs">${["rubric", "guideline", "examples"].map(tab => `<button class="tab ${state.activeReferenceTab === tab ? "active" : ""}" data-ref-tab="${tab}">${tabLabel(tab)}</button>`).join("")}</div>
-              <div class="body-copy" style="padding-top:12px;">${referenceContent()}</div>
+              <div class="body-copy pt-12">${referenceContent()}</div>
             </div>
           </section>
         </div>`;
+    }
+
+    function sourceCards(t) {
+      const list = t.sources || [];
+      if (!list.length) {
+        return `<div class="source-card"><strong>Source Mapping Required</strong><span class="badge work">No mapped source</span><p class="body-copy">Claim chưa map được citation marker sang source_order.</p></div>`;
+      }
+      return list.map(source => `<div class="source-card">
+        <div class="top-actions between">
+          <strong>[${source.order}] ${escapeHtml(source.title)}</strong>
+          <span class="badge neutral">${escapeHtml(source.tier)}</span>
+        </div>
+        <div class="chip-row">
+          <span class="badge ${source.parseStatus === "parsed" ? "ready" : "work"}">${escapeHtml(source.parseStatus)}</span>
+          <span class="badge neutral">${escapeHtml(source.file)}</span>
+          ${source.url ? `<span class="badge neutral">${escapeHtml(source.url)}</span>` : `<span class="badge work">URL not in PDF</span>`}
+        </div>
+        <p class="body-copy">${escapeHtml(source.text)}</p>
+      </div>`).join("");
     }
 
     function highlightClaim(answer, claim) {
@@ -1512,19 +1660,20 @@
     }
 
     function renderQa() {
+      const reviewableTasks = tasks.filter(t => t.status === "Submitted");
       byId("qa").innerHTML = `
         <section class="card">
-          <div class="card-header"><h2>QA Queue</h2><span class="badge neutral">Review 100% đang pending</span></div>
-          ${taskTable(tasks.filter(t => ["Submitted", "Returned", "Approved"].includes(t.status)))}
+          <div class="card-header"><h2>QA Queue</h2><span class="badge neutral">Submitted only</span></div>
+          ${reviewableTasks.length ? taskTable(reviewableTasks) : `<div class="panel-body"><div class="success-panel"><strong>Không có task chờ review.</strong> Returned đã quay lại annotator, Approved đã đủ điều kiện export.</div></div>`}
         </section>`;
     }
 
     function renderQaReview() {
       const t = taskById(state.qaTaskId);
       byId("qaReview").innerHTML = `
-        <section class="card padded" style="margin-bottom:16px;">
+        <section class="card padded mb-16">
           <div class="breadcrumb">QA Queue / ${project.name} / ${t.id}</div>
-          <div class="top-actions" style="justify-content:space-between;margin-top:10px;">
+          <div class="top-actions between mt-10">
             <div class="chip-row"><span class="badge neutral">${t.annotator}</span><span class="badge neutral">Submitted: ${t.submittedAt || "Chưa submit"}</span><span class="badge returned">Return count: ${t.returnCount}</span></div>
             ${badge(t.status)}
           </div>
@@ -1545,15 +1694,20 @@
             return `<p class="${deltaClass(delta)}"><strong>${d}</strong>: ${delta >= 0 ? "+" : ""}${fmtScore(delta)}</p>`;
           }).join("")}</div></div>
         </div>
-        <div class="grid grid-2" style="margin-top:16px;">
+        <div class="grid grid-2 mt-16">
           <div class="card padded">
             <h3 class="section-title">Claim text cuối cùng ${t.edited ? "<span class='badge submitted'>Đã sửa claim</span>" : ""}</h3>
+            <div class="chip-row mt-10">
+              <span class="badge neutral">${escapeHtml(t.articleCode)}</span>
+              <span class="badge neutral">${escapeHtml(t.sectionName)}</span>
+              <span class="badge neutral">${escapeHtml(t.bundleId)}</span>
+            </div>
             <p class="body-copy">${escapeHtml(t.claimFinal)}</p>
             <p class="small muted">Annotator notes: ${escapeHtml(t.notes || "Không có ghi chú")}</p>
           </div>
           <div class="card padded">
             <h3 class="section-title">Source list + status</h3>
-            ${t.urls.map(url => `<p class="small">${escapeHtml(url)}</p>`).join("")}
+            ${qaSourceRows(t)}
             <span class="badge neutral">${escapeHtml(t.sourceStatus || "Chưa chọn source status")}</span>
           </div>
         </div>
@@ -1561,9 +1715,17 @@
       </div>`;
     }
 
+    function qaSourceRows(t) {
+      const list = t.sources || [];
+      if (!list.length) return `<p class="small muted">Chưa có source mapping.</p>`;
+      return list.map(source => `<p class="small"><strong>[${source.order}] ${escapeHtml(source.title)}</strong><br>${escapeHtml(source.file)} · ${escapeHtml(source.tier)} · ${source.url ? escapeHtml(source.url) : "URL not in PDF"}</p>`).join("");
+    }
+
     function historyBody(t) {
       const items = [
-        ["Imported", "System tạo work item từ batch BAT-001"],
+        ["Uploaded", `System nhận ${project.bundleId}`],
+        ["Parsing", "Parse Answer PDF và Source Reference PDF"],
+        ["Parsed", "Normalized answer/source text"],
         ["Claim Extracted", "LLM tách claim text"],
         ["Pre-scoring Running", "Gọi endpoint pre-score"],
         [t.status, `${t.annotator} submit, QA review hiện tại`]
@@ -1574,24 +1736,21 @@
     function renderExport() {
       const approvedCount = tasks.filter(t => t.status === "Approved").length;
       byId("export").innerHTML = `
-        <div class="grid grid-2">
-          <section class="card padded">
-            <h2 class="section-title">Create Export Job</h2>
-            <div class="form-grid" style="margin-top:14px;">
-              <div class="field"><label>Project</label><select id="exportProject"><option>${project.name}</option></select></div>
-              <div class="field"><label>Batch optional</label><select><option>${project.batch}</option><option>All batches</option></select></div>
-              <div class="field"><label>Status</label><select id="exportStatus"><option>Approved</option><option disabled>Returned</option><option disabled>In Annotation</option><option disabled>Submitted</option></select></div>
-              <div class="field"><label>Format</label><select><option>CSV claim-level</option><option disabled>JSON - Phase sau</option><option disabled>XLSX - Phase sau</option></select></div>
-            </div>
-            <div class="banner blue" style="margin-top:14px;">Rule: chỉ export task Approved. Hiện có ${approvedCount} task eligible.</div>
-            <div class="quick-actions"><button class="btn primary" id="createExport">Create Export Job</button></div>
-          </section>
-          ${assumptionPanel()}
-        </div>
-        <section class="card" style="margin-top:16px;">
+        <section class="card padded">
+          <h2 class="section-title">Create Export Job</h2>
+          <div class="form-grid mt-14">
+            <div class="field"><label>Project</label><select id="exportProject"><option>${project.name}</option></select></div>
+            <div class="field"><label>Batch optional</label><select><option>${project.batch}</option><option>All batches</option></select></div>
+            <div class="field"><label>Status</label><select id="exportStatus"><option>Approved</option><option disabled>Returned</option><option disabled>In Annotation</option><option disabled>Submitted</option></select></div>
+            <div class="field"><label>Format</label><select><option>CSV claim-level</option><option disabled>JSON - Phase sau</option><option disabled>XLSX - Phase sau</option></select></div>
+          </div>
+          <div class="banner blue mt-14">Rule: chỉ export task Approved. Hiện có ${approvedCount} task eligible. CSV giữ bundle_id và tên PDF gốc.</div>
+          <div class="quick-actions"><button class="btn primary" id="createExport">Create Export Job</button></div>
+        </section>
+        <section class="card mt-16">
           <div class="card-header"><h2>Export History</h2><span class="badge neutral">CSV claim-level</span></div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Project</th><th>Status</th><th>Approved tasks</th><th>Created by</th><th>Time</th><th>Download</th></tr></thead>
-          <tbody>${state.exportJobs.map(j => `<tr><td><strong>${j.id}</strong></td><td>${j.project}</td><td><span class="badge approved">${j.status}</span></td><td>${j.count}</td><td>${j.by}</td><td>${j.time}</td><td><button class="btn">Download mock</button></td></tr>`).join("")}</tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Project</th><th>Bundle</th><th>Status</th><th>Approved tasks</th><th>PDF trace</th><th>Created by</th><th>Time</th><th>Download</th></tr></thead>
+          <tbody>${state.exportJobs.map(j => `<tr><td><strong>${j.id}</strong></td><td>${j.project}</td><td>${project.bundleId}</td><td><span class="badge approved">${j.status}</span></td><td>${j.count}</td><td>${project.answerPdf}<br><span class="small muted">${project.sourceRefPdf}</span></td><td>${j.by}</td><td>${j.time}</td><td><button class="btn">Download mock</button></td></tr>`).join("")}</tbody></table></div>
         </section>`;
     }
 
@@ -1659,15 +1818,15 @@
       const missingDimension = dimensions.some(d => t.ann[d] === "" || Number.isNaN(Number(t.ann[d])));
       const highDelta = dimensions.some(d => Math.abs(t.ann[d] - t.pre[d]) > .20);
       if (missingDimension) return toast("Chưa đủ 6 dimension. Vui lòng điền toàn bộ scoring.");
-      if (!t.sourceStatus) return toast("Chưa chọn source status.");
-      if (t.sourceStatus === "Không truy cập được" && !t.sourceNote) return toast("Nguồn không truy cập được nên bắt buộc nhập source note.");
+      if (!t.sourceStatus || t.sourceStatus === "unknown") return toast("Chưa chọn source status.");
+      if (t.sourceStatus.includes("Không truy cập được") && !t.sourceNote) return toast("Nguồn không truy cập được nên bắt buộc nhập source note.");
       if (highDelta && !t.reason) return toast("Có score lệch quá ±0.20 nên bắt buộc nhập lý do thay đổi.");
       t.status = "Submitted";
       t.submittedAt = "04/06/2026 10:15";
       state.qaTaskId = t.id;
       addAudit("Submit Annotation", t.id, "Task chuyển sang Submitted và vào QA Queue");
-      toast("Annotation đã submit, task đã vào QA Queue.");
-      setView("qa");
+      toast("Annotation đã submit. Task đã vào QA Queue cho QA review.");
+      setView("tasks");
     }
 
     function approveTask() {
@@ -1769,11 +1928,11 @@
       if (step) { state.projectMode = "wizard"; state.wizardStep = Number(step.dataset.step); render(); }
       if (event.target.matches("[data-project-list]")) { state.projectMode = "list"; render(); }
       if (event.target.matches("[data-new-project]")) { state.projectMode = "wizard"; state.wizardStep = 1; render(); }
-      if (event.target.matches("[data-project-detail]")) { state.projectMode = "wizard"; state.wizardStep = 5; render(); }
+      if (event.target.matches("[data-project-detail]")) { state.projectMode = "wizard"; state.wizardStep = 8; render(); }
       if (event.target.matches("[data-project-import]")) { state.projectMode = "wizard"; state.wizardStep = 3; render(); }
-      if (event.target.matches("[data-next-step]")) { state.wizardStep = Math.min(5, state.wizardStep + 1); render(); }
+      if (event.target.matches("[data-next-step]")) { state.wizardStep = Math.min(8, state.wizardStep + 1); render(); }
       if (event.target.matches("[data-prev-step]")) { state.wizardStep = Math.max(1, state.wizardStep - 1); render(); }
-      if (event.target.id === "validateDataset") { state.datasetValidated = true; addAudit("Validate Schema", project.batch, "Schema hợp lệ với cảnh báo source_urls rỗng"); toast("Schema đã validate thành công."); render(); }
+      if (event.target.id === "validateBundle") { state.bundleValidated = true; addAudit("Validate PDF Bundle", project.bundleId, "Bundle hợp lệ, warning SOURCE_URL_MISSING ở source [2]"); toast("PDF Bundle đã validate thành công."); render(); }
       const openAnn = event.target.closest("[data-open-annotation]");
       if (openAnn) { state.selectedTaskId = openAnn.dataset.openAnnotation; taskById(state.selectedTaskId).status = taskById(state.selectedTaskId).status === "Ready for Annotation" ? "In Annotation" : taskById(state.selectedTaskId).status; setView("annotation"); }
       const openQa = event.target.closest("[data-open-qa]");
