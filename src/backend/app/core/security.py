@@ -14,21 +14,30 @@ import jwt
 
 from app.core.config import settings
 
-# bcrypt giới hạn 72 byte — cắt để tránh ValueError (bcrypt 4+) trước khi hash.
-_BCRYPT_MAX_BYTES = 72
+# bcrypt giới hạn 72 byte. REJECT password dài hơn (không cắt âm thầm — tránh 2 password
+# trùng 72 byte đầu thành tương đương). Validate ở schema (max_length) + chặn ở đây.
+BCRYPT_MAX_BYTES = 72
 
 
-def _truncate(plain: str) -> bytes:
-    return plain.encode("utf-8")[:_BCRYPT_MAX_BYTES]
+class PasswordTooLongError(ValueError):
+    """Password vượt 72 byte (giới hạn bcrypt)."""
 
 
 def hash_password(plain: str) -> str:
-    return bcrypt.hashpw(_truncate(plain), bcrypt.gensalt()).decode("utf-8")
+    encoded = plain.encode("utf-8")
+    if len(encoded) > BCRYPT_MAX_BYTES:
+        raise PasswordTooLongError(
+            f"Mật khẩu không được vượt {BCRYPT_MAX_BYTES} byte (UTF-8)."
+        )
+    return bcrypt.hashpw(encoded, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    encoded = plain.encode("utf-8")
+    if len(encoded) > BCRYPT_MAX_BYTES:
+        return False  # password dài quá → không thể đúng (hash không bao giờ tạo từ >72B)
     try:
-        return bcrypt.checkpw(_truncate(plain), hashed.encode("utf-8"))
+        return bcrypt.checkpw(encoded, hashed.encode("utf-8"))
     except (ValueError, TypeError):
         return False
 

@@ -87,6 +87,19 @@ async def test_me_returns_user(client):
     assert res.json()["role"] == "QA"
 
 
+async def test_refresh_token_cannot_access_protected_route(client):
+    """Refresh token (TTL dài) KHÔNG được gọi route bảo vệ — phải 401 (High finding)."""
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@vsf.local", "password": "admin-demo-2026"},
+    )
+    refresh_token = login.json()["refresh_token"]
+    res = await client.get(
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {refresh_token}"}
+    )
+    assert res.status_code == 401
+
+
 async def test_rbac_users_endpoint_admin_only(client):
     """GET /users yêu cầu ADMIN — QA token bị 403."""
     login = await client.post(

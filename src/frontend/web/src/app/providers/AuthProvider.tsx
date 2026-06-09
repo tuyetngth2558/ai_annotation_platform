@@ -34,6 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    // Backend cũng trả refresh_token, nhưng FE hiện CHƯA dùng (auth refresh là
+    // backend-only ở PR này). TODO(auth-fe): lưu refresh_token + gọi /auth/refresh
+    // khi access token hết hạn, để không bắt login lại. Xem docs/adr/0006.
     setToken(res.access_token);
     const next: AuthSession = { accessToken: res.access_token, email: res.email, role: res.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(next));
