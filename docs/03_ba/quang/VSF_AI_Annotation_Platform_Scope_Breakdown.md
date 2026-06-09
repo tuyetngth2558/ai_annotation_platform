@@ -49,7 +49,7 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 | Hạng mục tính năng | Must-Have | Design-Only | Postponed |
 | :--- | :---: | :---: | :---: |
 | **Project Setup** (Cấu hình dự án & Gán nhân sự) | ✅ | | |
-| **Import Dataset** (Hỗ trợ file CSV/JSON chuẩn) | ✅ | | |
+| **Import Dataset** (Hỗ trợ nhập PDF Bundle - file ZIP hoặc nhiều file PDF) | ✅ | | |
 | **Claim Extraction** (Tách claim tự động & Sửa thủ công) | ✅ | | |
 | **Source Mapping & Validation cơ bản** (URL source status) | ✅ | | |
 | **LLM Pre-scoring** (Lấy điểm pre-score tự động từ 1 provider) | ✅ | | |
@@ -85,10 +85,10 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
   - Thực hiện gán nhân sự (Annotator và QA Specialist) vào dự án.
   - Xem danh sách và trạng thái tổng quan các project.
 - **Import Dataset:**
-  - Import dữ liệu thủ công thông qua định dạng file `CSV` hoặc `JSON`.
-  - Kiểm tra tính hợp lệ cơ bản của schema đầu vào.
-  - Cho phép xem trước (preview) dữ liệu trước khi import.
-  - Tự động tạo batch và các work item tương ứng từ tệp tin nguồn.
+  - Import dữ liệu thủ công dưới dạng PDF Bundle (tệp ZIP chứa các file PDF hoặc chọn nhiều file PDF trực tiếp).
+  - Kiểm tra tính hợp lệ của định dạng file PDF và giải nén ZIP.
+  - Cho phép xem trước (preview) danh sách file PDF và demo văn bản trích xuất trước khi import.
+  - Tự động tạo batch, trích xuất text/URL và tạo các work item tương ứng từ các file PDF nguồn.
 - **Claim Extraction:**
   - Hệ thống tự động tách claim từ `answer_text`.
   - Mỗi claim sau khi tách trở thành một `Claim Task` độc lập.
@@ -166,7 +166,7 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 
 ### Tuần 1 — Xây dựng Nền tảng
 - [ ] Thống nhất và chốt biên giới scope MVP với mentor/stakeholder.
-- [ ] Định nghĩa định dạng dữ liệu import/export chuẩn (CSV hoặc JSON).
+- [ ] Định nghĩa định dạng dữ liệu import chuẩn (PDF/ZIP) và xuất chuẩn (CSV).
 - [ ] Chốt LLM provider và kiểm tra tài khoản/kết nối.
 - [ ] Thiết kế kiến trúc nghiệp vụ tự động tách claim (claim extraction flow).
 - [ ] Xây dựng sơ đồ dữ liệu ERD hỗ trợ cấu trúc mở rộng đa modality.
@@ -175,8 +175,8 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 - [ ] Triển khai phân hệ Authentication và RBAC phân quyền cơ bản.
 
 ### Tuần 2 — Hiện thực hóa Luồng Gán nhãn (Annotation Flow)
-- [ ] Phát triển API và giao diện Import dataset (validate schema + preview).
-- [ ] Hiện thực tính năng tự động tách claim (Claim extraction).
+- [ ] Phát triển API và giao diện Import dataset (validate PDF/ZIP + trích xuất văn bản + preview).
+- [ ] Hiện thực tính năng tự động tách claim từ văn bản trích xuất (Claim extraction).
 - [ ] Kết nối API và tích hợp cơ chế LLM pre-scoring lưu baseline.
 - [ ] Xây dựng màn hình làm việc của Annotator (Annotation Workspace), tích hợp xem ngữ cảnh và chỉnh sửa claim.
 - [ ] Thiết lập các quy định validation bắt buộc (điểm số, trạng thái nguồn, ghi chú).
