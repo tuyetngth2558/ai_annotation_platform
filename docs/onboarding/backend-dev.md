@@ -66,7 +66,7 @@ src/backend/app/
 ├── schemas/common.py        # ErrorResponse, Page, PageMeta, HealthResponse
 ├── constants.py             # Role, Dimension (6 chiều), enum status/decision
 ├── features/                # MỖI feature: routes.py, schemas.py, service.py
-│   ├── auth/                # login (mock chạy được), me (TODO)
+│   ├── auth/                # login thật (verify DB) + mock + refresh + change-password + me
 │   ├── projects/  import_bundle/  annotation/  qa_review/  export/  audit/
 ├── integrations/
 │   ├── storage/             # FileStorage interface + local + s3
@@ -172,13 +172,17 @@ có `{{claim_text}}` + `{{source_context}}` (BR-1.3). Xem
 
 ---
 
-## 8. Auth & RBAC (đang là khung)
+## 8. Auth & RBAC
 
-- **Mock login** (`features/auth/service.py`): 3 user demo, khóa bằng `AUTH_MOCK_ENABLED`.
-- **Login thật**: TODO — verify password DB + JWT.
-- **RBAC per-project**: `require_role` (global) / `require_project_role` (theo project) ở
-  `core/permissions.py` — hiện là khung, cần nối `get_current_user`.
+- **Login thật** (`features/auth/service.py`): verify password DB (bcrypt) + access+refresh
+  token, lấy role từ USER_PROJECT_ROLE. `/auth/refresh`, `/auth/change-password`, `/auth/me`.
+- **Mock login**: 3 user demo, khóa bằng `AUTH_MOCK_ENABLED` (chỉ dev).
+- **Hash:** dùng `bcrypt` trực tiếp (KHÔNG passlib — passlib lỗi với bcrypt 4+).
+- **RBAC**: `require_role` (global) đã enforce thật qua `get_current_user`. `require_project_role`
+  (per-project) còn TODO — hiện role lấy từ token (1 role chính/user — giới hạn MVP).
+- **Token type**: `get_current_user` chỉ nhận access token; refresh token bị chặn ở route bảo vệ.
 - **API key LLM**: mã hóa Fernet at-rest (`core/crypto.py`, BR-1.2), không lưu plain.
+- **KHÔNG có** (BA hoãn): register công khai, OAuth, verify email, MFA.
 
 ---
 

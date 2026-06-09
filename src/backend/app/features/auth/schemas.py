@@ -35,7 +35,8 @@ class AccessTokenResponse(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     old_password: str
-    new_password: str = Field(min_length=8, description="Mật khẩu mới tối thiểu 8 ký tự")
+    # max 72: giới hạn bcrypt (validate sớm → 422 thay vì lỗi tầng hash).
+    new_password: str = Field(min_length=8, max_length=72, description="Mật khẩu mới 8-72 ký tự")
 
 
 class CurrentUser(BaseModel):

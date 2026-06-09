@@ -58,13 +58,19 @@ def mock_login(payload: LoginRequest) -> TokenResponse:
 
 
 async def _get_primary_role(db: AsyncSession, user_id) -> Role:
-    """Role chính của user — bản ghi USER_PROJECT_ROLE active đầu tiên.
+    """Role CHÍNH của user để nhét vào access token.
 
-    MVP: 1 role chính/user. require_project_role (per-project) hoàn thiện sau.
+    ⚠️ GIỚI HẠN MVP (có chủ đích): JWT mang 1 role toàn cục/user. Hệ thống enforce
+    role theo bản ghi USER_PROJECT_ROLE active **cũ nhất** (deterministic — order theo
+    id để ổn định giữa các lần login). Đây KHÔNG phải RBAC per-project đầy đủ
+    (xem ADR 0003) — user có nhiều role ở nhiều project chưa được phân biệt ở tầng token.
+    Khi cần per-project thật: `require_project_role` đọc role theo project_id của request
+    thay vì dựa role trong token (TODO). Tham chiếu: OQ-008.
     """
     res = await db.execute(
         select(UserProjectRole.role)
         .where(UserProjectRole.user_id == user_id, UserProjectRole.is_active.is_(True))
+        .order_by(UserProjectRole.id)  # deterministic
         .limit(1)
     )
     role_str = res.scalar_one_or_none()

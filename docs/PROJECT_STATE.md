@@ -35,7 +35,7 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 
 | Feature | Backend (BE) | Frontend (FE) | Test | Ghi chú / Blocker |
 |---|:---:|:---:|:---:|---|
-| **auth** (login/RBAC) | ✅ login/refresh/change-password thật (verify DB) + RBAC | ✅ login + guard | ✅ 7 test auth | Bcrypt (bỏ passlib). KHÔNG register/OAuth/verify email/MFA (BA hoãn) |
+| **auth** (login/RBAC) | ✅ login/refresh/change-password thật (verify DB) + RBAC | ✅ login + guard (refresh backend-only) | ✅ 16 test (mock + DB thật) | Bcrypt (bỏ passlib). KHÔNG register/OAuth/verify email/MFA (BA hoãn) |
 | **users** (Admin tạo user) | 🚧 create/list/get (RBAC ADMIN) | ⬜ | 🚧 RBAC test | Mật khẩu tạm; gán role per-project |
 | **projects** (tạo/cấu hình LLM) | ⬜ route 501 | ⬜ skeleton | ⬜ | API key encrypt (BR-1.2) |
 | **import_bundle** (upload PDF) | ⬜ route 501 | ⬜ skeleton | ⬜ | 🔒 parser chờ OQ-PDF-004 (OCR) |
@@ -67,7 +67,7 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 | OQ-002 | LLM provider chưa chốt → pre-scoring | 🔴 chờ (xem [08-llm-provider](05_architecture/tech-selection/08-llm-provider.md)) |
 | OQ-003 | Claim extraction tách/gộp pre-scoring | 🔴 chờ |
 | OQ-004 | Ngưỡng ±0.20 nhập lý do | 🟡 draft |
-| OQ-006 | Security baseline (auth thật) | 🔴 chờ |
+| OQ-006 | Security baseline | 🟢 baseline đã làm (email/password + RBAC + bcrypt/JWT, ADR 0003/0006). MFA/OAuth/register hoãn theo BA |
 | OQ-PDF-004 | OCR/scanned PDF có trong MVP? | 🔴 chờ |
 
 Quyết định ĐÃ chốt → xem [docs/adr/](adr/). Quyết gì mới → **thêm ADR**, đừng để trôi.

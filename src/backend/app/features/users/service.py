@@ -7,9 +7,10 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AppError
+from app.core.exceptions import AppError, NotFoundError
 from app.core.security import hash_password
 from app.features.users.schemas import UserCreate
+from app.models.project import Project
 from app.models.user import UserAccount
 from app.models.user_project_role import UserProjectRole
 
@@ -17,6 +18,11 @@ from app.models.user_project_role import UserProjectRole
 async def create_user(db: AsyncSession, payload: UserCreate) -> UserAccount:
     """Tạo user mới + mật khẩu tạm (hash) + gán role trong 1 project."""
     email = payload.email.lower()
+
+    # Validate project tồn tại → trả 404 nghiệp vụ thay vì để FK lỗi thành 500.
+    project = await db.execute(select(Project.id).where(Project.id == payload.project_id))
+    if project.scalar_one_or_none() is None:
+        raise NotFoundError("Không tìm thấy project để gán role.")
 
     exists = await db.execute(select(UserAccount.id).where(UserAccount.email == email))
     if exists.scalar_one_or_none() is not None:
