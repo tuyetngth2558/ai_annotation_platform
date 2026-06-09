@@ -118,3 +118,19 @@ async def test_real_change_password_wrong_old(db_session, real_user):
             str(real_user["id"]),
             ChangePasswordRequest(old_password="wrong-old", new_password="whatever-789"),
         )
+
+
+async def test_refresh_revalidates_disabled_user(db_session, real_user):
+    """Refresh PHẢI bị chặn nếu user bị disabled sau khi nhận refresh token (High)."""
+    tokens = await service.login(
+        db_session, LoginRequest(email=real_user["email"], password=real_user["password"])
+    )
+    # Disable user
+    user = (
+        await db_session.execute(select(UserAccount).where(UserAccount.id == real_user["id"]))
+    ).scalar_one()
+    user.status = "disabled"
+    await db_session.commit()
+
+    with pytest.raises(AuthError):
+        await service.refresh(db_session, tokens.refresh_token)

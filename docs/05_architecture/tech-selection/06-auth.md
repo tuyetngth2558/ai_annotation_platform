@@ -112,8 +112,11 @@ một lớp IdP (Keycloak tự host, hoặc Auth0) cho phần *authentication*, 
 - **RBAC:** `require_role` / `require_project_role` qua FastAPI `Depends()` trên *mọi*
   endpoint, không chỉ UI.
 - **Audit immutable** (BR-10.1): `REVOKE UPDATE,DELETE ON audit_log`.
-- **Mock login** đợt scaffold khóa bằng `AUTH_MOCK_ENABLED` (chỉ dev; staging/prod tắt → raise).
-- **TODO:** login thật (verify DB), refresh token, get_current_user — chưa implement (scaffold).
+- **Mock login** khóa bằng `AUTH_MOCK_ENABLED` (chỉ dev; staging/prod tắt → raise).
+- **Đã implement:** login thật (verify DB + bcrypt), access+refresh token (refresh revalidate
+  user trong DB), change-password, `get_current_user` (chỉ access token), Admin tạo user.
+- **TODO (phase sau, BA hoãn):** register công khai, OAuth Google/Microsoft, verify email, MFA,
+  refresh token revoke list.
 
 ## 6. Tham chiếu
 - ADR: [0003-self-written-auth.md](../../adr/0003-self-written-auth.md)

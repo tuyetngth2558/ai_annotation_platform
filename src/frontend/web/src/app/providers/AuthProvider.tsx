@@ -5,7 +5,7 @@
  */
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { apiFetch, getToken, setToken } from "@/shared/lib/apiClient";
-import type { AuthSession, LoginRequest, LoginResponse, Role } from "@/shared/types/auth";
+import type { AuthSession, LoginRequest, LoginResponse } from "@/shared/types/auth";
 
 interface AuthContextValue {
   session: AuthSession | null;
@@ -59,16 +59,4 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth phải dùng trong AuthProvider");
   return ctx;
-}
-
-/** Trang mặc định sau login theo role. */
-export function defaultRouteForRole(role: Role): string {
-  switch (role) {
-    case "ADMIN":
-      return "/admin/dashboard";
-    case "ANNOTATOR":
-      return "/annotator/tasks";
-    case "QA":
-      return "/qa/queue";
-  }
 }

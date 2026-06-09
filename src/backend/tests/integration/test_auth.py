@@ -109,3 +109,27 @@ async def test_rbac_users_endpoint_admin_only(client):
     token = login.json()["access_token"]
     res = await client.get("/api/v1/users", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 403
+
+
+async def test_create_user_rejects_long_password_bytes(client):
+    """Password ≤72 ký tự nhưng >72 BYTE (Unicode) → 422, không phải 500 (Medium)."""
+    admin = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@vsf.local", "password": "admin-demo-2026"},
+    )
+    token = admin.json()["access_token"]
+    # 30 ký tự tiếng Việt có dấu → mỗi ký tự ~3 byte UTF-8 → ~90 byte > 72.
+    long_pw = "mậtkhẩurấtdàivàcódấuTiếngViệt" * 2
+    assert len(long_pw) <= 72 and len(long_pw.encode("utf-8")) > 72  # tiền đề test
+    res = await client.post(
+        "/api/v1/users",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "email": "x@test.local",
+            "full_name": "X",
+            "temp_password": long_pw,
+            "role": "ANNOTATOR",
+            "project_id": "00000000-0000-0000-0000-000000000000",
+        },
+    )
+    assert res.status_code == 422

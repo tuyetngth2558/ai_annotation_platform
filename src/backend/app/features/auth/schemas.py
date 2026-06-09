@@ -2,9 +2,27 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, Field
 
 from app.constants import Role
+from app.core.security import BCRYPT_MAX_BYTES
+
+
+def _max_72_bytes(v: str) -> str:
+    """Validate password ≤72 BYTE (bcrypt giới hạn theo byte, không phải ký tự).
+
+    Unicode (tiếng Việt/emoji) có thể ≤72 ký tự nhưng >72 byte → reject ở schema
+    (trả 422) thay vì để hash_password raise → 500.
+    """
+    if len(v.encode("utf-8")) > BCRYPT_MAX_BYTES:
+        raise ValueError(f"Mật khẩu không được vượt {BCRYPT_MAX_BYTES} byte (UTF-8).")
+    return v
+
+
+# Password type dùng chung: 8 ký tự tối thiểu + ≤72 byte.
+Password = Annotated[str, Field(min_length=8), AfterValidator(_max_72_bytes)]
 
 
 class LoginRequest(BaseModel):
@@ -35,8 +53,7 @@ class AccessTokenResponse(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     old_password: str
-    # max 72: giới hạn bcrypt (validate sớm → 422 thay vì lỗi tầng hash).
-    new_password: str = Field(min_length=8, max_length=72, description="Mật khẩu mới 8-72 ký tự")
+    new_password: Password  # 8 ký tự tối thiểu + ≤72 byte (validate sớm → 422)
 
 
 class CurrentUser(BaseModel):
