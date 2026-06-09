@@ -1,7 +1,8 @@
 /**
  * AuthProvider — giữ session (token + role + email), expose login/logout.
- * Đợt scaffold: login gọi /auth/login (backend mock trả JWT thật) → lưu token,
- * RoleGuard điều hướng theo role. Verify thật để TODO ở backend.
+ * Login gọi /auth/login → backend verify password DB (login thật, có mock dev khi
+ * AUTH_MOCK_ENABLED) → lưu access token, RoleGuard điều hướng theo role.
+ * refresh_token có nhưng FE chưa dùng (backend-only — xem login() bên dưới).
  */
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { apiFetch, getToken, setToken } from "@/shared/lib/apiClient";
