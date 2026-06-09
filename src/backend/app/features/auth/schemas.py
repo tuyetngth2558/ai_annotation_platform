@@ -1,25 +1,41 @@
-"""Schema cho auth (login / token / current user)."""
+"""Schema cho auth (login / token / refresh / đổi mật khẩu)."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.constants import Role
 
 
 class LoginRequest(BaseModel):
     # Dùng str (không EmailStr) để chấp nhận domain nội bộ/demo như `@vsf.local`
-    # (.local là reserved domain — EmailStr từ chối). Validate format thật ở
-    # tầng đăng ký nếu cần (TODO auth).
+    # (.local là reserved domain — EmailStr từ chối).
     email: str
     password: str
 
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     role: Role
     email: str
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class AccessTokenResponse(BaseModel):
+    """Trả về khi refresh — chỉ access token mới."""
+
+    access_token: str
+    token_type: str = "bearer"
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8, description="Mật khẩu mới tối thiểu 8 ký tự")
 
 
 class CurrentUser(BaseModel):
