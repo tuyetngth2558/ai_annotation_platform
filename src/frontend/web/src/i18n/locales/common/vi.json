@@ -1,0 +1,34 @@
+{
+  "appName": "VSF AI Annotation Platform",
+  "nav": {
+    "dashboard": "Tổng quan",
+    "projects": "Dự án",
+    "import": "Nhập PDF Bundle",
+    "tasks": "Công việc của tôi",
+    "qaQueue": "Hàng đợi QA",
+    "export": "Xuất dữ liệu",
+    "audit": "Nhật ký hệ thống"
+  },
+  "actions": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "submit": "Gửi",
+    "confirm": "Xác nhận"
+  },
+  "pages": {
+    "projectSetup": "Cấu hình dự án",
+    "annotationWorkspace": "Màn gán nhãn",
+    "qaReview": "Màn duyệt QA"
+  },
+  "theme": { "light": "Sáng", "dark": "Tối", "toggle": "Đổi giao diện" },
+  "lang": { "vi": "Tiếng Việt", "en": "English", "switch": "Đổi ngôn ngữ" },
+  "states": {
+    "loading": "Đang tải...",
+    "empty": "Chưa có dữ liệu",
+    "error": "Đã xảy ra lỗi",
+    "todo": "Màn hình này là khung skeleton — nội dung sẽ được dev bổ sung."
+  },
+  "errors": { "forbidden": "Bạn không có quyền truy cập trang này.", "notFound": "Không tìm thấy trang." }
+}
