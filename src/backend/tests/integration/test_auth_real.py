@@ -134,3 +134,23 @@ async def test_refresh_revalidates_disabled_user(db_session, real_user):
 
     with pytest.raises(AuthError):
         await service.refresh(db_session, tokens.refresh_token)
+
+
+async def test_refresh_revalidates_deleted_user(db_session, real_user):
+    """Refresh PHẢI bị chặn nếu user bị XÓA sau khi nhận refresh token (High round 3).
+
+    Lỗ hổng cũ: UUID parse OK nhưng query None → rơi xuống nhánh mock, mint token
+    từ claims cũ. Fix: UUID-subject mà user None → raise.
+    """
+    tokens = await service.login(
+        db_session, LoginRequest(email=real_user["email"], password=real_user["password"])
+    )
+    # Xóa role + user (mô phỏng user bị xóa)
+    await db_session.execute(
+        delete(UserProjectRole).where(UserProjectRole.user_id == real_user["id"])
+    )
+    await db_session.execute(delete(UserAccount).where(UserAccount.id == real_user["id"]))
+    await db_session.commit()
+
+    with pytest.raises(AuthError):
+        await service.refresh(db_session, tokens.refresh_token)

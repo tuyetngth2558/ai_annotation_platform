@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants import Role
+from app.core.config import settings
 from app.core.exceptions import AuthError
 from app.core.security import (
     create_access_token,
@@ -125,18 +126,22 @@ async def refresh(db: AsyncSession, payload_token: str) -> AccessTokenResponse:
         raise AuthError("Refresh token không hợp lệ hoặc đã hết hạn.") from exc
 
     subject = data.get("sub")
-    # Mock token dùng email làm subject; login thật dùng user_id (uuid). Chỉ revalidate
-    # khi subject là uuid (login thật). Mock chỉ chạy dev nên bỏ qua revalidate.
-    user = None
+    # Phân biệt 2 loại subject:
+    #  - UUID  → token login THẬT (subject = user_id) → BẮT BUỘC revalidate trong DB.
+    #  - không UUID (email) → token MOCK (dev) → tái phát từ claims (chỉ khi mock bật).
     try:
         user_uuid = uuid.UUID(str(subject))
+        subject_is_uuid = True
+    except (ValueError, TypeError):
+        subject_is_uuid = False
+
+    if subject_is_uuid:
+        # Token login thật — user phải còn tồn tại + active. KHÔNG rơi xuống nhánh mock
+        # (tránh lỗ hổng: user bị xóa vẫn mint được access từ claims cũ).
         res = await db.execute(select(UserAccount).where(UserAccount.id == user_uuid))
         user = res.scalar_one_or_none()
-    except (ValueError, TypeError):
-        user = None  # subject không phải uuid → token mock (dev)
-
-    if user is not None:
-        # Login thật: bắt buộc user còn active + recompute role hiện tại.
+        if user is None:
+            raise AuthError("Tài khoản không còn tồn tại.")
         if user.status != "active":
             raise AuthError("Tài khoản đã bị khóa.")
         role = await _get_primary_role(db, user.id)
@@ -144,7 +149,9 @@ async def refresh(db: AsyncSession, payload_token: str) -> AccessTokenResponse:
             subject=str(user.id), claims={"role": role.value, "name": user.full_name}
         )
     else:
-        # Token mock (dev) — tái phát từ claims, không có DB user để revalidate.
+        # Token mock (dev) — chỉ chấp nhận khi mock đang bật, tránh lạm dụng ở prod.
+        if not settings.auth_mock_enabled:
+            raise AuthError("Refresh token không hợp lệ.")
         access = create_access_token(
             subject=str(subject), claims={"role": data.get("role"), "name": data.get("name")}
         )
