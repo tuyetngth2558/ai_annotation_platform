@@ -32,7 +32,7 @@ Tài liệu này phân loại toàn bộ tính năng của VSF AI Annotation Pla
 Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạy được end-to-end ổn định theo luồng:
 
 ```
-[Import Dataset] ➔ [Claim Extraction] ➔ [LLM Pre-scoring] ➔ [Annotator Review] ➔ [QA Review] ➔ [Export CSV]
+[Import PDF Bundle] ➔ [PDF Parsing] ➔ [Claim Extraction] ➔ [LLM Pre-scoring] ➔ [Annotator Review] ➔ [QA Review] ➔ [Export CSV]
 ```
 
 ### Tiêu chí nghiệm thu (UAT Success Criteria):
@@ -49,9 +49,10 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 | Hạng mục tính năng | Must-Have | Design-Only | Postponed |
 | :--- | :---: | :---: | :---: |
 | **Project Setup** (Cấu hình dự án & Gán nhân sự) | ✅ | | |
-| **Import Dataset** (Hỗ trợ file CSV/JSON chuẩn) | ✅ | | |
+| **Import PDF Bundle** (Answer PDF + Source Reference PDF + Source Content PDF) | ✅ | | |
+| **PDF Parsing & Normalization** (Parse PDF thành dữ liệu nội bộ) | ✅ | | |
 | **Claim Extraction** (Tách claim tự động & Sửa thủ công) | ✅ | | |
-| **Source Mapping & Validation cơ bản** (URL source status) | ✅ | | |
+| **Source Mapping & Validation cơ bản** (source order/title/text, URL optional) | ✅ | | |
 | **LLM Pre-scoring** (Lấy điểm pre-score tự động từ 1 provider) | ✅ | | |
 | **Annotator Workspace** (Giao diện đánh giá & Override score) | ✅ | | |
 | **Structured Evaluation** (Bộ 6 tiêu chí Vivipedia, composite score) | ✅ | | |
@@ -84,21 +85,27 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
   - Cấu hình LLM endpoint, API key và prompt template.
   - Thực hiện gán nhân sự (Annotator và QA Specialist) vào dự án.
   - Xem danh sách và trạng thái tổng quan các project.
-- **Import Dataset:**
-  - Import dữ liệu thủ công thông qua định dạng file `CSV` hoặc `JSON`.
-  - Kiểm tra tính hợp lệ cơ bản của schema đầu vào.
-  - Cho phép xem trước (preview) dữ liệu trước khi import.
-  - Tự động tạo batch và các work item tương ứng từ tệp tin nguồn.
+- **Import PDF Bundle:**
+  - Import dữ liệu thủ công bằng PDF bundle gồm đúng 1 `answer_pdf`, đúng 1 `source_ref_pdf`, và ít nhất 1 `source_content_pdf`.
+  - Kiểm tra file role, định dạng PDF, file lỗi/corrupt, thiếu/trùng role và giới hạn dung lượng.
+  - Cho phép xem trước metadata parse, source list, source content mapping và parse warnings trước khi import.
+  - Tự động tạo batch, PDF bundle, parent task và kích hoạt pipeline nền từ tệp PDF nguồn.
+- **PDF Parsing & Normalization:**
+  - Parse Answer PDF để lấy `answer_text_raw`, `answer_text_normalized`, metadata bài và citation markers.
+  - Parse Source Reference PDF để lấy `source_order`, `source_title`, `source_tier`; `source_url` là optional vì PDF có thể không expose URL.
+  - Parse Source Content PDF để lấy `source_text_extract` phục vụ LLM pre-scoring và annotator review.
+  - Lưu parser version, parse status, warnings và trace về file PDF gốc.
 - **Claim Extraction:**
-  - Hệ thống tự động tách claim từ `answer_text`.
+  - Hệ thống tự động tách claim từ `answer_text_normalized` sau khi parse Answer PDF.
   - Mỗi claim sau khi tách trở thành một `Claim Task` độc lập.
   - Đảm bảo giữ nguyên thứ tự xuất hiện của các claim trong câu trả lời gốc.
   - Cho phép annotator sửa đổi claim text nếu thuật toán tự động tách chưa chính xác.
 - **Source Mapping & Validation cơ bản:**
-  - Mỗi claim bắt buộc phải liên kết với ít nhất 1 URL nguồn.
-  - Task không có source sẽ tự động chuyển trạng thái `Source Mapping Required` và tạm thời không vào hàng đợi của Annotator.
-  - Annotator xác nhận trạng thái hoạt động của từng nguồn: *Truy cập được / Không truy cập được / Hỗ trợ một phần / Không liên quan*.
-  - Nguồn không truy cập được sẽ tự động gán điểm `SC = 0.00` và bắt buộc ghi chú lý do.
+  - Mỗi claim bắt buộc phải có ít nhất 1 source candidate dựa trên citation marker/source order.
+  - Task không map được source sẽ tự động chuyển trạng thái `Source Mapping Required` và tạm thời không vào hàng đợi của Annotator.
+  - Annotator ưu tiên đối chiếu source text parse từ PDF; nếu có URL thì có thể mở ngoài để xác minh thêm.
+  - Source URL không parse được chỉ là warning, không block import nếu có source order/title/text đủ dùng.
+  - Source content không parse được hoặc cần OCR phải có ghi chú khi annotator submit.
 - **LLM Pre-scoring:**
   - Gọi API sang một LLM provider cố định để tính điểm pre-score cho 6 dimension.
   - Lưu trữ kết quả pre-score làm baseline đối chứng (bất biến).
@@ -113,7 +120,7 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
   - Sử dụng bộ 6 dimension hard-code cho Vivipedia:
     - **SF** — Độ trung thành với nguồn (Source Faithfulness)
     - **SC** — Độ bao phủ của nguồn (Source Coverage)
-    - **NH** — Mức độ không hallucination (Non-hallucination)
+    - **HR** — Mức độ rủi ro hallucination / xác nhận bên ngoài (Hallucination Risk)
     - **SQ** — Chất lượng nguồn (Source Quality)
     - **REL** — Mức độ liên quan (Relevance)
     - **COMP** — Độ đầy đủ (Completeness)
@@ -166,7 +173,7 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 
 ### Tuần 1 — Xây dựng Nền tảng
 - [ ] Thống nhất và chốt biên giới scope MVP với mentor/stakeholder.
-- [ ] Định nghĩa định dạng dữ liệu import/export chuẩn (CSV hoặc JSON).
+- [ ] Định nghĩa schema PDF Bundle Upload, PDF parse result và CSV export claim-level.
 - [ ] Chốt LLM provider và kiểm tra tài khoản/kết nối.
 - [ ] Thiết kế kiến trúc nghiệp vụ tự động tách claim (claim extraction flow).
 - [ ] Xây dựng sơ đồ dữ liệu ERD hỗ trợ cấu trúc mở rộng đa modality.
@@ -175,7 +182,7 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 - [ ] Triển khai phân hệ Authentication và RBAC phân quyền cơ bản.
 
 ### Tuần 2 — Hiện thực hóa Luồng Gán nhãn (Annotation Flow)
-- [ ] Phát triển API và giao diện Import dataset (validate schema + preview).
+- [ ] Phát triển API và giao diện Import PDF Bundle (validate file roles + parse preview).
 - [ ] Hiện thực tính năng tự động tách claim (Claim extraction).
 - [ ] Kết nối API và tích hợp cơ chế LLM pre-scoring lưu baseline.
 - [ ] Xây dựng màn hình làm việc của Annotator (Annotation Workspace), tích hợp xem ngữ cảnh và chỉnh sửa claim.
@@ -240,7 +247,7 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
   - **Trí:** Thực hiện thiết kế đồ họa chi tiết (UI), vẽ khung xương màn hình (Wireframes) và ráp luồng tương tác (Interactive Prototype).
   - **Tuyết:** Đảm bảo thiết kế bám sát logic nghiệp vụ, thực hiện review độ thân thiện người dùng (Usability Review) và đồng bộ spec màn hình.
 - **Màn hình ưu tiên bắt buộc thiết kế trong MVP:**
-  1. Giao diện Cài đặt dự án & Import Dataset.
+  1. Giao diện Cài đặt dự án & Import PDF Bundle.
   2. Giao diện làm việc của Annotator (Annotation Workspace).
   3. Giao diện kiểm duyệt của QA (QA Review Screen).
 

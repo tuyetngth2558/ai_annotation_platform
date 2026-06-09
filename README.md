@@ -4,7 +4,7 @@ VSF AI Annotation Platform là nền tảng nội bộ hỗ trợ chuẩn hóa q
 
 Trong giai đoạn MVP hiện tại, dự án tập trung vào một use case duy nhất là **Vivipedia**, với một modality duy nhất là **text**. Mục tiêu là xây dựng được một luồng chạy end-to-end đủ dùng thực tế:
 
-`Import PDF Bundle -> Claim Extraction -> LLM Pre-scoring -> Annotator Review -> QA Review -> Export CSV`
+`Import PDF Bundle -> PDF Parsing -> Claim Extraction -> LLM Pre-scoring -> Annotator Review -> QA Review -> Export CSV`
 
 ## Mục tiêu MVP
 
@@ -19,7 +19,7 @@ Trong giai đoạn MVP hiện tại, dự án tập trung vào một use case du
 MVP 4 tuần chỉ triển khai:
 
 - `text annotation`
-- `PDF Bundle import` (answer + source ref + source content — input chính, OQ-001)
+- `PDF Bundle import` gồm Answer PDF, Source Reference PDF và ít nhất 1 Source Content PDF
 - `claim-level review`
 - `QA Approve / Return`
 - `CSV export`

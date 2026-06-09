@@ -1,9 +1,10 @@
 # Test Plan MVP — VSF AI Annotation Platform
 
-**Owner:** QA Team  
-**Phiên bản:** v1.0  
-**Ngày:** 06/06/2026  
+**Owner:** QA Team
+**Phiên bản:** v1.1
+**Ngày:** 08/06/2026
 **Phạm vi:** MVP PDF-native cho Vivipedia text annotation
+**Scope baseline:** `docs/03_ba/00_Scope_Assignment_MVP.md`
 
 ---
 
@@ -13,19 +14,22 @@
 
 ```text
 PDF Bundle Upload
--> PDF Parsing / Normalization
+-> PDF Parsing / Text Extraction
+-> Internal Normalization
 -> Claim Extraction
--> Source Mapping
 -> LLM Pre-scoring
 -> Annotator Review
 -> QA Review
 -> Export CSV
 ```
 
+Test plan này thay thế hướng test cũ theo CSV/JSON import. MVP hiện tại chỉ xem PDF bundle là input chính; CSV claim-level là output chính; JSON chỉ còn là artifact nội bộ/debug nếu cần.
+
 Mục tiêu nghiệm thu chính:
 
 - Admin tạo project, cấu hình LLM và import PDF Bundle hợp lệ.
-- Hệ thống parse PDF, tạo Parent Task, Claim Task, source mapping và pre-score.
+- Hệ thống parse PDF, lưu raw text, normalized text, metadata/source list và tạo Parent Task.
+- Hệ thống tạo Claim Task, source mapping và LLM pre-score từ dữ liệu đã normalized.
 - Annotator chỉ thấy task được giao, review claim/source, nhập điểm và submit.
 - QA review task `Submitted`, chỉ được `Approve` hoặc `Return`.
 - Export chỉ xuất claim `Approved` ra CSV claim-level, trace được về PDF gốc.
@@ -33,7 +37,20 @@ Mục tiêu nghiệm thu chính:
 
 ---
 
-## 2. Tài liệu đầu vào
+## 2. Cần làm gì trong task này
+
+Task hôm nay không phải viết toàn bộ test case chi tiết cho mọi module. Phạm vi chính là chốt strategy và chỉ ra test case nào cần được viết theo AC.
+
+| Việc cần làm | Cụ thể cần có | File chính |
+|---|---|---|
+| Xây dựng Test Plan | Scope test theo PDF-native, test strategy, test data, entry/exit criteria, risk | `01_Test_Plan_PDF_Native_MVP.md` |
+| Mapping AC -> Test Cases | Mỗi AC/BR chính map sang nhóm test case cụ thể, dễ biết cần test gì | `02_AC_to_Test_Cases_Mapping.md` |
+
+Các file E2E, Functional Checklist, API/UI Sanity là nơi chứa hoặc tham chiếu test case chi tiết. Không cần xem chúng là deliverable riêng của task này nếu ticket chỉ ghi “Test Plan” và “Mapping AC -> Test Cases”.
+
+---
+
+## 3. Tài liệu đầu vào
 
 | Tài liệu | Mục đích sử dụng |
 |---|---|
@@ -41,30 +58,33 @@ Mục tiêu nghiệm thu chính:
 | `docs/03_ba/tuyet/02_Screen_Flow.md` | Luồng điều hướng và trạng thái |
 | `docs/03_ba/tuyet/03_Screen_Specification.md` | Field, action, validation UI |
 | `docs/03_ba/tuyet/04_Open_Questions_Assumptions_Dependencies.md` | Quyết định đã chốt và câu hỏi mở |
+| `docs/03_ba/00_Scope_Assignment_MVP.md` | Scope baseline PDF-native chốt ngày 2026-06-08 |
 | `docs/03_ba/dan/02_Import_Export_Schema.md` | Schema import PDF Bundle và export CSV |
 | `docs/03_ba/dan/03_Validation_Rules.md` | Validation rules |
 | `docs/03_ba/dan/04_Edge_Cases.md` | Edge cases ưu tiên test |
-| `docs/03_ba/quang/VSF_AI_Annotation_Platform_AC_and_Business_Rules.md` | AC/BR nghiệp vụ, cần đối chiếu với PDF-native update |
+| `docs/03_ba/quang/VSF_AI_Annotation_Platform_AC_and_Business_Rules.md` | AC/BR nghiệp vụ theo PDF-native update |
 
 ---
 
-## 3. Phạm vi kiểm thử
+## 4. Phạm vi kiểm thử
 
-### 3.1. In scope
+### 4.1. In scope
 
 | Module | Nội dung kiểm thử |
 |---|---|
 | Auth / RBAC | Login, role-based navigation, quyền Admin/Annotator/QA |
 | Project Setup | Tạo project, validate field, cấu hình LLM, assignment |
 | PDF Bundle Import | Upload PDF, gán file role, validate, preview parse, confirm import |
-| Background Pipeline | Parse, normalize, create task, claim extraction, source mapping, pre-scoring |
+| PDF Parsing / Text Extraction | Parse raw text từ Answer PDF, Source Reference PDF, Source Content PDF; ghi parse status/warning |
+| Internal Normalization | Chuẩn hóa metadata, `answer_text_normalized`, source list và trace về PDF bundle |
+| Background Pipeline | Create parent task, claim extraction, source mapping, pre-scoring |
 | Annotation Workspace | Claim edit, source status, score validation, justification, auto-save, submit/resubmit |
 | QA Review | Queue, diff score, history, approve, return |
 | Export | Export CSV approved-only, encoding/quoting, required columns |
 | Audit Log | Log import, claim edit, submit, approve, return, export |
 | Error/Empty/Loading states | Các trạng thái tối thiểu theo screen spec |
 
-### 3.2. Out of scope
+### 4.2. Out of scope
 
 - Mobile app/responsive mobile acceptance.
 - Audio/image annotation workspace.
@@ -79,7 +99,7 @@ Mục tiêu nghiệm thu chính:
 
 ---
 
-## 4. Test strategy
+## 5. Test strategy
 
 | Loại test | Mục tiêu | Người thực hiện |
 |---|---|---|
@@ -94,7 +114,7 @@ Mục tiêu nghiệm thu chính:
 
 ---
 
-## 5. Test environment
+## 6. Test environment
 
 | Hạng mục | Yêu cầu |
 |---|---|
@@ -107,42 +127,44 @@ Mục tiêu nghiệm thu chính:
 
 ---
 
-## 6. Entry criteria
+## 7. Entry criteria
 
 - BA scope PDF-native đã được xác nhận.
 - Staging/dev environment deploy được.
 - Có test account cho 3 role.
 - Có ít nhất 1 PDF Bundle hợp lệ và 1 bộ invalid data.
+- Có expected parse result tối thiểu cho metadata, normalized answer text và source list.
 - API chính hoặc mock API đã sẵn sàng cho import/pipeline/review/export.
 - Dev cung cấp release note ngắn cho build cần test.
 
 ---
 
-## 7. Exit criteria
+## 8. Exit criteria
 
 - 100% test scenario Critical/High đã executed.
 - Không còn bug Critical/Open.
 - Bug High còn mở phải có workaround hoặc được PO/BA chấp nhận.
 - E2E happy path pass ít nhất 1 lần trên staging.
+- PDF parsing/normalization pass tối thiểu với dữ liệu thật dùng cho UAT.
 - Export CSV pass required columns, approved-only filter, UTF-8 và trace PDF.
 - Sanity API/UI pass trước UAT.
 
 ---
 
-## 8. Roles and responsibility
+## 9. Roles and responsibility
 
 | Vai trò | Trách nhiệm |
 |---|---|
 | QA Lead | Quản lý test plan, test coverage, exit criteria |
 | QA Tester | Execute test case, log bug, verify fix |
-| BA | Giải thích AC/BR, xác nhận expected result |
+| BA/Data | Giải thích AC/BR, xác nhận expected result, schema PDF-native và export fields |
 | Dev | Fix bug, hỗ trợ log/API/debug |
 | DevOps | Đảm bảo environment, config, deployment, log |
 | PO/Mentor | Chốt scope, chấp nhận residual risk |
 
 ---
 
-## 9. Priority and severity
+## 10. Priority and severity
 
 ### Priority
 
@@ -164,25 +186,44 @@ Mục tiêu nghiệm thu chính:
 
 ---
 
-## 10. Key risks
+## 11. Key risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Tài liệu cũ còn ghi CSV/JSON import | Test sai scope | Lấy PDF-native v0.4/v2.0 làm baseline |
-| LLM provider chưa chốt | Block pre-scoring test | Dùng mock provider/schema contract để test trước |
+| Tài liệu cũ còn ghi CSV/JSON import | Test sai scope | Lấy `00_Scope_Assignment_MVP.md` và PDF-native docs của Đan làm baseline |
+| LLM provider/schema response chưa rõ khi test | Block pre-scoring test | Dùng mock provider/schema contract để test trước |
 | PDF scan/image chưa có OCR | Parse fail | Test reject/flag `ocr_required` theo quyết định MVP |
 | Source URL optional | Source verification dễ hiểu nhầm | Test theo `source_text_extract` là chính |
-| Naming `NH` vs `HR` chưa thống nhất | Sai schema export/API | Raise open issue, test theo schema đã chốt cuối |
+| Naming `NH` vs `HR` đã chốt dùng `HR` | Sai schema export/API nếu tài liệu cũ còn `NH` | Test theo schema PDF-native và rubric `SF/SC/HR/SQ/REL/COMP` |
 | Export quyền Admin/QA còn lệch tài liệu | Sai RBAC | Chốt với BA/PO trước UAT |
 
 ---
 
-## 11. Deliverables
+## 12. Deliverables
 
 - Test Plan MVP.
 - E2E Test Scenarios.
+- PDF Parsing & Normalization Test Cases.
+- Validation Test Cases map với Validation Rules.
 - Bug Log Template.
 - Functional Test Checklist.
 - API/UI Sanity Test Checklist.
 - Test Execution Report khi chạy test.
 - UAT Checklist/Sign-off note nếu được yêu cầu ở tuần 4.
+
+---
+
+## 13. Ticket alignment
+
+| Ticket | Nội dung test plan liên quan | Artifact chính |
+|---|---|---|
+| Test Plan - PDF-native MVP | Test strategy, scope, entry/exit criteria, risk | `01_Test_Plan_PDF_Native_MVP.md` |
+| Test Cases - E2E Workflow PDF | Happy path, QA Return/Resubmit, Export CSV | `03_E2E_Test_Scenarios.md` |
+| Validation Test Cases | Upload validation, parse fail, source issue, score, QA return comment | `05_Functional_Test_Checklist.md`, `02_AC_to_Test_Cases_Mapping.md` |
+| PDF Parsing & Normalization Test Cases | Raw text, normalized text, metadata, source list, traceability | `05_Functional_Test_Checklist.md`, `03_E2E_Test_Scenarios.md` |
+| Regression Checklist | Re-run luồng chính sau bug fix | `05_Functional_Test_Checklist.md` |
+| UAT Checklist | Mentor/stakeholder review theo scope MVP | UAT checklist/sign-off note |
+| Functional Test Execution | Chạy test, ghi bug, báo cáo kết quả | `07_Test_Execution_Report_Template.md`, `04_Bug_Log_Template.md` |
+| API/UI Sanity Test | Build/staging sanity, route/API/action chính | `06_API_UI_Sanity_Checklist.md` |
+| Workflow Export Verification | CSV approved-only, UTF-8, quoting, PDF trace | `03_E2E_Test_Scenarios.md`, `05_Functional_Test_Checklist.md` |
+| Bug Log Triage | Phân loại bug blocking/defer trước demo | `04_Bug_Log_Template.md` |
