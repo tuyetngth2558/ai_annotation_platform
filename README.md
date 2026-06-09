@@ -1,118 +1,125 @@
 # VSF AI Annotation Platform
 
-Repository này dùng để quản lý tập trung:
+VSF AI Annotation Platform là nền tảng nội bộ hỗ trợ chuẩn hóa quy trình đánh giá chất lượng đầu ra của mô hình ngôn ngữ lớn (LLM). Hệ thống được định hướng để thay thế cách làm thủ công trên spreadsheet bằng một workflow có cấu trúc, dễ theo dõi và có khả năng mở rộng cho nhiều loại dự án annotation trong tương lai.
 
-- tài liệu sản phẩm và BA
-- thiết kế luồng và sơ đồ hệ thống
-- mã nguồn frontend/backend
-- hạ tầng và script hỗ trợ
-- test artifacts và tài liệu vận hành
+Trong giai đoạn MVP hiện tại, dự án tập trung vào một use case duy nhất là **Vivipedia**, với một modality duy nhất là **text**. Mục tiêu là xây dựng được một luồng chạy end-to-end đủ dùng thực tế:
 
-## Mục tiêu repository
+`Import PDF Bundle -> Claim Extraction -> LLM Pre-scoring -> Annotator Review -> QA Review -> Export CSV`
 
-Trong giai đoạn MVP 4 tuần, repository này giúp team:
+## Mục tiêu MVP
 
-- theo dõi scope, tài liệu và quyết định đã chốt
-- push code và docs vào đúng chỗ
-- giảm tình trạng tài liệu nằm rải rác
-- giúp mentor và team dễ review tiến độ
+- Chuẩn hóa quy trình annotation theo workflow rõ ràng
+- Giảm thao tác thủ công khi review output của LLM
+- Cho phép annotator và QA làm việc trên giao diện tập trung
+- Xuất dữ liệu sạch phục vụ downstream processing
+- Tạo nền tảng để mở rộng sang đa dự án và đa modality trong các phase tiếp theo
+
+## Phạm vi hiện tại
+
+MVP 4 tuần chỉ triển khai:
+
+- `text annotation`
+- `PDF Bundle import` (answer + source ref + source content — input chính, OQ-001)
+- `claim-level review`
+- `QA Approve / Return`
+- `CSV export`
+
+Các hạng mục như dispute workflow, policy center, analytics nâng cao, audio/image workspace và security hardening đầy đủ sẽ được xem xét ở giai đoạn sau.
+
+## Định hướng mở rộng
+
+Mặc dù MVP chỉ build hẹp cho text, hệ thống được định hướng để về sau có thể hỗ trợ:
+
+- nhiều loại dự án annotation
+- nhiều loại input như `audio`, `image`
+- cấu hình workflow linh hoạt hơn
+- tích hợp analytics, policy management và quality control nâng cao
 
 ## Cấu trúc thư mục
 
 ```text
 .
 ├── .github/                # Template hỗ trợ review và cộng tác
-├── docs/                   # Tài liệu dự án
-├── infra/                  # Hạ tầng, deploy, env setup
-├── scripts/                # Script hỗ trợ import/export/dev
+├── docs/                   # Tài liệu dự án (BA, ERD, ADR...)
+│   └── adr/                # Architecture Decision Records
+├── infra/                  # Dockerfile, postgres init, hạ tầng
+├── scripts/                # dev.ps1, seed_dev.py
+├── docker-compose.yml      # dev stack: postgres+redis+minio+api+worker+web
+├── .env.example            # template biến môi trường
 ├── src/
-│   ├── backend/            # API, services, business logic
-│   ├── frontend/           # Web UI
-│   └── shared/             # Shared contracts / schemas / constants
-├── BA_Tuyết/               # Tài liệu BA hiện tại của Tuyết (giữ nguyên tạm thời)
-├── PRD_VSF_AI_Annotation_Platform.md
-├── Chốt Scope & Phân Công — VSF AI Annotation Platform MVP.md
-└── ...
+│   ├── backend/            # FastAPI + ARQ worker (feature-based)
+│   │   ├── app/
+│   │   │   ├── core/       # config, security, permissions, exceptions, middleware
+│   │   │   ├── models/     # 16 entity SQLAlchemy (bám ERD)
+│   │   │   ├── features/   # auth, projects, import_bundle, annotation, qa_review, export, audit
+│   │   │   ├── integrations/  # storage (S3/MinIO), llm (interface)
+│   │   │   ├── jobs/       # ARQ worker + tasks + pipelines
+│   │   │   └── api/v1/     # router versioned
+│   │   └── tests/          # pytest: unit, integration, fixtures
+│   ├── frontend/
+│   │   ├── prototype/      # 4 HTML tham chiếu (giữ nguyên)
+│   │   └── web/            # React + Vite + TS (feature-based co-locate)
+│   │       └── src/
+│   │           ├── app/        # router, layouts, providers (Theme/Auth)
+│   │           ├── features/   # mỗi feature: components/hooks/pages/locales
+│   │           ├── shared/     # ui, lib, hooks, types
+│   │           ├── i18n/       # config + locales/common (namespace theo feature)
+│   │           └── styles/     # tokens.css (OKLCH), base.css
+│   └── shared/             # contracts dùng chung (api types generate sau)
 ```
 
-## Quy ước team nên dùng
+## Development
 
-### 1. Code
+> 📖 **Onboarding theo vai trò** — hướng dẫn chi tiết setup/chạy/code/test:
+> - [Backend Dev](docs/onboarding/backend-dev.md) · [Frontend Dev](docs/onboarding/frontend-dev.md) · [Test/QA](docs/onboarding/test-qa.md) · [DevOps](docs/onboarding/devops.md)
+> - Tổng quan + quickstart: [docs/onboarding/](docs/onboarding/)
+> - Hướng dẫn người dùng (Admin/Annotator/QA): [docs/user-guide/](docs/user-guide/)
 
-- Frontend đặt trong `src/frontend`
-- Backend đặt trong `src/backend`
-- Shared schemas, DTOs, constants đặt trong `src/shared`
+### Yêu cầu
+- Docker Desktop (chạy toàn bộ stack)
+- (tùy chọn, để dev ngoài docker) Node 20+, Python 3.12 + [uv](https://docs.astral.sh/uv/)
 
-### 2. Docs
-
-- Tài liệu tổng quan đặt trong `docs/`
-- Tài liệu BA theo người hoặc theo chủ đề đặt trong `docs/03_ba/`
-- Sơ đồ, PDF, ảnh workflow đặt trong `docs/04_diagrams/`
-- Tài liệu test/QA đặt trong `docs/06_test_qa/`
-- Tài liệu DevOps đặt trong `docs/07_devops/`
-
-### 3. Naming
-
-- Ưu tiên tên file ASCII, dùng `_` thay vì khoảng trắng khi tạo file mới
-- Ví dụ:
-  - `mvp_scope_v1.md`
-  - `annotation_workspace_flow.md`
-  - `import_schema_v1.md`
-
-### 4. Branching gợi ý
-
-- `main`: nhánh ổn định
-- `dev`: nhánh tích hợp
-- feature branch:
-  - `feature/frontend-annotation-workspace`
-  - `feature/backend-import-pipeline`
-  - `docs/ba-screen-spec`
-
-## Tài liệu hiện có
-
-### Scope và planning
-
-- [PRD gốc](./PRD_VSF_AI_Annotation_Platform.md)
-- [Chốt scope và phân công MVP](./Chốt%20Scope%20%26%20Ph%C3%A2n%20C%C3%B4ng%20%E2%80%94%20VSF%20AI%20Annotation%20Platform%20MVP.md)
-- [Báo cáo điều chỉnh scope 4 tuần](./Bao_cao_dieu_chinh_scope_4_tuan.md)
-
-### BA research
-
-- [BA Research Plan](./BA_Research_Plan_MVP.md)
-- [Bộ câu hỏi khảo sát nghiệp vụ + cost research](./Bộ%20câu%20hỏi%20khảo%20sát%20nghiệp%20vụ%20%2B%20cost%20research.md)
-
-### BA của Tuyết
-
-- [Thư mục BA_Tuyết](./BA_Tuyết/)
-
-### Diagram và artifacts
-
-- [Workflow diagram](./workflow_diagram.png)
-- [Scope breakdown PDF](./VSF_AI_Annotation_Platform_Scope_Breakdown.pdf)
-- [Context diagram PDF](./VSF_AI_Annotation_Platform_Context_Diagram.pdf)
-
-## Bước tiếp theo team nên làm
-
-1. Tạo codebase frontend/backend trong `src/frontend` và `src/backend`
-2. Chuyển dần tài liệu từ root vào `docs/` theo từng nhóm
-3. Thống nhất branch strategy và quy trình PR
-4. Tạo issue/task map với ClickUp hoặc GitHub Issues
-
-## Remote repository
-
-Remote dự kiến:
-
-`https://github.com/tuyetngth2558/ai_annotation_platform.git`
-
-## Lệnh git nên chạy khi khởi tạo chính thức
-
+### Chạy nhanh
 ```bash
-git init
-git branch -M main
-git remote add origin https://github.com/tuyetngth2558/ai_annotation_platform.git
-git add .
-git commit -m "chore: initialize repository structure"
-git push -u origin main
+cp .env.example .env        # điền secret nếu cần (vd SECRET_ENCRYPTION_KEY)
+docker compose up -d        # hoặc: make up  /  .\scripts\dev.ps1 up
 ```
 
-> Hiện tại môi trường làm việc này bị chặn ghi hoàn chỉnh vào `.git/config`, nên cấu trúc repo đã được chuẩn bị ở mức thư mục và tài liệu; phần lệnh git nên chạy lại trực tiếp trên máy khi kết nối remote chính thức.
+| Dịch vụ | URL |
+|---|---|
+| Web (UI) | http://localhost:5173 |
+| API | http://localhost:8000 · `/health` · `/docs` |
+| MinIO console | http://localhost:9001 (`minioadmin`/`minioadmin`) |
+
+**Đăng nhập demo** (mock, chỉ dev — `AUTH_MOCK_ENABLED=true`):
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | admin@vsf.local | admin-demo-2026 |
+| Annotator | annotator@vsf.local | annotator-demo-2026 |
+| QA | qa@vsf.local | qa-demo-2026 |
+
+### Lệnh hay dùng
+```bash
+make migrate        # Alembic upgrade head
+make test           # pytest + vitest
+make e2e            # Playwright smoke
+make logs s=api     # xem log 1 service
+# Windows: .\scripts\dev.ps1 <lệnh>
+```
+
+### Trạng thái
+Đây là **scaffold base** — khung chạy được, mọi màn theo role có skeleton, nội dung
+nghiệp vụ đánh dấu `TODO(<feature>)` trỏ về `docs/03_ba/`. Chưa implement logic.
+
+### Quy ước đặt tên
+| Loại | Quy ước | Ví dụ |
+|---|---|---|
+| Python package/module | `snake_case` | `import_bundle`, `qa_review` |
+| FE folder/route | `kebab-case` | `import-bundle`, `qa-review` |
+| API path | `kebab-case` | `/api/v1/import-bundles`, `/api/v1/qa-reviews` |
+
+### Kiến trúc & quyết định
+Xem [docs/adr/](docs/adr/) cho lý do các lựa chọn (stack, storage, auth, worker, cấu trúc).
+
+

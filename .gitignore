@@ -11,6 +11,15 @@ logs/
 # Env files
 .env
 .env.*
+!.env.example                 # template phải được commit
+
+# Local object storage (STORAGE_BACKEND=local)
+var/
+# uv lock giữ lại; chỉ bỏ cache
+.uv/
+# Playwright
+playwright-report/
+test-results/
 
 # Node
 node_modules/
@@ -37,3 +46,14 @@ temp/
 # Generated exports
 exports/
 artifacts/
+
+# AI agent local context (Claude memory, không phải tài liệu team)
+memory/
+.claude/
+
+# Generated API types (sinh từ OpenAPI bằng `npm run gen:api`)
+src/frontend/web/src/shared/types/api.gen.ts
+
+# Lint/build cache
+.eslintcache
+*.tsbuildinfo
