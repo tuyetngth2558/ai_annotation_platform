@@ -7,7 +7,7 @@
 > ⚠️ **FILE NÀY PHẢI ĐƯỢC CẬP NHẬT.** Quy ước "ai cập nhật gì, khi nào" ở cuối file và
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
-**Cập nhật lần cuối:** 2026-06-15 · **Bởi:** Tuấn Anh (devops) — CI pipeline + env template + uv lockfile
+**Cập nhật lần cuối:** 2026-06-15 · **Bởi:** Khải (auth/users BE) + Tuấn Anh (devops CI)
 
 ---
 
@@ -35,7 +35,8 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 
 | Feature | Backend (BE) | Frontend (FE) | Test | Ghi chú / Blocker |
 |---|:---:|:---:|:---:|---|
-| **auth** (login/RBAC) | 🚧 mock + RBAC enforce thật (require_role + get_current_user) | ✅ login + guard | 🚧 mẫu xong | Login thật (verify DB) chờ; OQ-006 |
+| **auth** (login/RBAC) | ✅ login/refresh/change-password thật (verify DB) + RBAC | ✅ login + guard | ✅ 7 test auth | Bcrypt (bỏ passlib). KHÔNG register/OAuth/verify email/MFA (BA hoãn) |
+| **users** (Admin tạo user) | 🚧 create/list/get (RBAC ADMIN) | ⬜ | 🚧 RBAC test | Mật khẩu tạm; gán role per-project |
 | **projects** (tạo/cấu hình LLM) | ⬜ route 501 | ⬜ skeleton | ⬜ | API key encrypt (BR-1.2) |
 | **import_bundle** (upload PDF) | ⬜ route 501 | ⬜ skeleton | ⬜ | 🔒 parser chờ OQ-PDF-004 (OCR) |
 | **annotation** (chấm 6 chiều) | ⬜ route 501, scoring helper ✅ | ⬜ skeleton | 🚧 scoring test ✅ | OQ-004 ngưỡng ±0.20 |
