@@ -850,7 +850,7 @@
       lock: '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
     };
 
-    const dimensions = ["SF", "SC", "NH", "SQ", "REL", "COMP"];
+    const dimensions = ["SF", "SC", "HR", "SQ", "REL", "COMP"];
     const statusClass = {
       "Imported": "imported",
       "Claim Extracted": "running",
@@ -950,8 +950,8 @@
         claimOriginal: "Quang hợp giải phóng oxy và tạo nền tảng năng lượng cho nhiều chuỗi thức ăn.",
         claimFinal: "Quang hợp giải phóng oxy và tạo nền tảng năng lượng cho nhiều chuỗi thức ăn.",
         edited: false,
-        pre: { SF: .82, SC: .78, NH: .86, SQ: .76, REL: .88, COMP: .80 },
-        ann: { SF: .82, SC: .78, NH: .86, SQ: .76, REL: .88, COMP: .80 },
+        pre: { SF: .82, SC: .78, HR: .86, SQ: .76, REL: .88, COMP: .80 },
+        ann: { SF: .82, SC: .78, HR: .86, SQ: .76, REL: .88, COMP: .80 },
         sourceStatus: "",
         sourceNote: "",
         reason: "",
@@ -973,8 +973,8 @@
         claimOriginal: "Quốc Tử Giám được lập năm 1076 và thường được xem là trường đại học đầu tiên của Việt Nam.",
         claimFinal: "Quốc Tử Giám được lập năm 1076 và thường được xem là trường đại học đầu tiên của Việt Nam.",
         edited: false,
-        pre: { SF: .91, SC: .87, NH: .80, SQ: .84, REL: .89, COMP: .86 },
-        ann: { SF: .93, SC: .88, NH: .80, SQ: .83, REL: .90, COMP: .87 },
+        pre: { SF: .91, SC: .87, HR: .80, SQ: .84, REL: .89, COMP: .86 },
+        ann: { SF: .93, SC: .88, HR: .80, SQ: .83, REL: .90, COMP: .87 },
         sourceStatus: "Truy cập được - hỗ trợ rõ",
         sourceNote: "",
         reason: "",
@@ -996,8 +996,8 @@
         claimOriginal: "Đồng bằng sông Cửu Long là vùng sản xuất lúa gạo quan trọng của Việt Nam.",
         claimFinal: "Đồng bằng sông Cửu Long là vùng sản xuất lúa gạo quan trọng hàng đầu của Việt Nam.",
         edited: true,
-        pre: { SF: .77, SC: .69, NH: .72, SQ: .70, REL: .81, COMP: .73 },
-        ann: { SF: .86, SC: .88, NH: .74, SQ: .77, REL: .86, COMP: .82 },
+        pre: { SF: .77, SC: .69, HR: .72, SQ: .70, REL: .81, COMP: .73 },
+        ann: { SF: .86, SC: .88, HR: .74, SQ: .77, REL: .86, COMP: .82 },
         sourceStatus: "Truy cập được - hỗ trợ một phần",
         sourceNote: "",
         reason: "Nguồn có hỗ trợ vai trò sản xuất lúa nhưng cụm từ hàng đầu cần kiểm tra thêm.",
@@ -1019,8 +1019,8 @@
         claimOriginal: "Rửa tay bằng xà phòng đúng cách làm giảm nguy cơ truyền mầm bệnh qua tiếp xúc tay.",
         claimFinal: "Rửa tay bằng xà phòng đúng cách làm giảm nguy cơ truyền mầm bệnh qua tiếp xúc tay.",
         edited: false,
-        pre: { SF: .90, SC: .86, NH: .84, SQ: .88, REL: .91, COMP: .89 },
-        ann: { SF: .91, SC: .88, NH: .85, SQ: .88, REL: .91, COMP: .90 },
+        pre: { SF: .90, SC: .86, HR: .84, SQ: .88, REL: .91, COMP: .89 },
+        ann: { SF: .91, SC: .88, HR: .85, SQ: .88, REL: .91, COMP: .90 },
         sourceStatus: "Truy cập được - hỗ trợ rõ",
         sourceNote: "",
         reason: "",
@@ -1140,7 +1140,7 @@
       let metrics = "";
       let shortcuts = "";
       if (state.role === "ADMIN") {
-        metrics = metric("Project", counts.project, "Vivipedia đang chạy") + metric("Batch", counts.batch, "Import thủ công CSV/JSON") + metric("Task Approved", counts.approved, "Đủ điều kiện export") + metric("Task Submitted", counts.submitted, "Đang chờ QA");
+        metrics = metric("Project", counts.project, "Vivipedia đang chạy") + metric("Batch", counts.batch, "Import PDF Bundle") + metric("Task Approved", counts.approved, "Đủ điều kiện export") + metric("Task Submitted", counts.submitted, "Đang chờ QA");
         shortcuts = `<button class="btn primary" data-go="projects">Tạo Project / Import</button><button class="btn cta" data-go="export">Export CSV</button><button class="btn" data-go="audit">Xem Audit Log</button>`;
       } else if (state.role === "ANNOTATOR") {
         metrics = metric("Task được giao", counts.assigned, "Chỉ task của annotator hiện tại") + metric("Đang làm", counts.inWork, "Auto-save mỗi 30 giây") + metric("Bị return", counts.returned, "Cần resubmit") + metric("Submitted", counts.submitted, "Đã vào QA Queue");
@@ -1220,7 +1220,7 @@
     }
 
     function flowText() {
-      if (state.role === "ADMIN") return "Login/Dashboard -> Tạo Project -> Import Dataset -> Validate Schema -> Preview dữ liệu -> Assignment -> Project Detail -> Export CSV cho task Approved.";
+      if (state.role === "ADMIN") return "Login/Dashboard -> Tạo Project -> Import Dataset -> Validate PDF Bundle -> Preview parse -> Assignment -> Project Detail -> Export CSV cho task Approved.";
       if (state.role === "ANNOTATOR") return "Dashboard/My Tasks -> Claim Task -> Annotation Workspace -> Submit -> Task vào QA Queue. Nếu Returned, annotator xem QA comment và Resubmit.";
       return "Dashboard/QA Queue -> Chọn Task -> QA Review Workspace -> Approve hoặc Return. Task Approved có thể được export CSV.";
     }
@@ -1273,7 +1273,7 @@
           <div class="chip-row"><span class="chip active">Project Setup</span><span class="chip">Import Dataset</span><span class="chip">Team Assignment</span><span class="chip">Project Detail</span></div>
         </div>
         <div class="stepper">
-          ${["Thông tin project", "Cấu hình LLM", "Upload CSV/JSON", "Assignment", "Done"].map((label, i) => {
+          ${["Thông tin project", "Cấu hình LLM", "Upload PDF Bundle", "Assignment", "Done"].map((label, i) => {
             const step = i + 1;
             return `<button class="step ${state.wizardStep === step ? "active" : ""} ${state.wizardStep > step ? "done" : ""}" data-step="${step}"><span>Bước ${step}</span><strong>${label}</strong></button>`;
           }).join("")}
@@ -1314,7 +1314,7 @@
                 <tr>
                   <td><strong>${project.name}</strong><div class="small muted">${project.id} · Created ${project.createdAt}</div></td>
                   <td><span class="badge neutral">Vivipedia</span> <span class="badge imported">Text</span></td>
-                  <td>${project.batch}<div class="small muted">vivipedia_batch_001.csv</div></td>
+                  <td>${project.batch}<div class="small muted">vivipedia_pdf_bundle_001</div></td>
                   <td>
                     <div class="chip-row">
                       <span class="chip">Ready ${tasks.filter(t => t.status === "Ready for Annotation").length}</span>
@@ -1340,7 +1340,7 @@
     }
 
     function wizardTitle() {
-      return ["", "Bước 1: Thông tin project", "Bước 2: Cấu hình LLM", "Bước 3: Upload CSV/JSON", "Bước 4: Assignment", "Bước 5: Done / Project Detail"][state.wizardStep];
+      return ["", "Bước 1: Thông tin project", "Bước 2: Cấu hình LLM", "Bước 3: Upload PDF Bundle", "Bước 4: Assignment", "Bước 5: Done / Project Detail"][state.wizardStep];
     }
 
     function wizardBody() {
@@ -1357,7 +1357,7 @@
           <div class="field full"><label>LLM Endpoint URL</label><input value="https://llm-provider.example/v1/prescore"></div>
           <div class="field"><label>API Key</label><input type="password" value="vsf-demo-key"></div>
           <div class="field"><label>Provider</label><select><option>Provider chưa chốt - dùng endpoint cấu hình</option></select></div>
-          <div class="field full"><label>Prompt template</label><textarea>Trích xuất claim từ answer_text và chấm 6 dimension SF, SC, NH, SQ, REL, COMP theo rubric MVP.</textarea></div>
+          <div class="field full"><label>Prompt template</label><textarea>Parse Answer PDF, trích xuất claim từ answer_text_normalized và chấm 6 dimension SF, SC, HR, SQ, REL, COMP theo rubric MVP.</textarea></div>
         </div>
         <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Tiếp tục</button></div>`;
       if (state.wizardStep === 3) return `
@@ -1365,13 +1365,13 @@
           <div>
             <div class="upload-zone" id="uploadZone">
               <div>
-                <strong>Thả file hoặc chọn CSV/JSON</strong>
-                <p class="muted small">Prototype dùng mock file vivipedia_batch_001.csv, giới hạn 10MB.</p>
-                <button class="btn primary" id="validateDataset">Validate schema</button>
+                <strong>Thả file hoặc chọn PDF Bundle</strong>
+                <p class="muted small">Prototype dùng mock PDF bundle: answer_pdf, source_ref_pdf, source_content_pdf; giới hạn 10MB/file.</p>
+                <button class="btn primary" id="validateDataset">Validate PDF Bundle</button>
               </div>
             </div>
             <div class="chip-row" style="margin-top:12px;">
-              <span class="chip active">CSV</span><span class="chip">JSON option phụ</span><span class="chip">answer_id</span><span class="chip">answer_text</span><span class="chip">source_urls</span><span class="chip">domain</span><span class="chip">question_text</span>
+              <span class="chip active">Answer PDF</span><span class="chip">Source Ref PDF</span><span class="chip">Source Content PDF</span><span class="chip">PDF parse</span><span class="chip">source_order</span><span class="chip">source_text</span>
             </div>
           </div>
           <div id="validationBox">${validationBox()}</div>
@@ -1389,7 +1389,7 @@
         <div class="success-panel"><strong>Project Detail sẵn sàng.</strong> Batch BAT-001 đã import, assignment đã tạo cho 2 annotator và 1 QA specialist.</div>
         <div class="grid grid-3" style="margin-top:16px;">
           ${metric("Project", project.id, project.name)}
-          ${metric("Batch", project.batch, "vivipedia_batch_001.csv")}
+          ${metric("Batch", project.batch, "vivipedia_pdf_bundle_001")}
           ${metric("Claim Tasks", tasks.length, "Text-only MVP")}
         </div>
         <section class="card" style="margin-top:16px;"><div class="card-header"><h3>Project Detail</h3>${badge("Ready for Annotation")}</div>${taskTable(tasks)}</section>
@@ -1401,25 +1401,25 @@
         return `<div class="error-panel">
           <strong>Validation mock cases</strong>
           <div>File sai định dạng: chặn import.</div>
-          <div>Thiếu cột bắt buộc: answer_id, answer_text, source_urls.</div>
-          <div>answer_text rỗng: lỗi theo dòng.</div>
-          <div>source_urls rỗng: cảnh báo.</div>
-          <div>File > 10MB hoặc Duplicate answer_id: chặn import.</div>
+          <div>Thiếu file bắt buộc: answer_pdf, source_ref_pdf hoặc source_content_pdf.</div>
+          <div>answer_text_normalized rỗng sau parse: block bundle.</div>
+          <div>source_url không parse được: warning nếu source text vẫn có.</div>
+          <div>File > 10MB hoặc duplicate required file role: chặn import.</div>
         </div>`;
       }
-      return `<div class="success-panel"><strong>Validation Passed.</strong> Schema hợp lệ, có 1 cảnh báo source_urls rỗng ở dòng 4 nhưng vẫn cho preview theo rule draft.</div>`;
+      return `<div class="success-panel"><strong>Validation Passed.</strong> PDF bundle hợp lệ, có 1 cảnh báo source_url missing nhưng vẫn cho preview theo PDF-native rule.</div>`;
     }
 
     function previewTable() {
       const rows = [
-        ["ANS-1001", "Quang hợp là quá trình...", "https://vivipedia.local/sinh-hoc/quang-hop", "Sinh học", "Quang hợp có vai trò gì?"],
-        ["ANS-1002", "Văn Miếu được xây dựng...", "https://vivipedia.local/lich-su/van-mieu", "Lịch sử", "Văn Miếu xây thời nào?"],
-        ["ANS-1003", "Đồng bằng sông Cửu Long...", "https://vivipedia.local/dia-ly/mekong", "Địa lý", "Đặc điểm nổi bật?"],
-        ["ANS-1004", "Rửa tay bằng xà phòng...", "https://vivipedia.local/y-te/rua-tay", "Y tế", "Vì sao rửa tay giảm lây nhiễm?"],
-        ["ANS-1005", "Mẫu preview mở rộng...", "", "Công nghệ", "Dữ liệu thiếu source?"]
+        ["BND-1001", "1(1).pdf", "1-Ref(1).pdf", "1-1(1).pdf", "parsed_with_warnings"],
+        ["BND-1002", "2.pdf", "2-Ref(1).pdf", "2-1.pdf", "parsed"],
+        ["BND-1003", "3.pdf", "3-Ref.pdf", "3-1.pdf; 3-2.pdf", "parsed"],
+        ["BND-1004", "4.pdf", "4-Ref.pdf", "4-1.pdf", "source_url_missing"],
+        ["BND-1005", "5.pdf", "5-Ref.pdf", "", "Cảnh báo: thiếu source_content_pdf"]
       ];
-      return `<section class="card"><div class="card-header"><h3>Preview 5 dòng đầu</h3><span class="badge neutral">CSV schema tối thiểu</span></div><div class="table-wrap"><table>
-        <thead><tr><th>answer_id</th><th>answer_text</th><th>source_urls</th><th>domain</th><th>question_text</th></tr></thead>
+      return `<section class="card"><div class="card-header"><h3>Parse preview</h3><span class="badge neutral">PDF bundle schema</span></div><div class="table-wrap"><table>
+        <thead><tr><th>bundle_id</th><th>answer_pdf</th><th>source_ref_pdf</th><th>source_content_pdf</th><th>parse_status</th></tr></thead>
         <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${escapeHtml(c || "Cảnh báo: rỗng")}</td>`).join("")}</tr>`).join("")}</tbody>
       </table></div></section>`;
     }
@@ -1506,7 +1506,7 @@
       return { rubric: "Rubric", guideline: "Guideline", examples: "Examples" }[tab];
     }
     function referenceContent() {
-      if (state.activeReferenceTab === "rubric") return "SF: sự thật tổng quát. SC: source support. NH: không gây hại. SQ: chất lượng nguồn. REL: liên quan. COMP: đầy đủ. Điểm 0.80 trở lên là tốt, 0.60-0.79 cần cân nhắc, dưới 0.60 là rủi ro.";
+      if (state.activeReferenceTab === "rubric") return "SF: trung thành nguồn. SC: độ bao phủ nguồn. HR: xác nhận được/ít hallucination. SQ: chất lượng nguồn. REL: liên quan. COMP: đầy đủ. Điểm 0.80 trở lên là tốt, 0.60-0.79 cần cân nhắc, dưới 0.60 là rủi ro.";
       if (state.activeReferenceTab === "guideline") return "Giữ claim gần với nội dung nguồn. Không tăng độ mạnh của khẳng định nếu nguồn chỉ hỗ trợ một phần. Với nguồn không truy cập được, cần ghi note rõ.";
       return "Ví dụ tốt: claim có nguồn trực tiếp và điểm SC cao. Ví dụ cần return: claim dùng cụm từ tuyệt đối nhưng nguồn chỉ nêu thông tin gián tiếp.";
     }
@@ -1773,7 +1773,7 @@
       if (event.target.matches("[data-project-import]")) { state.projectMode = "wizard"; state.wizardStep = 3; render(); }
       if (event.target.matches("[data-next-step]")) { state.wizardStep = Math.min(5, state.wizardStep + 1); render(); }
       if (event.target.matches("[data-prev-step]")) { state.wizardStep = Math.max(1, state.wizardStep - 1); render(); }
-      if (event.target.id === "validateDataset") { state.datasetValidated = true; addAudit("Validate Schema", project.batch, "Schema hợp lệ với cảnh báo source_urls rỗng"); toast("Schema đã validate thành công."); render(); }
+      if (event.target.id === "validateDataset") { state.datasetValidated = true; addAudit("Validate PDF Bundle", project.batch, "PDF bundle hợp lệ với cảnh báo source_url missing"); toast("PDF bundle đã validate thành công."); render(); }
       const openAnn = event.target.closest("[data-open-annotation]");
       if (openAnn) { state.selectedTaskId = openAnn.dataset.openAnnotation; taskById(state.selectedTaskId).status = taskById(state.selectedTaskId).status === "Ready for Annotation" ? "In Annotation" : taskById(state.selectedTaskId).status; setView("annotation"); }
       const openQa = event.target.closest("[data-open-qa]");

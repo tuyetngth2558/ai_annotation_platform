@@ -1,8 +1,9 @@
 # E2E Test Scenarios — VSF AI Annotation Platform MVP
 
 **Owner:** QA Team  
-**Phiên bản:** v1.0  
-**Ngày:** 06/06/2026
+**Phiên bản:** v1.1
+**Ngày:** 08/06/2026
+**Scope baseline:** `docs/03_ba/00_Scope_Assignment_MVP.md`
 
 ---
 
@@ -26,7 +27,7 @@
 
 | ID | Scenario | Preconditions | Steps | Expected result | Priority |
 |---|---|---|---|---|---|
-| E2E-001 | Full flow: Import PDF Bundle -> Approve -> Export CSV | Admin, Annotator, QA account; valid PDF Bundle; LLM success | 1. Admin login. 2. Create project. 3. Configure LLM. 4. Upload valid PDF Bundle. 5. Assign file roles. 6. Preview parse. 7. Confirm import. 8. Assign annotator/QA. 9. Annotator opens assigned claim. 10. Reviews source and scores. 11. Submit. 12. QA opens Submitted task. 13. Approve. 14. Admin/authorized user exports CSV. | Project/batch/bundle created; claim task reaches `Approved`; exported CSV contains approved claim with required fields and PDF trace. | P0 |
+| E2E-001 | Full flow: Import PDF Bundle -> Approve -> Export CSV | Admin, Annotator, QA account; valid PDF Bundle; LLM success | 1. Admin login. 2. Create project. 3. Configure LLM. 4. Upload valid PDF Bundle. 5. Assign file roles. 6. Preview parse. 7. Confirm import. 8. System parses PDF and normalizes internal data. 9. Assign annotator/QA. 10. Annotator opens assigned claim. 11. Reviews source and scores. 12. Submit. 13. QA opens Submitted task. 14. Approve. 15. Admin/authorized user exports CSV. | Project/batch/bundle/parent task created; parse result and normalized data saved; claim task reaches `Approved`; exported CSV contains approved claim with required fields and PDF trace. | P0 |
 | E2E-002 | Full flow with QA Return and Resubmit | Valid task already submitted | 1. QA opens Submitted task. 2. Return with error type + comment. 3. Annotator sees Returned task. 4. Annotator edits claim/score/note. 5. Resubmit. 6. QA Approve. 7. Export. | Task goes `Submitted -> Returned -> Submitted -> Approved`; history/audit records return and resubmit; export includes final approved data only. | P0 |
 
 ---
@@ -45,6 +46,7 @@
 | E2E-IMP-008 | Claim cannot map source | Import answer with citation missing source order | Claim task becomes `Source Mapping Required`; not visible in annotator queue. | P1 |
 | E2E-IMP-009 | LLM pre-scoring success | Pipeline calls LLM/mock provider with valid output | Task becomes `Ready for Annotation`; immutable pre-score saved. | P0 |
 | E2E-IMP-010 | LLM pre-scoring failed | Provider timeout or invalid output schema | Task becomes `Pre-scoring Failed`; Admin can see error/retry entry if implemented. | P1 |
+| E2E-IMP-011 | Internal normalization creates traceable parent task | Import valid PDF Bundle and inspect created data | Raw text, normalized text, metadata, source list, parse status, bundle ID, and PDF filenames are stored and traceable to generated claim tasks. | P0 |
 
 ---
 
@@ -101,10 +103,9 @@
 
 ---
 
-## 8. Open issues to confirm before final UAT
+## 8. Final UAT watchlist
 
-- `NH` vs `HR` dimension code in API/export.
 - Export permission: Admin only or Admin + QA được cấp quyền.
 - OCR handling for scan/image PDFs: reject or flag `ocr_required`.
-- LLM provider and exact output schema.
+- Exact LLM output schema and mock response contract.
 - Source content PDF mapping rule: one file per source or bundled source content.

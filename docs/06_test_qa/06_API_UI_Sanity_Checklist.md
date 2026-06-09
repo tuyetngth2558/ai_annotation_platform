@@ -32,6 +32,8 @@
 | API-019 | Export CSV | `/exports` | POST | Creates export job for approved claims only | Not Run |
 | API-020 | Download export | `/exports/:id/download` | GET | Downloads UTF-8 CSV | Not Run |
 | API-021 | Audit log | `/audit` | GET | Admin-only audit list returned | Not Run |
+| API-022 | Storage/file metadata | Implementation-specific | GET | Uploaded PDF metadata maps to bundle/file role | Not Run |
+| API-023 | Migration/build info | Implementation-specific | GET | Build/schema version visible or confirmable for staging sanity | Not Run |
 
 ---
 
@@ -49,6 +51,7 @@
 | API-N-008 | Export with non-approved status if blocked by MVP rule | 400/disabled equivalent | Not Run |
 | API-N-009 | Upload non-PDF file as PDF bundle | 400 validation error | Not Run |
 | API-N-010 | Confirm invalid bundle | 400 validation error, no batch created | Not Run |
+| API-N-011 | Error/log response with bad LLM/parser config | No API key/secret leaked | Not Run |
 
 ---
 
@@ -87,12 +90,14 @@
 ## 4. Release sanity run order
 
 1. API health check.
-2. Login with Admin, Annotator, QA.
-3. Admin create project and import one valid PDF Bundle.
-4. Confirm pipeline creates claim task with pre-score.
-5. Annotator submit one task.
-6. QA approve one task.
-7. Export CSV and verify approved-only.
-8. Check audit log for import/submit/approve/export.
-9. Run one negative validation each for upload, score, QA return.
-10. Record result in test execution notes.
+2. Confirm staging/build/schema version if available.
+3. Login with Admin, Annotator, QA.
+4. Admin create project and import one valid PDF Bundle.
+5. Confirm uploaded PDF metadata maps to bundle/file role.
+6. Confirm pipeline creates claim task with pre-score.
+7. Annotator submit one task.
+8. QA approve one task.
+9. Export CSV and verify approved-only plus PDF trace.
+10. Check audit/log stream for import/submit/approve/export.
+11. Run one negative validation each for upload, score, QA return.
+12. Record result in test execution notes.

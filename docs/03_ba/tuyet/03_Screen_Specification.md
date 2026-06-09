@@ -239,7 +239,7 @@ Tùy chọn hỗ trợ upload batch qua manifest CSV (`sample_pdf_bundle_manifes
 |---|---|---|---|
 | SF | Hiển thị | Number input | 0.00-1.00, tối đa 2 chữ số thập phân |
 | SC | Hiển thị | Number input | Như trên |
-| NH | Hiển thị | Number input | Như trên |
+| HR | Hiển thị | Number input | Như trên |
 | SQ | Hiển thị | Number input | Như trên |
 | REL | Hiển thị | Number input | Như trên |
 | COMP | Hiển thị | Number input | Như trên |

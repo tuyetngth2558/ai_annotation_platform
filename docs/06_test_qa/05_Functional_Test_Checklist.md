@@ -52,6 +52,7 @@
 | FT-IMP-012 | Missing source URL chỉ warning, không block | Not Run | |
 | FT-IMP-013 | Cannot extract answer text thì bundle invalid | Not Run | |
 | FT-IMP-014 | Confirm import tạo batch, PDF bundle và trigger pipeline | Not Run | |
+| FT-IMP-015 | Duplicate `bundle_id` trong batch bị block nếu backend expose ID | Not Run | |
 
 ---
 
@@ -69,6 +70,8 @@
 | FT-PIP-008 | LLM pre-score success tạo đủ 6 score | Not Run | |
 | FT-PIP-009 | LLM output sai schema đưa task vào `Pre-scoring Failed` | Not Run | |
 | FT-PIP-010 | LLM baseline read-only/immutable | Not Run | |
+| FT-PIP-011 | Normalization tạo Parent Task trace được về `bundle_id` và PDF filenames | Not Run | |
+| FT-PIP-012 | Source content parse status đúng: `parsed`, `unparsed`, hoặc `ocr_required` | Not Run | |
 
 ---
 
@@ -138,3 +141,17 @@
 | FT-AUD-005 | Log `return` khi QA return | Not Run | |
 | FT-AUD-006 | Log `export` khi tạo export job | Not Run | |
 | FT-AUD-007 | Chỉ Admin xem được Audit Log | Not Run | |
+
+---
+
+## 9. Environment / Storage / Config
+
+| ID | Checklist | Status | Notes |
+|---|---|---|---|
+| FT-ENV-001 | Staging URL truy cập được sau deploy | Not Run | |
+| FT-ENV-002 | Migration đã chạy, schema cần cho PDF bundle/workflow tồn tại | Not Run | |
+| FT-ENV-003 | Env/config thiếu hoặc sai hiển thị lỗi rõ, không crash trắng | Not Run | |
+| FT-ENV-004 | Error/log không lộ API key hoặc secret | Not Run | |
+| FT-STO-001 | File PDF upload lưu được với metadata `bundle_id`, filename, file_role | Not Run | |
+| FT-STO-002 | Source file reference hiển thị đúng trong source viewer hoặc task detail | Not Run | |
+| FT-STO-003 | Export CSV trace đúng về `bundle_id`, PDF filenames và source file refs | Not Run | |
