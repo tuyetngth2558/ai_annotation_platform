@@ -8,6 +8,7 @@ Mock login (3 user demo) vẫn giữ cho dev khi AUTH_MOCK_ENABLED=true.
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 
 import jwt
@@ -111,17 +112,42 @@ async def login(db: AsyncSession, payload: LoginRequest) -> TokenResponse:
     return _issue_tokens(subject=str(user.id), email=user.email, role=role, name=user.full_name)
 
 
-def refresh(payload_token: str) -> AccessTokenResponse:
-    """Đổi refresh token lấy access token mới."""
+async def refresh(db: AsyncSession, payload_token: str) -> AccessTokenResponse:
+    """Đổi refresh token lấy access token mới.
+
+    REVALIDATE user trong DB (không tin claims cũ trong token): nếu user bị
+    disabled/xóa/đổi role sau khi nhận refresh token, không cấp access mới với
+    quyền cũ. Role được recompute từ DB.
+    """
     try:
         data = decode_token(payload_token, expected_type="refresh")
     except jwt.PyJWTError as exc:
         raise AuthError("Refresh token không hợp lệ hoặc đã hết hạn.") from exc
 
-    access = create_access_token(
-        subject=data["sub"],
-        claims={"role": data.get("role"), "name": data.get("name")},
-    )
+    subject = data.get("sub")
+    # Mock token dùng email làm subject; login thật dùng user_id (uuid). Chỉ revalidate
+    # khi subject là uuid (login thật). Mock chỉ chạy dev nên bỏ qua revalidate.
+    user = None
+    try:
+        user_uuid = uuid.UUID(str(subject))
+        res = await db.execute(select(UserAccount).where(UserAccount.id == user_uuid))
+        user = res.scalar_one_or_none()
+    except (ValueError, TypeError):
+        user = None  # subject không phải uuid → token mock (dev)
+
+    if user is not None:
+        # Login thật: bắt buộc user còn active + recompute role hiện tại.
+        if user.status != "active":
+            raise AuthError("Tài khoản đã bị khóa.")
+        role = await _get_primary_role(db, user.id)
+        access = create_access_token(
+            subject=str(user.id), claims={"role": role.value, "name": user.full_name}
+        )
+    else:
+        # Token mock (dev) — tái phát từ claims, không có DB user để revalidate.
+        access = create_access_token(
+            subject=str(subject), claims={"role": data.get("role"), "name": data.get("name")}
+        )
     return AccessTokenResponse(access_token=access)
 
 

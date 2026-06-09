@@ -32,9 +32,11 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> To
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)
-async def refresh(payload: RefreshRequest) -> AccessTokenResponse:
-    """Đổi refresh token lấy access token mới."""
-    return service.refresh(payload.refresh_token)
+async def refresh(
+    payload: RefreshRequest, db: AsyncSession = Depends(get_db)
+) -> AccessTokenResponse:
+    """Đổi refresh token lấy access token mới (revalidate user trong DB)."""
+    return await service.refresh(db, payload.refresh_token)
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)

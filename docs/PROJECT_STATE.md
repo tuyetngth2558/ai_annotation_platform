@@ -35,7 +35,7 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 
 | Feature | Backend (BE) | Frontend (FE) | Test | Ghi chú / Blocker |
 |---|:---:|:---:|:---:|---|
-| **auth** (login/RBAC) | ✅ login/refresh/change-password thật (verify DB) + RBAC | ✅ login + guard (refresh backend-only) | ✅ 16 test (mock + DB thật) | Bcrypt (bỏ passlib). KHÔNG register/OAuth/verify email/MFA (BA hoãn) |
+| **auth** (login/RBAC) | ✅ login/refresh(revalidate DB)/change-password thật + RBAC | ✅ login + guard (refresh backend-only) | ✅ 18 test (mock + DB thật) | Bcrypt (bỏ passlib). KHÔNG register/OAuth/verify email/MFA (BA hoãn) |
 | **users** (Admin tạo user) | 🚧 create/list/get (RBAC ADMIN) | ⬜ | 🚧 RBAC test | Mật khẩu tạm; gán role per-project |
 | **projects** (tạo/cấu hình LLM) | ⬜ route 501 | ⬜ skeleton | ⬜ | API key encrypt (BR-1.2) |
 | **import_bundle** (upload PDF) | ⬜ route 501 | ⬜ skeleton | ⬜ | 🔒 parser chờ OQ-PDF-004 (OCR) |
@@ -78,9 +78,10 @@ Quyết định ĐÃ chốt → xem [docs/adr/](adr/). Quyết gì mới → **t
 
 ## 4. Việc tiếp theo (gợi ý ưu tiên)
 
-1. Chốt OQ-006 → implement auth thật (login + RBAC per-project).
+1. ✅ ~~Auth baseline~~ (xong: login/refresh/change-password + Admin tạo user).
 2. Chốt OQ-002 → cắm LLM provider thật.
 3. Implement feature theo pipeline: import → annotation → qa → export.
+4. RBAC per-project thật (`require_project_role` đọc role theo project_id) khi cần.
 
 ---
 

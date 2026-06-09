@@ -5,7 +5,8 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useAuth, defaultRouteForRole } from "@/app/providers/AuthProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
+import { defaultRouteForRole } from "@/shared/lib/roleRoutes";
 import type { ApiError } from "@/shared/lib/apiClient";
 import { Card } from "@/shared/ui/Card";
 import { Button } from "@/shared/ui/Button";
