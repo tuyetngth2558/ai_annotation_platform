@@ -1,8 +1,8 @@
 # Test Plan MVP — VSF AI Annotation Platform
 
 **Owner:** QA Team
-**Phiên bản:** v1.1
-**Ngày:** 08/06/2026
+**Phiên bản:** v1.2
+**Ngày:** 10/06/2026
 **Phạm vi:** MVP PDF-native cho Vivipedia text annotation
 **Scope baseline:** `docs/03_ba/00_Scope_Assignment_MVP.md`
 
@@ -39,14 +39,15 @@ Mục tiêu nghiệm thu chính:
 
 ## 2. Cần làm gì trong task này
 
-Task hôm nay không phải viết toàn bộ test case chi tiết cho mọi module. Phạm vi chính là chốt strategy và chỉ ra test case nào cần được viết theo AC.
+Task hôm nay tập trung vào hoàn thiện Test Plan và bổ sung test cases cho các luồng chính của MVP PDF-native.
 
 | Việc cần làm | Cụ thể cần có | File chính |
 |---|---|---|
-| Xây dựng Test Plan | Scope test theo PDF-native, test strategy, test data, entry/exit criteria, risk | `01_Test_Plan_PDF_Native_MVP.md` |
+| Hoàn thiện Test Plan | Scope test theo PDF-native, test strategy, test data, entry/exit criteria, risk | `01_Test_Plan_PDF_Native_MVP.md` |
+| Bổ sung test cases luồng chính | Happy path, parse warning, QA Return/Resubmit, export approved-only, RBAC/audit smoke | `03_E2E_Test_Scenarios.md` |
 | Mapping AC -> Test Cases | Mỗi AC/BR chính map sang nhóm test case cụ thể, dễ biết cần test gì | `02_AC_to_Test_Cases_Mapping.md` |
 
-Các file E2E, Functional Checklist, API/UI Sanity là nơi chứa hoặc tham chiếu test case chi tiết. Không cần xem chúng là deliverable riêng của task này nếu ticket chỉ ghi “Test Plan” và “Mapping AC -> Test Cases”.
+Functional Checklist và API/UI Sanity là checklist hỗ trợ để không bỏ sót validation, storage, config, audit và UI/API sanity khi chạy test.
 
 ---
 
@@ -203,6 +204,7 @@ Các file E2E, Functional Checklist, API/UI Sanity là nơi chứa hoặc tham c
 
 - Test Plan MVP.
 - E2E Test Scenarios.
+- Main Flow E2E Test Cases.
 - PDF Parsing & Normalization Test Cases.
 - Validation Test Cases map với Validation Rules.
 - Bug Log Template.

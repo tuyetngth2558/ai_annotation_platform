@@ -30,7 +30,7 @@ Bảng này trả lời câu hỏi: “Đọc AC xong thì tester cần viết/t
 |---|---|---|---|
 | Project setup | Tạo project Vivipedia text-only, nhập LLM config, gán Annotator/QA | FT-PRJ-001..009, E2E-001 | Project tạo được, modality là Text, LLM config hợp lệ, assignment đủ người |
 | PDF bundle import | Upload Answer PDF, Source Reference PDF, Source Content PDF; gán file role | FT-IMP-001..009, E2E-IMP-001..005 | Bundle hợp lệ được import; thiếu/trùng/sai role bị block |
-| PDF parsing preview | Xem metadata, source list, warning source URL missing | FT-IMP-010..013, E2E-IMP-006..007 | Preview hiển thị đúng; warning không block; parse fail bị block |
+| PDF parsing preview | Xem metadata, source list, warning source URL missing | FT-IMP-010..013, E2E-003, E2E-IMP-006..007 | Preview hiển thị đúng; warning không block; parse fail bị block |
 | Internal normalization | Kiểm tra raw text, normalized text, metadata, source list, parent task trace | FT-PIP-001..003, FT-PIP-011..012, E2E-IMP-011 | Dữ liệu parse/normalized được lưu và trace về bundle/PDF |
 | Claim extraction/source mapping | Sinh claim task, giữ thứ tự claim, map citation marker với source order | FT-PIP-004..007, E2E-IMP-008 | Claim được tạo đúng; claim không map source vào Source Mapping Required |
 | LLM pre-scoring | LLM success/fail, đủ 6 score, baseline read-only | FT-PIP-008..010, E2E-IMP-009..010 | Success tạo pre-score; fail vào Pre-scoring Failed; baseline không sửa được |
