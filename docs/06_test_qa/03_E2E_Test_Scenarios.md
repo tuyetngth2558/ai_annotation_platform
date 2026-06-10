@@ -1,8 +1,8 @@
 # E2E Test Scenarios — VSF AI Annotation Platform MVP
 
 **Owner:** QA Team  
-**Phiên bản:** v1.1
-**Ngày:** 08/06/2026
+**Phiên bản:** v1.2
+**Ngày:** 10/06/2026
 **Scope baseline:** `docs/03_ba/00_Scope_Assignment_MVP.md`
 
 ---
@@ -23,16 +23,32 @@
 
 ---
 
-## 2. E2E happy path
+## 2. Luồng chính cần cover
+
+| Main flow | Test case đại diện |
+|---|---|
+| Happy path PDF-native | E2E-001 |
+| QA Return và Resubmit | E2E-002 |
+| PDF parse warning nhưng vẫn đi hết pipeline | E2E-003 |
+| Import/pipeline negative cases | E2E-IMP-002..011 |
+| Annotation validation | E2E-ANN-003..005 |
+| QA validation | E2E-QA-004..007 |
+| Export CSV claim-level | E2E-EXP-001..006 |
+| RBAC và audit smoke | E2E-RBAC-001..003, E2E-AUD-001 |
+
+---
+
+## 3. E2E happy path
 
 | ID | Scenario | Preconditions | Steps | Expected result | Priority |
 |---|---|---|---|---|---|
 | E2E-001 | Full flow: Import PDF Bundle -> Approve -> Export CSV | Admin, Annotator, QA account; valid PDF Bundle; LLM success | 1. Admin login. 2. Create project. 3. Configure LLM. 4. Upload valid PDF Bundle. 5. Assign file roles. 6. Preview parse. 7. Confirm import. 8. System parses PDF and normalizes internal data. 9. Assign annotator/QA. 10. Annotator opens assigned claim. 11. Reviews source and scores. 12. Submit. 13. QA opens Submitted task. 14. Approve. 15. Admin/authorized user exports CSV. | Project/batch/bundle/parent task created; parse result and normalized data saved; claim task reaches `Approved`; exported CSV contains approved claim with required fields and PDF trace. | P0 |
 | E2E-002 | Full flow with QA Return and Resubmit | Valid task already submitted | 1. QA opens Submitted task. 2. Return with error type + comment. 3. Annotator sees Returned task. 4. Annotator edits claim/score/note. 5. Resubmit. 6. QA Approve. 7. Export. | Task goes `Submitted -> Returned -> Submitted -> Approved`; history/audit records return and resubmit; export includes final approved data only. | P0 |
+| E2E-003 | Full flow with parse warning: source URL missing | Admin, Annotator, QA account; PDF Bundle has source order/title/tier and source text but no source URL | 1. Admin uploads PDF Bundle. 2. Preview parse shows `SOURCE_URL_MISSING` warning. 3. Admin confirms import. 4. Pipeline uses source text from PDF for mapping/pre-score. 5. Annotator reviews source text, sets source status, fills 6 scores and note if needed. 6. Submit. 7. QA Approve. 8. Export CSV. | Import is allowed with warning; `source_url = null`; claim still reaches Approved; export includes PDF trace and source file refs. | P0 |
 
 ---
 
-## 3. Import and pipeline scenarios
+## 4. Import and pipeline scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -50,7 +66,7 @@
 
 ---
 
-## 4. Annotation scenarios
+## 5. Annotation scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -65,7 +81,7 @@
 
 ---
 
-## 5. QA review scenarios
+## 6. QA review scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -79,7 +95,7 @@
 
 ---
 
-## 6. Export scenarios
+## 7. Export scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -92,7 +108,7 @@
 
 ---
 
-## 7. RBAC and audit scenarios
+## 8. RBAC and audit scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -103,7 +119,7 @@
 
 ---
 
-## 8. Final UAT watchlist
+## 9. Final UAT watchlist
 
 - Export permission: Admin only or Admin + QA được cấp quyền.
 - OCR handling for scan/image PDFs: reject or flag `ocr_required`.
