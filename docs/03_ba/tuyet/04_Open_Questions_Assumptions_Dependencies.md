@@ -2,9 +2,9 @@
 # VSF AI Annotation Platform MVP
 
 **Owner:** Tuyết  
-**Phiên bản:** 2.0
-**Ngày cập nhật:** 06/06/2026  
-**Trạng thái:** Active log for Week 1  
+**Phiên bản:** 2.1  
+**Ngày cập nhật:** 09/06/2026  
+**Trạng thái:** Active log — OQ đã chốt theo `docs/00_project_management/Bao_cao_doi_chieu_scaffold_vs_scope_MVP.md` §6  
 
 
 ---
@@ -52,10 +52,10 @@ Log này dùng để:
 | Câu hỏi | Dùng provider nào, endpoint nào, output schema nào? |
 | Ảnh hưởng | Project setup, backend integration, pre-scoring |
 | Owner chốt | Mentor / admin kỹ thuật |
-| Deadline chốt | 04/06/2026 |
-| Gợi ý | Chốt 1 provider duy nhất cho MVP |
-| Trạng thái | 🔴 Chưa chốt |
-| Ảnh hưởng nếu trễ | Block backend flow tuần 2 |
+| Deadline chốt | 12/06/2026 (API key) |
+| Quyết định | **1 provider cố định**, không fallback MVP; tích hợp qua **`LLMProvider` interface**; working provider: **Google Gemini 2.5 Flash** (claim extraction + pre-scoring). Pilot **20 claim** PDF thật — nếu chất lượng kém → đổi **Claude Sonnet 4.6** qua config |
+| Trạng thái | ✅ Đã chốt (working) · 🔑 chờ mentor cấp API key 12/06 |
+| Ghi chú | Báo cáo PM §6.2 |
 
 ### OQ-003 — Claim extraction tách riêng hay gộp với pre-scoring?
 
@@ -64,10 +64,10 @@ Log này dùng để:
 | Câu hỏi | LLM vừa tách claim vừa chấm điểm trong một bước, hay tách thành 2 bước? |
 | Ảnh hưởng | Pipeline, schema output, state machine |
 | Owner chốt | Quang + Đan + dev |
-| Deadline chốt | 05/06/2026 |
-| Gợi ý | Tách riêng để dễ debug và sửa tay |
-| Trạng thái | 🔴 Chưa chốt |
-| Ảnh hưởng nếu trễ | Block flow import/background processing |
+| Deadline chốt | 09/06/2026 |
+| Quyết định | **Tách 2 bước LLM**: (1) Claim extraction → (2) Pre-scoring |
+| Trạng thái | ✅ Đã chốt |
+| Ghi chú | Khớp `import_pipeline.py`; Báo cáo PM §6.2 |
 
 ### OQ-004 — Ngưỡng bắt buộc nhập lý do khi đổi điểm là bao nhiêu?
 
@@ -77,9 +77,9 @@ Log này dùng để:
 | Ảnh hưởng | Validation của Annotation Workspace |
 | Owner chốt | Quang + Tuyết |
 | Deadline chốt | 06/06/2026 |
-| Draft | ±0.20 |
-| Trạng thái | 🟡 Pending |
-| Ảnh hưởng nếu trễ | Block submit validation |
+| Quyết định | **±0.20** so với pre-score — bắt buộc justification (reason non-empty) |
+| Trạng thái | ✅ Đã chốt |
+| Ghi chú | `JUSTIFICATION_THRESHOLD`; Báo cáo PM §6.3 |
 
 ### OQ-005 — MVP có dispute workflow không?
 
@@ -89,9 +89,9 @@ Log này dùng để:
 | Ảnh hưởng | Scope QA, state machine, screen action |
 | Owner chốt | Mentor |
 | Deadline chốt | 04/06/2026 |
-| Gợi ý | Không build trong MVP |
-| Trạng thái | 🟡 Pending confirm |
-| Ảnh hưởng nếu trễ | Làm flow QA bị nửa vời |
+| Quyết định | **Không build dispute** trong MVP 4 tuần |
+| Trạng thái | ✅ Đã chốt |
+| Ghi chú | Báo cáo PM §6.3, §7 |
 
 ### OQ-006 — Security baseline của MVP là gì?
 
@@ -101,9 +101,9 @@ Log này dùng để:
 | Ảnh hưởng | Auth flow, DevOps setup, RBAC |
 | Owner chốt | Khải + Tuấn Anh + mentor |
 | Deadline chốt | 05/06/2026 |
-| Gợi ý | Email/password + RBAC cơ bản; MFA để phase sau |
-| Trạng thái | 🔴 Chưa chốt |
-| Ảnh hưởng nếu trễ | Block auth implementation |
+| Quyết định | **Email/password + JWT + RBAC 3 role**; API key LLM encrypt-at-rest; session timeout cơ bản; **không MFA**; audit log DB thường (không WORM) |
+| Trạng thái | ✅ Đã chốt |
+| Ghi chú | Báo cáo PM §6.4 |
 
 ### OQ-007 — QA sampling trong MVP là 100% hay cấu hình khác?
 
@@ -113,9 +113,9 @@ Log này dùng để:
 | Ảnh hưởng | QA queue logic |
 | Owner chốt | Quang + QA lead |
 | Deadline chốt | 06/06/2026 |
-| Gợi ý | 100% review để đơn giản hóa MVP |
-| Trạng thái | 🟡 Pending |
-| Ảnh hưởng nếu trễ | Logic queue dễ thay đổi giữa chừng |
+| Quyết định | **QA review 100%** task submitted — không sampling engine |
+| Trạng thái | ✅ Đã chốt |
+| Ghi chú | Báo cáo PM §6.3 |
 
 ### OQ-008 — Annotator có được xem task của người khác không?
 
@@ -137,9 +137,9 @@ Log này dùng để:
 | Ảnh hưởng | Export schema, test verification |
 | Owner chốt | Đan + mentor |
 | Deadline chốt | 06/06/2026 |
-| Draft | Theo `docs/03_ba/dan/02_Import_Export_Schema.md` §10: `bundle_id`, `article_code`, `claim_id`, `claim_text_final`, mapped source info, 6 ann scores, `composite_score`, PDF filenames |
-| Trạng thái | 🟡 Pending confirm |
-| Ảnh hưởng nếu trễ | Block export UI và test data verification |
+| Quyết định | Theo **`docs/03_ba/dan/02_Import_Export_Schema.md` §10** — bắt buộc `bundle_id`, PDF filenames, `article_code`, mapped source, 6 ann scores |
+| Trạng thái | ✅ Đã chốt |
+| Ghi chú | Báo cáo PM §6.2 |
 
 ### OQ-010 — Separator cho nhiều source URL là gì?
 
@@ -159,9 +159,9 @@ Log này dùng để:
 | Câu hỏi | Answer + Ref + ít nhất 1 Source Content đúng không? |
 | Ảnh hưởng | Upload validation UI |
 | Owner chốt | PO/BA |
-| Draft | Đúng — theo `VR-UP-001` đến `VR-UP-003` |
-| Trạng thái | 🟡 Pending confirm |
-| Tham chiếu | `docs/03_ba/dan` OQ-PDF-001 |
+| Quyết định | **1 answer_pdf + 1 source_ref_pdf + ≥1 source_content_pdf** |
+| Trạng thái | ✅ Đã chốt |
+| Tham chiếu | `VR-UP-001`–`003`; Báo cáo PM §6.1 |
 
 ### OQ-PDF-002 — Source Content PDF upload từng file hay gộp?
 
@@ -170,8 +170,9 @@ Log này dùng để:
 | Câu hỏi | Mỗi nguồn một PDF riêng hay gộp nhiều nguồn? |
 | Ảnh hưởng | Bundle builder UI, storage, source mapping |
 | Owner chốt | Engineering/BA |
-| Trạng thái | 🟡 Pending |
-| Tham chiếu | `docs/03_ba/dan` OQ-PDF-002 |
+| Quyết định | Hỗ trợ **nhiều `source_content_pdf`/bundle**; khuyến nghị **1 file / 1 nguồn** khi có thể |
+| Trạng thái | ✅ Đã chốt |
+| Tham chiếu | Báo cáo PM §6.1 |
 
 ### OQ-PDF-003 — Nếu source URL không parse được, annotator làm gì?
 
@@ -180,9 +181,9 @@ Log này dùng để:
 | Câu hỏi | Annotator có cần mở nguồn ngoài không? |
 | Ảnh hưởng | Source Viewer UI, source verification flow |
 | Owner chốt | PO/QA |
-| Draft | Ưu tiên đối chiếu `source_text_extract` từ PDF; mở ngoài chỉ khi cần |
-| Trạng thái | 🟡 Pending |
-| Tham chiếu | `docs/03_ba/dan` OQ-PDF-003 |
+| Quyết định | **Ưu tiên `source_text_extract` từ PDF**; không bắt mở URL ngoài; URL optional nếu parse được; nguồn inaccessible → **note bắt buộc** |
+| Trạng thái | ✅ Đã chốt |
+| Tham chiếu | `DRD-006`; Báo cáo PM §6.1 |
 
 ### OQ-PDF-004 — PDF scan/image có trong MVP không?
 
@@ -191,9 +192,27 @@ Log này dùng để:
 | Câu hỏi | OCR có nằm trong scope 4 tuần không? |
 | Ảnh hưởng | Parse flow, reject/warning UI |
 | Owner chốt | PO/Engineering |
-| Draft | Đề xuất reject hoặc flag `ocr_required` nếu chưa OCR |
-| Trạng thái | 🔴 Chưa chốt |
-| Tham chiếu | `docs/03_ba/dan` OQ-PDF-004 |
+| Quyết định | **Không build OCR trong MVP**; PDF scan → `ocr_required` → **block import** + message rõ |
+| Trạng thái | ✅ Đã chốt |
+| Tham chiếu | Báo cáo PM §6.1 |
+
+### OQ-MEET-001 — QA có được Export không? (§6.5)
+
+| Field | Nội dung |
+|---|---|
+| Câu hỏi | QA có quyền export CSV trong MVP không? |
+| Quyết định | **Có** — QA export task **Approved** trong **project được giao** (không export toàn platform) |
+| Trạng thái | ✅ Đã chốt |
+| Owner triển khai | Tuyết (IA `/qa/export`); Dev FE |
+
+### OQ-MEET-002 — User Management MVP? (§6.5)
+
+| Field | Nội dung |
+|---|---|
+| Câu hỏi | Có build User Management UI đầy đủ không? |
+| Quyết định | **Không** — seed user + gán role trong **Project Setup / Assignment** |
+| Trạng thái | ✅ Đã chốt |
+| Owner triển khai | Quang (AC); Dev BE `assignments` |
 
 ---
 
@@ -203,13 +222,15 @@ Log này dùng để:
 |---|---|---|---|
 | AS-001 | MVP chỉ implement text/PDF; audio/image chỉ design | Scope nở mạnh | ✅ Đã chốt theo scope |
 | AS-011 | Input chính là PDF Bundle Upload, không phải CSV/JSON | Toàn bộ import UI/parser lệch nếu sai | ✅ Đã chốt 06/06/2026 |
-| AS-012 | `source_url` optional sau PDF parse; source_order/title/tier required | Source Viewer UI phải hiển thị text từ PDF | 🟡 Theo `docs/03_ba/dan` DRD-006 |
-| AS-002 | Chỉ dùng 1 LLM provider, không fallback | Pipeline dừng nếu provider lỗi | 🔴 Phụ thuộc OQ-002 |
-| AS-003 | Annotator submit là task vào QA queue | Queue logic thay đổi | 🟡 Pending |
-| AS-004 | Auto-save 30 giây là đủ; không làm offline sync | Có thể mất dữ liệu khi mất mạng | 🔴 Cần dev confirm |
-| AS-005 | QA review 100% task trong MVP | QA bị tải nặng hơn | 🟡 Pending |
+| AS-012 | `source_url` optional sau PDF parse; source_order/title/tier required | Source Viewer UI phải hiển thị text từ PDF | ✅ Đã chốt (OQ-PDF-003) |
+| AS-002 | Chỉ dùng 1 LLM provider (Gemini 2.5 Flash working), không fallback | Pipeline dừng nếu provider lỗi | ✅ Đã chốt · 🔑 chờ API key |
+| AS-003 | Annotator submit → task vào QA queue (100%) | Queue logic thay đổi | ✅ Đã chốt (OQ-007) |
+| AS-004 | Auto-save **30 giây**; không offline sync | Có thể mất dữ liệu khi mất mạng | ✅ Đã chốt (DEC-UX-01) |
+| AS-005 | QA review **100%** task submitted trong MVP | QA bị tải nặng hơn | ✅ Đã chốt (OQ-007) |
 | AS-006 | Audit log lưu DB, không cần WORM | Compliance chưa mạnh | ✅ Đã chốt theo scope |
-| AS-007 | Export CSV không cần encryption trong MVP | Rủi ro bảo mật dữ liệu | 🔴 Cần confirm |
+| AS-007 | Export CSV: HTTPS + phân quyền; không encrypt file trong MVP | Rủi ro bảo mật dữ liệu nội bộ | ✅ Đã chốt (DEC-SEC-01) |
+| AS-013 | QA không sửa điểm/claim trực tiếp — chỉ Approve/Return | Flow QA đơn giản hơn PRD | ✅ Đã chốt (DEC-QA-01) |
+| AS-014 | QA được export trong project được giao | RBAC export cần scope project | ✅ Đã chốt (§6.5) |
 | AS-008 | Composite score = trung bình đều 6 dimension | Có thể không phản ánh trọng số thực tế | ✅ Theo PRD/scope hiện tại |
 | AS-009 | Dashboard MVP chỉ là landing page có số đếm cơ bản | PM có thể muốn analytics hơn | ✅ Đã chốt |
 | AS-010 | Annotator không xem task người khác | Nếu sai sẽ lệch RBAC | ✅ Đã chốt |
@@ -223,10 +244,10 @@ Log này dùng để:
 | DEP-001 | ERD → Database setup | Tuấn Anh | Đan | 05/06 | 🔴 Chưa xong | Block DB setup |
 | DEP-002 | Screen Flow → Wireframe | Trí | Tuyết | 05/06 | 🟡 Đang làm | Block wireframe |
 | DEP-003 | Screen Spec → Design handoff | Trí | Tuyết | 10/06 | 🟡 Đang làm | Block final UI handoff |
-| DEP-004 | Acceptance Criteria → Test Plan | Nhung | Quang | 06/06 | 🔴 Chưa xong | Block test case viết sớm |
+| DEP-004 | Acceptance Criteria → Test Plan | Nhung | Quang | 11/06 | 🟡 QA dùng tạm `dan/` + `tuyet/` + Báo cáo PM §6 | Block regression đầy đủ nếu Quang trễ |
 | DEP-005 | PDF Bundle Schema + Validation Rules → Parser/backend | Dev | Đan | 05/06 | 🟡 Đã có draft v0.4 | Block import flow nếu chưa implement |
 | DEP-006 | Dev environment → Tất cả dev build | Dev team | Khải | 04/06 | 🔴 Chưa xong | Block triển khai tuần 2 |
-| DEP-007 | LLM provider chốt → Project setup/backend | BA + Dev | Mentor | 04/06 | ⛔ Blocked | Block integration |
+| DEP-007 | LLM API key Gemini → Project setup/backend | BA + Dev | Mentor | 12/06 | 🟡 Working decision chốt; chờ key | Dùng MockProvider đến khi có key |
 | DEP-008 | State machine → QA workflow build | Dev | Quang | 05/06 | 🔴 Chưa xong | Block workflow logic |
 | DEP-009 | Validation rules → Submit validation | Dev | Đan | 11/06 | 🟡 Tuần 2 | Có thể build tạm rồi sửa lại |
 | DEP-010 | Wireframe → Usability review | Tuyết | Trí | 06/06 | 🔴 Chờ wireframe | Block review UI |
@@ -250,6 +271,13 @@ Log này dùng để:
 | DEC-011 | Input chính MVP là **PDF Bundle Upload** | 06/06/2026 | Mentor chốt; đồng bộ `docs/03_ba/dan` v0.4 |
 | DEC-012 | Không dùng CSV/JSON làm user-facing import chính | 06/06/2026 | Portal chưa cung cấp CSV/JSON |
 | DEC-013 | Export CSV claim-level phải trace về `bundle_id` và PDF filenames | 06/06/2026 | Theo DRD-005 |
+| DEC-QA-01 | QA **không sửa điểm trực tiếp** — chỉ Approve/Return | 09/06/2026 | Báo cáo PM §6.3 |
+| DEC-SEC-01 | Export CSV: HTTPS + RBAC; không encrypt file trong MVP | 09/06/2026 | Báo cáo PM §6.4 |
+| DEC-UX-01 | Auto-save annotator **30 giây**; không offline sync | 09/06/2026 | Báo cáo PM §6.4 |
+| DEC-014 | QA được **Export CSV** trong project được giao | 09/06/2026 | Báo cáo PM §6.5 |
+| DEC-015 | **Không** User Management UI đầy đủ — seed + Assignment | 09/06/2026 | Báo cáo PM §6.5 |
+| DEC-016 | LLM: **Gemini 2.5 Flash** qua `LLMProvider`; 2 bước extract + pre-score | 09/06/2026 | Báo cáo PM §6.2 |
+| DEC-017 | PDF scan `ocr_required` → **block import** | 09/06/2026 | Báo cáo PM §6.1 |
 
 ---
 
@@ -257,17 +285,19 @@ Log này dùng để:
 
 | OQ | Action | Owner | Deadline |
 |---|---|---|---|
-| OQ-001 | ~~Xác nhận format import~~ → Đã chốt PDF Bundle | Tuyết | ✅ Done |
-| OQ-002 | Xác nhận LLM provider và endpoint | Tuyết | 04/06 |
-| OQ-003 | Họp BA + Dev chốt claim extraction flow | Quang | 05/06 |
-| OQ-004 | Chốt ngưỡng ±0.20 trong business rules | Quang | 06/06 |
-| OQ-005 | Confirm lại dispute không nằm trong MVP | Tuyết | 04/06 |
-| OQ-006 | DevOps đề xuất security baseline | Khải | 05/06 |
-| OQ-007 | Chốt 100% review hay sampling khác | Quang | 06/06 |
-| OQ-009 | Draft export schema và review team | Đan | 06/06 |
-| OQ-010 | ~~Separator URL~~ → Không áp dụng với PDF input | — | N/A |
-| OQ-PDF-001 | Confirm rule bundle file tối thiểu | Tuyết + Đan | 07/06 |
-| OQ-PDF-004 | Chốt OCR scope với mentor/engineering | Tuyết | 07/06 |
+| OQ-001 | ~~PDF Bundle input~~ | — | ✅ Done |
+| OQ-002 | Mentor cấp **API key Gemini 2.5 Flash**; pilot 20 claim | Mentor + Dev | 12/06 |
+| OQ-003 | ~~2 bước LLM~~ → Dev implement pipeline | Dev | Tuần 2 |
+| OQ-004 | ~~±0.20~~ → Quang ghi vào AC/business rules | Quang | 12/06 |
+| OQ-005 | ~~No dispute~~ | — | ✅ Done |
+| OQ-006 | Dev implement auth JWT + RBAC | Dev | Tuần 2 |
+| OQ-007 | ~~100% QA~~ | — | ✅ Done |
+| OQ-009 | Handoff export §10 cho Hưng verify | Đan | 12/06 |
+| OQ-010 | ~~N/A CSV separator~~ | — | N/A |
+| OQ-PDF-001..004 | ~~Đã chốt §6.1~~ | — | ✅ Done |
+| OQ-MEET-001 | Cập nhật IA: QA export `/qa/export` | Tuyết | 10/06 |
+| OQ-MEET-002 | Cập nhật AC: không User Mgmt UI đầy đủ | Quang | 11/06 |
+| — | Quang đồng bộ `docs/03_ba/quang/` PDF-native | Quang | **11/06** |
 
 ---
 

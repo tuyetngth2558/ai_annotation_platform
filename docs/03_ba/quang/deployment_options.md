@@ -1,5 +1,17 @@
 # Phương Án Triển Khai Vivipedia Annotation Tool (MVP & Scale)
 
+> **⚠️ Research only — không phải baseline triển khai MVP 4 tuần**
+>
+> Tài liệu này là **nghiên cứu so sánh chi phí** (Streamlit/Hugging Face, v.v.) từ giai đoạn đầu dự án.
+> **Baseline triển khai đã chốt** theo scaffold: **FastAPI + React + ARQ worker**, deploy theo:
+>
+> - `ai_annotation_platform-feat-scaffold-base/docs/05_architecture/tech-selection/07-deployment.md`
+> - `ai_annotation_platform-feat-scaffold-base/docs/05_architecture/tech-selection/08-llm-provider.md` (Gemini 2.5 Flash qua `LLMProvider`)
+>
+> Giữ file này để tham khảo cost/scale tương lai; **Dev không implement theo Option Streamlit/HF** trong sprint MVP.
+
+---
+
 Tài liệu này phân tích 3 phương án (Option) triển khai hệ thống annotation dữ liệu RAG, từ mức kiểm thử miễn phí đến hệ thống SaaS thương mại quy mô lớn, dựa trên các tiêu chí: **Chi phí (Cost)**, **API (LLM & Search)**, và **Khả năng mở rộng (Scalability)**.
 
 ---
