@@ -1,0 +1,25 @@
+# Chuẩn hóa line ending — tránh ồn LF↔CRLF khi team đa nền tảng (Windows/Mac/Linux).
+# Mặc định: chuẩn hóa text về LF trong repo, auto chuyển theo OS khi checkout.
+* text=auto eol=lf
+
+# File phải GIỮ CRLF (script Windows).
+*.ps1   text eol=crlf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# File phải GIỮ LF (script/shell, tránh hỏng khi chạy Linux/Docker).
+*.sh        text eol=lf
+Makefile    text eol=lf
+Dockerfile  text eol=lf
+*.Dockerfile text eol=lf
+
+# Binary — git không đụng tới.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.pdf   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.xlsx  binary
