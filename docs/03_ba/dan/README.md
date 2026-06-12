@@ -21,7 +21,7 @@ PDF Bundle Upload
 → Annotator Review
 → Article Evaluation
 → QA Review 100%
-→ Export Excel workbook (+ optional CSV technical export)
+→ Result consumption: in-tool dashboard, Excel workbook export, optional CSV technical export
 ```
 
 Không có CSV/JSON user-facing import trong MVP.
@@ -48,8 +48,8 @@ Không có CSV/JSON user-facing import trong MVP.
 
 | Nhận xét | Ý nghĩa | Đã chỉnh ở đâu |
 |---|---|---|
-| “Chốt rubric mapping Vivipedia: cột TA A–R ↔ field platform ↔ export CSV” | Cần bảng mapping rõ từ workbook mẫu sang DB/export để Dev không đoán cột Excel | `02_Import_Export_Schema.md` §12 |
-| “Sửa 02 export: tách article_evaluation (Rel/Comp) hoặc ghi rõ platform deviation” | Excel mẫu chấm `REL/COMP` theo bài, không theo claim. Nếu platform vẫn chấm 6 chiều claim-level thì đó là deviation khi export | `01_ERD...`, `02...` §10, §12, `03...` VR-ART |
+| “Chốt rubric mapping Vivipedia: cột TA A–R ↔ field platform ↔ output/export” | Cần bảng mapping rõ từ workbook mẫu sang DB/export để Dev không đoán cột Excel | `02_Import_Export_Schema.md` §12/§13 |
+| “Sửa 02 export: tách article_evaluation (Rel/Comp) hoặc ghi rõ platform deviation” | Excel mẫu chấm `REL/COMP` theo bài, không theo claim. Nếu platform vẫn chấm 6 chiều claim-level thì đó là deviation khi export | `01_ERD...`, `02...` §12, `03...` VR-ART |
 | “Thống nhất nguồn: Ref hyperlink URL vs source content PDF” | Phải chốt nguồn nào là evidence chính. MVP dùng Source Content PDF; URL chỉ optional link | `02...` §4, `03...` VR-SRC-009, `04...` EC-SRC |
 | “Hạ 06/07/09 xuống Design-Only; VR-FETCH/VR-LLM-006/007 → Post-MVP/optional” | Source fetch realtime, site parser, relevance filter, token batching không phải must-have trong MVP 4 tuần | `07_Design_Only...`, `03...` §10 |
 
@@ -79,23 +79,26 @@ Supporting files:
 
 ---
 
-## 5. Quy tắc export hiện tại
+## 5. Quy tắc output/export hiện tại
 
-Stakeholder deliverable chính là Excel workbook có 5 sheet:
+Database/Supabase là source of truth cho dữ liệu đã parse, normalize, chấm điểm và QA. Người dùng cuối có thể xem hoặc lấy kết quả qua nhiều output format:
 
-1. `Scoring Guide`
-2. `Domain-Subdomain List`
-3. `Annotation`
-4. `Article Evaluation`
-5. `Summary Dashboard`
+- Dashboard/report trong tool: đọc trực tiếp từ DB, không phải export file.
+- Excel workbook `.xlsx`: user-facing export để gửi stakeholder, cần giống template TA ở phần dữ liệu chính.
+- CSV claim-level: technical/debug/integration export, không thay thế Excel workbook.
 
-Mapping chính:
+Excel workbook cần tách ít nhất 2 sheet dữ liệu rubric:
 
 - `Annotation`: 1 row = 1 claim; export `SF`, `SC`, `HR`, `SQ`.
 - `Article Evaluation`: 1 row = 1 article/parent task; export `REL`, `COMP`.
-- CSV claim-level vẫn giữ để debug/integration, nhưng không thay thế Excel TA output.
+
+Các sheet hỗ trợ như `Scoring Guide`, `Domain-Subdomain List`, `Summary Dashboard` có thể giữ theo template nếu cần phát hành workbook đầy đủ; tuy nhiên rule bắt buộc để thống nhất rubric là không trộn `REL/COMP` vào sheet claim-level.
 
 ---
 
 ## 6. Việc còn cần đồng bộ
+
+- Quang/Tuyết đã đổi wording theo hướng "output từ DB gồm dashboard, Excel workbook và optional CSV technical".
+- Màn Export cần cho chọn format `Excel workbook (.xlsx)` và `CSV claim-level`.
+- Rubric UI có thể hiển thị/pre-score 6 chiều, nhưng Excel TA export phải tách `SF/SC/HR/SQ` ở `Annotation` và `REL/COMP` ở `Article Evaluation`.
 

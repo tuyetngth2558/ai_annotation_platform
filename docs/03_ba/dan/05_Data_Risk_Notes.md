@@ -22,7 +22,7 @@
 | DR-009 | QA chỉ Approve/Return nhưng thực tế muốn sửa điểm | Medium | Schema/UI có thể phải đổi | Chốt scope QA; MVP theo Approve/Return, QA không sửa điểm | PO/QA | MVP |
 | DR-010 | Source-dependent scores khi source text unparsed | High | Score thiếu căn cứ | Block pre-scoring hoặc flag source_text_unparsed | BA/ML | MVP |
 | DR-011 | Data volume PDF lớn | Medium | Storage/performance | File size limit, async parsing job | DevOps | MVP |
-| DR-012 | Stakeholder cần Excel output giống TA mẫu | High | CSV phẳng không đủ nghiệm thu | Build `.xlsx` export với 5 sheet chuẩn; CSV chỉ technical/debug | PO/BA/Dev | MVP |
+| DR-012 | Stakeholder cần Excel output giống TA mẫu | High | CSV phẳng không đủ nghiệm thu | Build `.xlsx` export với 2 sheet dữ liệu rubric bắt buộc (`Annotation`, `Article Evaluation`); CSV chỉ technical/debug | PO/BA/Dev | MVP |
 | DR-013 | REL/COMP bị chấm claim-level trong khi Excel mẫu là article-level | High | Export sai format và sai ý nghĩa rubric | Thêm `article_evaluation`; sheet `Annotation` chỉ có SF/SC/HR/SQ | BA/Dev/QA | MVP |
 | DR-014 | Rate limit/block IP khi fetch nhiều source URL | Medium | Không fetch được source | Hạ Source Fetch realtime xuống Post-MVP; MVP không phụ thuộc fetch URL | Engineering | Design-Only |
 | DR-015 | Source web thay đổi giữa lúc pre-score và annotator review | Medium | Score không consistency | MVP dùng PDF source text làm evidence chính; fetch cache chỉ Post-MVP | BA/Engineering | Design-Only |
@@ -63,13 +63,12 @@ Không được chỉ lưu normalized text. Cần lưu:
 
 ### Recommendation 5 — Export Excel là stakeholder deliverable chính
 
-CSV claim-level vẫn hữu ích cho debug/integration, nhưng deliverable cho stakeholder phải là `.xlsx` giống template TA:
+CSV claim-level vẫn hữu ích cho debug/integration, nhưng user-facing Excel export cần là `.xlsx` giống template TA ở 2 sheet dữ liệu rubric:
 
-- `Scoring Guide`
-- `Domain-Subdomain List`
 - `Annotation`
 - `Article Evaluation`
-- `Summary Dashboard`
+
+Các sheet hỗ trợ như `Scoring Guide`, `Domain-Subdomain List`, `Summary Dashboard` có thể giữ nếu dùng full template.
 
 ### Recommendation 6 — Tách REL/COMP khỏi claim-level export
 

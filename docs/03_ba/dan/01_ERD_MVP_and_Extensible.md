@@ -11,7 +11,7 @@
 - Input chính của MVP là PDF bundle.
 - CSV/JSON không còn là import chính.
 - Sau upload, hệ thống parse PDF thành dữ liệu nội bộ có cấu trúc.
-- Export cuối là CSV claim-level.
+- Dữ liệu chuẩn được lưu trong DB/Supabase; dashboard, Excel workbook và CSV technical đều là output từ dữ liệu này.
 - Mọi claim/export phải trace được về file PDF gốc.
 - MVP build text/PDF only nhưng data model vẫn giữ hướng mở rộng multi-project/multi-modality.
 
@@ -316,7 +316,7 @@ Vì một article input không còn là một row CSV mà là một nhóm file P
 
 ### Vì sao vẫn cần internal normalization?
 
-Dù không export/import CSV/JSON, hệ thống vẫn cần dữ liệu có cấu trúc trong database để chạy claim extraction, scoring, review, QA và export.
+Dù không dùng CSV/JSON làm input chính, hệ thống vẫn cần dữ liệu có cấu trúc trong database để chạy claim extraction, scoring, review, QA, dashboard và export.
 
 ### Vì sao cần ARTICLE_EVALUATION?
 

@@ -57,7 +57,7 @@
 ## 4. Checklist xác nhận
 
 - [ ] Dan xác nhận `02_Import_Export_Schema.md` đã map đúng Excel TA template.
-- [ ] Dev xác nhận export `.xlsx` giữ đúng 5 sheet và header.
+- [ ] Dev xác nhận export `.xlsx` giữ đúng 2 sheet dữ liệu rubric (`Annotation`, `Article Evaluation`) và header.
 - [ ] QA xác nhận `REL/COMP` cấp bài là bắt buộc trước stakeholder export.
 - [ ] Team xác nhận Source Fetch realtime là Post-MVP/Design-Only.
 - [ ] Render lại `erd_diagram.png` theo ERD markdown v0.6 nếu cần gửi mentor.

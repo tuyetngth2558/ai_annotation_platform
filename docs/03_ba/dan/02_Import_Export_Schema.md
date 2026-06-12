@@ -22,7 +22,7 @@ PDF Bundle Upload
 → Annotator Review
 → Article Evaluation
 → QA Review
-→ Export Excel workbook + optional CSV claim-level
+→ Result output: dashboard/report, Excel workbook, optional CSV claim-level
 ```
 
 CSV/JSON không phải input chính từ user. Hệ thống vẫn có internal normalized data để lưu DB, chạy LLM, review, QA và export.
@@ -359,17 +359,24 @@ Allowed `error_category`:
 
 ## 12. Excel Export Workbook Schema
 
-MVP cần export được `.xlsx` theo format mẫu `[Vivipedia] - Annonate Output - TA - 13.5.xlsx`.
+MVP lưu dữ liệu chuẩn trong DB/Supabase trước; Excel workbook là một output option khi người dùng cần tải file `.xlsx` giống template `[Vivipedia] - Annonate Output - TA - 13.5.xlsx`.
+
+Rule bắt buộc để thống nhất rubric: workbook phải tách 2 sheet dữ liệu chính:
+
+1. `Annotation` cho claim-level metrics `SF/SC/HR/SQ`.
+2. `Article Evaluation` cho article-level metrics `REL/COMP`.
+
+Các sheet template hỗ trợ như scoring guide, domain list hoặc summary dashboard có thể được giữ trong workbook đầy đủ nếu team dùng lại template gốc.
 
 ### 12.1. Sheet list
 
 | Sheet | Build source | Required in export | Notes |
 |---|---|---:|---|
-| `Scoring Guide` | Static template | Yes | Rubric definitions and score anchors |
-| `Domain-Subdomain List` | Static seed/template | Yes | 13 domains, 69 sub-domains; dropdown source |
 | `Annotation` | Claim tasks + submissions | Yes | 1 row = 1 claim; only `SF/SC/HR/SQ` |
 | `Article Evaluation` | `article_evaluation` | Yes | 1 row = 1 article; `REL/COMP` |
-| `Summary Dashboard` | Excel formulas/pivots | Yes | Auto-calculated from other sheets |
+| `Scoring Guide` | Static template | Optional template sheet | Rubric definitions and score anchors |
+| `Domain-Subdomain List` | Static seed/template | Optional template sheet | 13 domains, 69 sub-domains; dropdown source |
+| `Summary Dashboard` | Excel formulas/pivots or in-tool dashboard | Optional template sheet | Auto-calculated if included; dashboard can also live in the app |
 
 ### 12.2. Sheet `Annotation` mapping
 
@@ -417,7 +424,7 @@ MVP cần export được `.xlsx` theo format mẫu `[Vivipedia] - Annonate Outp
 
 ## 13. CSV Claim-level Schema
 
-CSV là technical/debug export phẳng. Excel workbook là deliverable chính cho stakeholder theo mẫu TA.
+CSV là technical/debug export phẳng. Excel workbook là user-facing export option theo mẫu TA; dashboard trong tool là một cách xem kết quả khác từ cùng dữ liệu DB.
 
 | Column | Required | Description |
 |---|---:|---|
@@ -480,10 +487,12 @@ CSV là technical/debug export phẳng. Excel workbook là deliverable chính ch
 
 ## 14. Export behavior
 
-- Default stakeholder export: Excel workbook `.xlsx` theo sheet/column ở §12.
+- Export module đọc từ normalized DB/Supabase, không đọc trực tiếp từ PDF.
+- User-facing output options: dashboard/report trong tool, Excel workbook `.xlsx` theo §12, và optional CSV claim-level theo §13.
+- Excel workbook phải có 2 sheet dữ liệu rubric bắt buộc: `Annotation` và `Article Evaluation`.
 - Optional technical export: CSV claim-level theo §13.
 - Export chỉ lấy task `approved` theo default MVP.
 - Returned/submitted/in-annotation không export mặc định.
 - CSV phải UTF-8, quote đúng text có dấu phẩy/xuống dòng.
-- Excel phải giữ sheet names, header rows, formulas/bands và dashboard summary giống template.
+- Excel phải giữ sheet names/header rows của 2 sheet dữ liệu chính; nếu dùng full template thì giữ thêm formulas/bands và dashboard summary.
 - Export bắt buộc trace được về `bundle_id`, PDF filenames, `article_code` và `parent_task_id`.

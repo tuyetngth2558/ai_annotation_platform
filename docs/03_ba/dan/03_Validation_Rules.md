@@ -151,7 +151,7 @@
 | VR-EXP-004 | Trace | Export phải có `article_code` | Yes | Missing article_code |
 | VR-EXP-005 | Source | Export phải có mapped source info | Yes | Missing source mapping |
 | VR-EXP-006 | CSV | CSV phải UTF-8 | Yes | Export encoding must be UTF-8 |
-| VR-EXP-007 | Excel | Excel stakeholder export phải có đủ 5 sheet: `Scoring Guide`, `Domain-Subdomain List`, `Annotation`, `Article Evaluation`, `Summary Dashboard` | Yes | Missing required Excel sheet |
+| VR-EXP-007 | Excel | Excel stakeholder export phải có đủ 2 sheet dữ liệu rubric: `Annotation`, `Article Evaluation` | Yes | Missing required Excel data sheet |
 | VR-EXP-008 | Excel Annotation | Sheet `Annotation` chỉ export claim-level `SF/SC/HR/SQ`; không đưa `REL/COMP` vào claim rows | Yes | Invalid Annotation sheet metric mapping |
 | VR-EXP-009 | Excel Article | Sheet `Article Evaluation` phải có `REL/COMP` cấp bài | Yes | Missing article-level scores |
 | VR-EXP-010 | Excel Mapping | Header/sheet name phải giữ tương thích template TA mẫu | Yes | Excel template mapping mismatch |

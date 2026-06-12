@@ -115,7 +115,7 @@
 | EC-EXP-002 | Claim thiếu `bundle_id` | Block export | High |
 | EC-EXP-003 | Claim có nhiều sources | Join with delimiter `;` trong CSV/Excel source URL column | Medium |
 | EC-EXP-004 | Text có newline/comma/quotes | CSV quoting UTF-8 chuẩn; Excel giữ wrap text | High |
-| EC-EXP-005 | Stakeholder cần workbook giống TA mẫu | Export `.xlsx` với 5 sheet chuẩn, không chỉ CSV | High |
+| EC-EXP-005 | Stakeholder cần workbook giống TA mẫu | Export `.xlsx` với 2 sheet dữ liệu rubric bắt buộc (`Annotation`, `Article Evaluation`); có thể giữ thêm sheet template nếu cần | High |
 | EC-EXP-006 | Excel thiếu `Article Evaluation` | Block stakeholder export vì REL/COMP cấp bài không đủ | High |
 
 ---
