@@ -1,9 +1,10 @@
 # VSF AI Annotation Platform
 ## Tài liệu Phân nhóm Tính năng, Kiểm soát Phạm vi & Phân công Vai trò (MVP 4 tuần)
 
-- **Phiên bản:** 1.1
-- **Ngày cập nhật:** 04/06/2026
-- **Mục đích:** Chốt rõ những gì sẽ xây dựng thực tế (Must-Have), những phần chỉ thiết kế (Design-Only) và những phần hoãn lại (Postponed) trong MVP 4 tuần để kiểm soát phạm vi dự án và đảm bảo tiến độ.
+- **Phiên bản:** 1.2 (PDF-native)
+- **Ngày cập nhật:** 09/06/2026
+- **Mục đích:** Chốt rõ những gì sẽ xây dựng thực tế (Must-Have), những phần chỉ thiết kế (Design-Only) và những phần hoãn lại (Postponed) trong MVP 4 tuần.
+- **Baseline:** `docs/03_ba/dan/` · `docs/00_project_management/Bao_cao_doi_chieu_scaffold_vs_scope_MVP.md` §6 · `VSF_AI_Annotation_Platform_Workflow_State_Reference_PDF_native.md`
 
 ---
 
@@ -32,7 +33,8 @@ Tài liệu này phân loại toàn bộ tính năng của VSF AI Annotation Pla
 Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạy được end-to-end ổn định theo luồng:
 
 ```
-[Import Dataset] ➔ [Claim Extraction] ➔ [LLM Pre-scoring] ➔ [Annotator Review] ➔ [QA Review] ➔ [Export CSV]
+PDF Bundle Upload → PDF Parsing → Normalization → Claim Extraction (LLM #1)
+→ Source Mapping → LLM Pre-scoring (LLM #2) → Annotator Review → QA (100%) → Export CSV
 ```
 
 ### Tiêu chí nghiệm thu (UAT Success Criteria):
@@ -49,14 +51,15 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 | Hạng mục tính năng | Must-Have | Design-Only | Postponed |
 | :--- | :---: | :---: | :---: |
 | **Project Setup** (Cấu hình dự án & Gán nhân sự) | ✅ | | |
-| **Import Dataset** (Hỗ trợ file CSV/JSON chuẩn) | ✅ | | |
-| **Claim Extraction** (Tách claim tự động & Sửa thủ công) | ✅ | | |
-| **Source Mapping & Validation cơ bản** (URL source status) | ✅ | | |
-| **LLM Pre-scoring** (Lấy điểm pre-score tự động từ 1 provider) | ✅ | | |
+| **PDF Bundle Import** (upload PDF + gán `file_role`, validate VR-UP-*) | ✅ | | |
+| **PDF Parsing & Normalization** (text, metadata, source list) | ✅ | | |
+| **Claim Extraction** (LLM bước 1 — tách claim & sửa thủ công) | ✅ | | |
+| **Source Mapping & Validation** (`source_text_extract`, citation, status) | ✅ | | |
+| **LLM Pre-scoring** (LLM bước 2 — 1 provider, Gemini 2.5 Flash working) | ✅ | | |
 | **Annotator Workspace** (Giao diện đánh giá & Override score) | ✅ | | |
 | **Structured Evaluation** (Bộ 6 tiêu chí Vivipedia, composite score) | ✅ | | |
-| **QA Review cơ bản** (Approve / Return task) | ✅ | | |
-| **Export** (Xuất CSV cấp độ claim cho task Approved) | ✅ | | |
+| **QA Review cơ bản** (100% review — Approve / Return, không dispute) | ✅ | | |
+| **Export** (CSV claim-level Approved; Admin + QA trong project được giao) | ✅ | | |
 | **RBAC cơ bản** (Phân quyền Admin, Annotator, QA) | ✅ | | |
 | **Audit Log tối thiểu** (Ghi log các thao tác nghiệp vụ chính) | ✅ | | |
 | **Multi-project model** (Mô hình đa dự án) | | ✅ | |
@@ -81,28 +84,28 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 
 - **Project Setup:**
   - Tạo project mới kèm tên, mô tả. Modality mặc định cố định là `text`.
-  - Cấu hình LLM endpoint, API key và prompt template.
-  - Thực hiện gán nhân sự (Annotator và QA Specialist) vào dự án.
+  - Cấu hình LLM endpoint, API key và prompt template (provider working: **Gemini 2.5 Flash** qua `LLMProvider`).
+  - Gán Annotator và QA vào dự án (**Assignment** — không User Management UI đầy đủ).
   - Xem danh sách và trạng thái tổng quan các project.
-- **Import Dataset:**
-  - Import dữ liệu thủ công thông qua định dạng file `CSV` hoặc `JSON`.
-  - Kiểm tra tính hợp lệ cơ bản của schema đầu vào.
-  - Cho phép xem trước (preview) dữ liệu trước khi import.
-  - Tự động tạo batch và các work item tương ứng từ tệp tin nguồn.
-- **Claim Extraction:**
-  - Hệ thống tự động tách claim từ `answer_text`.
-  - Mỗi claim sau khi tách trở thành một `Claim Task` độc lập.
-  - Đảm bảo giữ nguyên thứ tự xuất hiện của các claim trong câu trả lời gốc.
-  - Cho phép annotator sửa đổi claim text nếu thuật toán tự động tách chưa chính xác.
-- **Source Mapping & Validation cơ bản:**
-  - Mỗi claim bắt buộc phải liên kết với ít nhất 1 URL nguồn.
-  - Task không có source sẽ tự động chuyển trạng thái `Source Mapping Required` và tạm thời không vào hàng đợi của Annotator.
-  - Annotator xác nhận trạng thái hoạt động của từng nguồn: *Truy cập được / Không truy cập được / Hỗ trợ một phần / Không liên quan*.
-  - Nguồn không truy cập được sẽ tự động gán điểm `SC = 0.00` và bắt buộc ghi chú lý do.
-- **LLM Pre-scoring:**
-  - Gọi API sang một LLM provider cố định để tính điểm pre-score cho 6 dimension.
-  - Lưu trữ kết quả pre-score làm baseline đối chứng (bất biến).
-  - Hiển thị thông báo và trạng thái lỗi chi tiết cho Admin nếu kết nối API thất bại.
+- **PDF Bundle Import:**
+  - Upload nhiều file PDF; **bundle builder** gán `file_role`: `answer_pdf`, `source_ref_pdf`, `source_content_pdf` (≥1).
+  - Validate theo `VR-UP-*`; **block import** nếu `ocr_required` (OQ-PDF-004).
+  - Parse preview: metadata, source list, warnings (`SOURCE_URL_MISSING` không block).
+  - Confirm import → tạo batch, `pdf_bundle`, trigger pipeline nền.
+- **PDF Parsing & Normalization:**
+  - Trích xuất raw/normalized text từ Answer PDF, Source Ref PDF, Source Content PDF.
+  - Parse metadata (`article_code`, title, category, tier…) và source list (`source_order`, `source_title`, `source_tier`).
+- **Claim Extraction (LLM bước 1):**
+  - Tách claim từ `answer_text_normalized`; mỗi claim = một `Claim Task`.
+  - Giữ `claim_order` từ 1; trace `bundle_id` và PDF filenames.
+  - Annotator có thể sửa `claim_text_final`.
+- **Source Mapping & Validation:**
+  - Map claim ↔ `source_order` qua citation markers; claim không map → `source_mapping_required` (VR-MAP-003).
+  - Annotator đối chiếu **`source_text_extract`** từ PDF; `source_url` optional nếu parse được.
+  - `source_access_status`: `source_text_parsed` / `inaccessible` / `unknown`; inaccessible → `SC = 0.00` + note bắt buộc.
+- **LLM Pre-scoring (LLM bước 2):**
+  - Gọi 1 provider cố định; pre-score 6 dimension; baseline **bất biến**.
+  - Lỗi → `pre_scoring_failed`; Admin retry.
 - **Annotation Workspace:**
   - Hiển thị ngữ cảnh đầy đủ của câu trả lời (answer context) và claim text (có thể sửa).
   - Hiển thị điểm số gợi ý từ AI làm nhãn gợi ý ("AI Draft").
@@ -121,22 +124,17 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
   - Tính điểm tổng hợp `Composite Score` theo công thức trung bình cộng đều (weight = 1).
   - Yêu cầu nhập lý do bắt buộc nếu annotator sửa đổi điểm số lệch quá ngưỡng so với pre-score gợi ý của LLM.
 - **QA Review cơ bản:**
-  - Giao diện cho phép QA xem lại chi tiết task đã submit bởi Annotator.
-  - Hiển thị phần so sánh chênh lệch (diff) giữa điểm của Annotator và pre-score của AI.
-  - Xem lại lịch sử các lần submit/return của task.
-  - QA thực hiện 2 thao tác chính:
-    - **Approve:** Chuyển trạng thái task sang Approved (đủ điều kiện export).
-    - **Return:** Trả task về hàng đợi của Annotator (yêu cầu chọn phân loại lỗi và nhập ghi chú lý do).
+  - **100%** task `Submitted` trong project được giao vào QA queue (không sampling).
+  - Diff Annotator vs pre-score; highlight delta ≥ ±0.20.
+  - Chỉ **Approve** hoặc **Return** — không dispute, không QA sửa điểm (DEC-QA-01).
 - **Export:**
-  - Xuất dữ liệu sạch ra tệp tin định dạng `CSV` ở cấp độ claim (claim-level).
-  - Chỉ xuất các dữ liệu đã được QA duyệt (`Approved`).
-  - Ghi nhận nhật ký audit log cho mỗi lượt xuất dữ liệu.
+  - CSV claim-level theo `docs/03_ba/dan/02_Import_Export_Schema.md` §10 (`bundle_id`, PDF filenames, `article_code`, 6 scores…).
+  - Chỉ `Approved`; UTF-8; audit log `export`.
+  - **Admin** và **QA** (project được giao) được export.
 - **RBAC cơ bản:**
-  - Hỗ trợ phân quyền 3 vai trò: Admin, Annotator và QA.
-  - *Annotator:* Chỉ thấy và làm việc trên các task được chỉ định gán cho mình.
-  - *QA:* Chỉ thấy hàng đợi kiểm duyệt được phân công.
-  - *Admin:* Toàn quyền quản lý project, tài khoản, import và export.
-  - Cơ chế phân quyền được áp dụng đồng bộ trên cả giao diện (UI) và API bảo mật.
+  - 3 vai trò: Admin, Annotator, QA — email/password + JWT.
+  - Annotator: chỉ task được giao. QA: queue + export trong project được giao.
+  - Admin: project, import, export, audit log. **Không** User Management UI đầy đủ.
 - **Audit Log tối thiểu:**
   - Ghi nhận lịch sử cho các sự kiện cốt lõi: *import, claim edit, submit, approve, return, export*.
   - Lưu trữ thông tin cơ bản: User thực hiện, Timestamp, Action type, Object ID.
@@ -166,7 +164,7 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 
 ### Tuần 1 — Xây dựng Nền tảng
 - [ ] Thống nhất và chốt biên giới scope MVP với mentor/stakeholder.
-- [ ] Định nghĩa định dạng dữ liệu import/export chuẩn (CSV hoặc JSON).
+- [ ] Định nghĩa import chuẩn **PDF Bundle** (`file_role`) và export CSV §10.
 - [ ] Chốt LLM provider và kiểm tra tài khoản/kết nối.
 - [ ] Thiết kế kiến trúc nghiệp vụ tự động tách claim (claim extraction flow).
 - [ ] Xây dựng sơ đồ dữ liệu ERD hỗ trợ cấu trúc mở rộng đa modality.
@@ -175,9 +173,8 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 - [ ] Triển khai phân hệ Authentication và RBAC phân quyền cơ bản.
 
 ### Tuần 2 — Hiện thực hóa Luồng Gán nhãn (Annotation Flow)
-- [ ] Phát triển API và giao diện Import dataset (validate schema + preview).
-- [ ] Hiện thực tính năng tự động tách claim (Claim extraction).
-- [ ] Kết nối API và tích hợp cơ chế LLM pre-scoring lưu baseline.
+- [ ] API/UI Import PDF Bundle (validate → preview parse → confirm).
+- [ ] Parser + normalize; pipeline LLM 2 bước (extract claim → pre-score).
 - [ ] Xây dựng màn hình làm việc của Annotator (Annotation Workspace), tích hợp xem ngữ cảnh và chỉnh sửa claim.
 - [ ] Thiết lập các quy định validation bắt buộc (điểm số, trạng thái nguồn, ghi chú).
 - [ ] Phát triển tính năng tự động lưu nháp (auto-save) và luồng submit task.
@@ -262,8 +259,9 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
 
 - **MVP không phải là Phase 1 đầy đủ:** Bản MVP 4 tuần chỉ tập trung vào việc thông luồng dữ liệu thô qua 6 bước cốt lõi chạy được thực tế, không cam kết xây dựng các phần quản lý nâng cao hay giao diện tùy biến phức tạp.
 - **Chỉ hỗ trợ Text Modality:** Mọi nỗ lực lập trình chỉ tập trung vào dữ liệu text. Các modality audio/image chỉ dừng lại ở phân tích thiết kế trên giấy tờ để đảm bảo kiến trúc mở. Tuyệt đối không lập trình UI/player cho audio/image.
-- **Quy trình QA cực kỳ tối giản:** QA chỉ xem kết quả của annotator, so sánh chênh lệch với AI pre-score rồi chọn Approve hoặc Return (trả lại bắt buộc kèm comment lỗi). Không xây dựng Dispute workflow hay tính năng cho QA sửa trực tiếp điểm.
-- **Chỉ xuất CSV claim-level:** Không hỗ trợ xuất XLSX, JSON hay tải file nén ZIP trong MVP 4 tuần để tối ưu thời gian phát triển.
+- **Input chỉ PDF Bundle:** Không CSV/JSON user-facing import. Không yêu cầu user convert thủ công.
+- **Quy trình QA cực kỳ tối giản:** QA review **100%** task submitted; chỉ Approve/Return. Không Dispute, không sampling, không QA sửa điểm.
+- **Chỉ xuất CSV claim-level:** Không XLSX/JSON/bulk ZIP export trong MVP 4 tuần.
 
 ---
 
