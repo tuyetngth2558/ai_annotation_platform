@@ -1,0 +1,8 @@
+{
+  "name": "Remix: AI Annotation Platform",
+  "description": "An interactive workspace for managing PDF bundles, claim list definitions, annotator scoring, and export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
