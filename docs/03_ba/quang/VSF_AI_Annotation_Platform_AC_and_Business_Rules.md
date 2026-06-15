@@ -21,51 +21,51 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
 
 ---
 
-## 2. Import Dataset (Nhập dữ liệu)
+## 2. Import PDF Bundle (Nhập dữ liệu)
 
 ### AC - Tiêu chí nghiệm thu:
-1. **AC-2.1:** Giao diện cho phép Admin đăng tải file dạng `.csv` hoặc `.json` có dung lượng tối đa 10MB.
-2. **AC-2.2:** Hệ thống hiển thị bảng Preview gồm tối đa 5 dòng dữ liệu đầu tiên đọc từ file tải lên để Admin đối chiếu cấu trúc cột.
-3. **AC-2.3:** Nếu file hợp lệ, khi Admin bấm xác nhận, hệ thống sẽ xử lý ngầm (background job), tạo Batch ID và hiển thị thanh tiến trình (progress bar) trạng thái import.
-4. **AC-2.4:** Nếu file bị lỗi schema, hệ thống phải dừng tiến trình và hiển thị chi tiết dòng bị lỗi cùng lý do (ví dụ: *"Dòng 14 thiếu trường dữ liệu bắt buộc source_urls"*).
+1. **AC-2.1:** Giao diện cho phép Admin đăng tải nhiều file PDF và gán file role cho từng file trong một PDF bundle.
+2. **AC-2.2:** Hệ thống hiển thị parse preview gồm metadata bài, source list, source content mapping và parse warnings để Admin đối chiếu trước khi import.
+3. **AC-2.3:** Nếu bundle hợp lệ, khi Admin bấm xác nhận, hệ thống sẽ xử lý ngầm (background job), tạo Batch ID/PDF Bundle/Parent Task và hiển thị trạng thái import.
+4. **AC-2.4:** Nếu PDF bundle bị lỗi validation/parse blocking, hệ thống phải dừng tiến trình và hiển thị chi tiết file/bundle bị lỗi cùng lý do (ví dụ: *"Thiếu source_ref_pdf"* hoặc *"Cannot extract answer text"*).
 
 ### BR - Quy tắc nghiệp vụ:
 - **BR-2.1 (Schema Constraints):**
-  - **CSV File:** Bắt buộc có các tiêu đề cột chính xác: `answer_text`, `source_urls` (danh sách URL cách nhau bởi dấu phẩy hoặc dấu chấm phẩy).
-  - **JSON File:** Bắt buộc là mảng các object có cấu trúc: `[{"answer_text": "...", "source_urls": ["...", "..."]}]`.
-- **BR-2.2 (Null/Empty Validation):** Trường `answer_text` không được phép chứa giá trị rỗng hoặc chỉ có khoảng trắng. Hệ thống sẽ bỏ qua các dòng trống hoàn toàn và ghi log cảnh báo.
-- **BR-2.3 (Audit Log):** Hệ thống bắt buộc phải ghi log sự kiện `import` bao gồm: `user_id` (Admin), `timestamp`, `action_type: import`, `target_object: BatchID`, `record_count` (số dòng import thành công).
+  - **PDF Bundle:** Bắt buộc có đúng 1 `answer_pdf`, đúng 1 `source_ref_pdf`, và ít nhất 1 `source_content_pdf`.
+  - **File Role:** File role chỉ được thuộc `answer_pdf`, `source_ref_pdf`, `source_content_pdf`.
+- **BR-2.2 (Null/Empty Validation):** `answer_text_normalized` sau parse không được rỗng. Nếu không parse được answer text, bundle bị block.
+- **BR-2.3 (Audit Log):** Hệ thống bắt buộc phải ghi log sự kiện `import` bao gồm: `user_id` (Admin), `timestamp`, `action_type: import`, `target_object: BatchID/BundleID`, danh sách file PDF và số claim/task sinh ra nếu có.
 
 ---
 
 ## 3. Claim Extraction (Tự động tách Claim)
 
 ### AC - Tiêu chí nghiệm thu:
-1. **AC-3.1:** Hệ thống tự động phân tích và tách `answer_text` thành các claim đơn lẻ có nghĩa ngay sau khi dòng dữ liệu được import thành công.
+1. **AC-3.1:** Hệ thống tự động phân tích và tách `answer_text_normalized` thành các claim đơn lẻ có nghĩa ngay sau khi PDF bundle được import và parse thành công.
 2. **AC-3.2:** Mỗi claim được lưu thành một bản ghi `Claim Task` độc lập liên kết với câu trả lời gốc (`parent_task_id`).
 3. **AC-3.3:** Annotator khi mở task có thể chỉnh sửa trực tiếp nội dung văn bản của claim (`claim_text`) trong ô nhập liệu (Text Area) và lưu lại thay đổi.
 
 ### BR - Quy tắc nghiệp vụ:
-- **BR-3.1 (Claim Ordering):** Mỗi `Claim Task` sinh ra từ một `answer_text` phải được gắn một chỉ số thứ tự liên tiếp `claim_index` bắt buộc (bắt đầu từ 1). Thứ tự này dùng để hiển thị các claim theo đúng trình tự xuất hiện của chúng trong câu trả lời gốc.
+- **BR-3.1 (Claim Ordering):** Mỗi `Claim Task` sinh ra từ `answer_text_normalized` phải được gắn một chỉ số thứ tự liên tiếp `claim_order` bắt buộc (bắt đầu từ 1). Thứ tự này dùng để hiển thị các claim theo đúng trình tự xuất hiện của chúng trong câu trả lời gốc.
 - **BR-3.2 (Source Check on Import):** 
-  - Nếu bản ghi nguồn không có URL nào trong trường `source_urls`, hệ thống tự động gán trạng thái `Claim Task` là `Source Mapping Required`.
-  - Task ở trạng thái này sẽ không được nạp vào hàng đợi công việc của Annotator cho đến khi Admin thực hiện ánh xạ/bổ sung URL nguồn thông qua giao diện quản trị.
+  - Nếu claim không map được source candidate từ citation marker/source order, hệ thống tự động gán trạng thái `Claim Task` là `Source Mapping Required`.
+  - Task ở trạng thái này sẽ không được nạp vào hàng đợi công việc của Annotator cho đến khi Admin/BA thực hiện ánh xạ/bổ sung source mapping.
 
 ---
 
 ## 4. Source Mapping & Validation (Xác thực nguồn)
 
 ### AC - Tiêu chí nghiệm thu:
-1. **AC-4.1:** Màn hình làm việc hiển thị danh sách tất cả các URL nguồn được liên kết với claim hiện tại dưới dạng các link có thể click để mở tab mới.
-2. **AC-4.2:** Với mỗi URL, Annotator bắt buộc phải tích chọn một trong bốn trạng thái: `Accessible`, `Inaccessible`, `Partially supported`, hoặc `Irrelevant`.
-3. **AC-4.3:** Nếu Annotator đổi trạng thái nguồn thành `Inaccessible`, hệ thống bắt buộc Annotator phải điền lý do chi tiết vào ô nhập liệu bên cạnh URL đó.
+1. **AC-4.1:** Màn hình làm việc hiển thị danh sách source được liên kết với claim hiện tại gồm source order/title/tier, source text extract, source file ref và URL nếu parse được.
+2. **AC-4.2:** Với mỗi source, Annotator bắt buộc phải chọn trạng thái phù hợp: `source_text_parsed`, `inaccessible`, `unparsed`, `ocr_required`, `partially_supported`, hoặc `irrelevant`.
+3. **AC-4.3:** Nếu Annotator đổi trạng thái nguồn thành `inaccessible`, `unparsed` hoặc `ocr_required`, hệ thống bắt buộc Annotator phải điền lý do chi tiết vào ô nhập liệu bên cạnh source đó.
 
 ### BR - Quy tắc nghiệp vụ:
 - **BR-4.1 (Source Validation Lock):** 
-  - Nếu **bất kỳ** URL nguồn nào của claim bị đánh dấu là `Inaccessible` (Không truy cập được):
+  - Nếu **bất kỳ** source nào của claim bị đánh dấu là `inaccessible`, `unparsed` hoặc `ocr_required`:
     - Điểm số của chiều đánh giá `SC` (Source Coverage) tự động gán bằng `0.00`.
     - Ô nhập điểm của chiều `SC` trên giao diện sẽ bị khóa (read-only) và không cho phép Annotator sửa đổi thủ công.
-  - Nếu tất cả các nguồn của claim đều ở trạng thái khác (Accessible, Partially supported, Irrelevant), ô nhập điểm `SC` sẽ được mở khóa để đánh giá bình thường.
+  - Nếu tất cả các nguồn của claim đều ở trạng thái khác (`source_text_parsed`, `partially_supported`, `irrelevant`), ô nhập điểm `SC` sẽ được mở khóa để đánh giá bình thường.
 
 ---
 
@@ -84,7 +84,7 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
 ## 6. Annotation Workspace (Màn hình gán nhãn)
 
 ### AC - Tiêu chí nghiệm thu:
-1. **AC-6.1:** Màn hình gán nhãn hiển thị đầy đủ ngữ cảnh: nội dung câu trả lời gốc (`answer_text` - read-only), claim text đang đánh giá (editable), và danh sách nguồn.
+1. **AC-6.1:** Màn hình gán nhãn hiển thị đầy đủ ngữ cảnh: nội dung câu trả lời gốc đã parse (`answer_text_normalized` - read-only), claim text đang đánh giá (editable), và danh sách nguồn.
 2. **AC-6.2:** Annotator nhập điểm số cho các chiều, hệ thống tự động tính toán và hiển thị điểm tổng hợp trung bình (`Composite Score`) theo thời gian thực.
 3. **AC-6.3:** Khi bấm "Submit", hệ thống kiểm tra toàn bộ dữ liệu nhập vào: nếu hợp lệ sẽ gửi task đi và chuyển sang task tiếp theo trong hàng đợi.
 
@@ -93,7 +93,7 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
   - Hệ thống tự động thực hiện hành động lưu nháp dữ liệu gán nhãn (Auto-save) lên cơ sở dữ liệu với tần suất **30 giây một lần** hoặc **ngay khi Annotator chuyển con trỏ ra ngoài ô nhập liệu (blur event)** của bất kỳ trường điểm số hoặc text nào.
   - Tiến trình Auto-save không được gây đơ hoặc giật lag giao diện (phải chạy bất đồng bộ).
 - **BR-6.2 (Submit Validation):** Nút "Submit" chỉ được kích hoạt (enabled) khi thỏa mãn tất cả các điều kiện sau:
-  1. Toàn bộ các URL nguồn đã được xác nhận trạng thái.
+  1. Toàn bộ source liên quan đã được xác nhận trạng thái.
   2. Toàn bộ 6 chiều điểm số đã được điền đầy đủ giá trị hợp lệ (trừ chiều SC bị khóa).
   3. Văn bản của claim (`claim_text`) không bị để trống hoặc chỉ có dấu cách.
   4. Đã nhập lý do giải trình nếu điểm số vượt ngưỡng chênh lệch quy định.
@@ -103,14 +103,14 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
 ## 7. Structured Evaluation (Bộ tiêu chí Vivipedia)
 
 ### AC - Tiêu chí nghiệm thu:
-1. **AC-7.1:** Giao diện hiển thị đúng 6 chiều tiêu chí: SF, SC, NH, SQ, REL, COMP.
+1. **AC-7.1:** Giao diện hiển thị đúng 6 chiều tiêu chí: SF, SC, HR, SQ, REL, COMP.
 2. **AC-7.2:** Các ô nhập điểm chỉ chấp nhận giá trị số thập phân trong khoảng từ `0.00` đến `1.00`.
 3. **AC-7.3:** Hệ thống hiển thị điểm tổng hợp `Composite Score` bằng số thập phân (lấy 2 chữ số sau dấu phẩy).
 
 ### BR - Quy tắc nghiệp vụ:
 - **BR-7.1 (Input Validation Regex):** Điểm số nhập vào frontend và backend phải được validate theo biểu thức chính quy (Regex): `^(0(\.\d{1,2})?|1(\.0{1,2})?)$`. Bất kỳ giá trị nào ngoài khoảng $[0.00, 1.00]$ hoặc có nhiều hơn 2 chữ số thập phân (ví dụ: `0.785`) đều bị từ chối và báo lỗi.
 - **BR-7.2 (Composite Score Formula):** Điểm Composite Score được tính bằng trung bình cộng không trọng số của cả 6 chiều:
-  $$\text{Composite Score} = \text{Round}\left(\frac{SF + SC + NH + SQ + REL + COMP}{6}, 2\right)$$
+  $$\text{Composite Score} = \text{Round}\left(\frac{SF + SC + HR + SQ + REL + COMP}{6}, 2\right)$$
   *(Trong đó hàm `Round` thực hiện làm tròn số đến 2 chữ số thập phân gần nhất).*
 - **BR-7.3 (Justification Trigger):**
   - Ngưỡng chênh lệch bắt buộc giải trình được cấu hình cố định trong MVP là **$\ge \pm 0.20$**.
@@ -145,7 +145,7 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
 
 ### BR - Quy tắc nghiệp vụ:
 - **BR-9.1 (Export State Filtering):** Query xuất dữ liệu bắt buộc phải lọc nghiêm ngặt theo điều kiện `status = 'Approved'`. Tuyệt đối không xuất các task ở trạng thái nháp (`Assigned`), đang đợi duyệt (`Submitted`) hoặc bị trả về (`Returned`).
-- **BR-9.2 (CSV Formatting):** Nội dung text trong trường `answer_text` và `claim_text` khi xuất ra CSV phải được bao quanh bởi dấu ngoặc kép đôi `"` và thực hiện escape các ký tự đặc biệt (ví dụ: dấu phẩy `,`, dấu xuống dòng `\n`, dấu ngoặc kép `"`) để tránh phá vỡ cấu trúc file CSV.
+- **BR-9.2 (CSV Formatting):** Nội dung text trong các trường như `claim_text_original`, `claim_text_final`, `mapped_source_titles` và note khi xuất ra CSV phải được bao quanh bởi dấu ngoặc kép đôi `"` và thực hiện escape các ký tự đặc biệt (ví dụ: dấu phẩy `,`, dấu xuống dòng `\n`, dấu ngoặc kép `"`) để tránh phá vỡ cấu trúc file CSV.
 - **BR-9.3 (Audit Log):** Ghi nhận hành động export vào Audit Log: `user_id` (Admin), `timestamp`, `action_type: export`, `target_object: ProjectID/BatchID`, `exported_row_count`.
 
 ---

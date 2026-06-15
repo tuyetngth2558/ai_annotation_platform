@@ -13,34 +13,35 @@ Trong phạm vi MVP, hệ thống thực thi phân quyền cơ bản cho 3 vai t
 
 ---
 
-## 2. Luồng Import Dataset (Import Flow)
+## 2. Luồng Import PDF Bundle (Import Flow)
 
-### US-01: Import Dataset thủ công (Admin)
+### US-01: Import PDF Bundle thủ công (Admin)
 - **Mô tả:**
   - **As an** Admin,
-  - **I want to** upload a CSV or JSON file containing Vivipedia dataset items,
-  - **So that** the system can ingest the raw data and prepare it for the annotation pipeline.
+  - **I want to** upload a PDF bundle containing the Vivipedia answer, source reference list, and source content PDFs,
+  - **So that** the system can ingest the real portal output and prepare it for the annotation pipeline.
 - **Tiêu chí nghiệm thu (Acceptance Criteria):**
-  1. Giao diện Setup/Import cho phép Admin kéo thả hoặc chọn tệp tin từ máy tính (chấp nhận định dạng `.csv` và `.json`).
-  2. Hệ thống kiểm tra cấu trúc dữ liệu đầu vào (schema validation):
-     - Dữ liệu bắt buộc phải có cột/trường `answer_text` và thông tin liên kết nguồn (URLs).
-     - Nếu cấu trúc không hợp lệ hoặc thiếu trường bắt buộc, hệ thống hiển thị thông báo lỗi chi tiết (ví dụ: *"Dòng 15 thiếu trường answer_text"* hoặc *"Định dạng file không được hỗ trợ"*).
-  3. Hệ thống hiển thị phần xem trước (Preview) tối đa 5 dòng dữ liệu đầu tiên của file để Admin xác nhận trước khi thực hiện import chính thức.
-  4. Sau khi Admin bấm "Confirm Import", hệ thống tự động tạo một Batch mới và các công việc tương ứng.
-  5. Nhật ký hệ thống (Audit Log) ghi nhận hành động: `import` (Admin ID, Tên file, Số lượng dòng, Batch ID, Timestamp).
+  1. Giao diện Setup/Import cho phép Admin kéo thả hoặc chọn nhiều file PDF từ máy tính.
+  2. Admin có thể gán file role cho từng file: đúng 1 `answer_pdf`, đúng 1 `source_ref_pdf`, và ít nhất 1 `source_content_pdf`.
+  3. Hệ thống validate bundle theo PDF-native schema:
+     - Block nếu thiếu/trùng `answer_pdf` hoặc `source_ref_pdf`, không có `source_content_pdf`, file không phải PDF, file corrupt, hoặc vượt max size.
+     - Warning nếu `source_url` không parse được nhưng vẫn có `source_order`, `source_title`, `source_tier` và source text đủ dùng.
+  4. Hệ thống hiển thị parse preview gồm metadata bài, normalized answer text summary, source list, source content mapping và parse warnings để Admin xác nhận trước khi import.
+  5. Sau khi Admin bấm "Confirm Import", hệ thống tự động tạo Batch, PDF Bundle, Parent Task và kích hoạt pipeline nền.
+  6. Nhật ký hệ thống (Audit Log) ghi nhận hành động: `import` (Admin ID, bundle/file names, Batch ID, Timestamp).
 
 ### US-02: Tự động tách Claim (Claim Extraction) & Tạo Task (System)
 - **Mô tả:**
   - **As an** Admin/System,
-  - **I want the system to** automatically split `answer_text` into separate claims and generate tasks,
+  - **I want the system to** automatically split parsed `answer_text_normalized` into separate claims and generate tasks,
   - **So that** the data is structured at a granular claim level for annotators to review.
 - **Tiêu chí nghiệm thu (Acceptance Criteria):**
-  1. Ngay sau khi dataset được import thành công, hệ thống tự động kích hoạt tiến trình tách claim từ trường `answer_text` của từng dòng dữ liệu.
+  1. Ngay sau khi PDF bundle được import và parse thành công, hệ thống tự động kích hoạt tiến trình tách claim từ `answer_text_normalized`.
   2. Mỗi claim sau khi tách được lưu trữ dưới dạng một `Claim Task` độc lập trong cơ sở dữ liệu.
-  3. Hệ thống phải đảm bảo giữ nguyên thứ tự xuất hiện gốc của các claim trong câu trả lời câu trả lời (`answer_text`) thông qua chỉ số thứ tự (`claim_index`).
-  4. Các `Claim Task` này phải liên kết trực tiếp với bản ghi nguồn (`answer_text` gốc và danh sách URL nguồn đi kèm).
+  3. Hệ thống phải đảm bảo giữ nguyên thứ tự xuất hiện gốc của các claim trong câu trả lời (`answer_text_normalized`) thông qua chỉ số thứ tự (`claim_order`).
+  4. Các `Claim Task` này phải liên kết trực tiếp với Parent Task, Answer PDF gốc và các source candidate parse từ Source Reference/Source Content PDF.
   5. **Quy tắc kiểm tra nguồn (Source Checking Rule):**
-     - Nếu một claim không có bất kỳ URL nguồn nào đi kèm, hệ thống tự động chuyển trạng thái của task đó thành `Source Mapping Required` và tạm thời **không** đưa vào hàng đợi làm việc (queue) của Annotator.
+     - Nếu một claim không có source candidate nào map được từ citation marker/source order, hệ thống tự động chuyển trạng thái của task đó thành `Source Mapping Required` và tạm thời **không** đưa vào hàng đợi làm việc (queue) của Annotator.
 
 ### US-03: Gọi LLM Pre-scoring lấy điểm gợi ý (System)
 - **Mô tả:**
@@ -49,7 +50,7 @@ Trong phạm vi MVP, hệ thống thực thi phân quyền cơ bản cho 3 vai t
   - **So that** the annotators have a baseline suggestion ("AI Draft") when they start working.
 - **Tiêu chí nghiệm thu (Acceptance Criteria):**
   1. Với mỗi `Claim Task` có nguồn hợp lệ, hệ thống tự động gọi API tới 1 LLM provider cố định đã cấu hình trong dự án.
-  2. Gửi request kèm theo prompt template, claim text và nội dung/URL nguồn để LLM đánh giá điểm cho 6 dimension của Vivipedia.
+  2. Gửi request kèm theo prompt template, claim text, answer context và source text/URL nếu có để LLM đánh giá điểm cho 6 dimension của Vivipedia.
   3. Hệ thống lưu trữ các điểm số pre-score này vào cơ sở dữ liệu làm **baseline bất biến** (không cho phép bất kỳ ai chỉnh sửa bản ghi baseline này).
   4. Hiển thị điểm số gợi ý này trên màn hình gán nhãn dưới nhãn "AI Draft" cho từng dimension.
   5. Trường hợp kết nối API tới LLM thất bại (timeout, sai key, v.v.), hệ thống phải ghi nhận lỗi chi tiết, gắn trạng thái `Pre-scoring Failed` của task để Admin tiện theo dõi và cung cấp nút bấm "Retry" thủ công cho Admin.
@@ -69,21 +70,22 @@ Trong phạm vi MVP, hệ thống thực thi phân quyền cơ bản cho 3 vai t
   3. Giao diện hỗ trợ bộ lọc nhanh theo trạng thái (`Assigned`, `Returned`) hoặc tìm kiếm theo ID.
   4. Bấm vào một task trong danh sách sẽ mở ra giao diện làm việc chi tiết (Annotation Workspace).
 
-### US-05: Đánh giá và xác nhận trạng thái URL nguồn (Annotator)
+### US-05: Đánh giá và xác nhận trạng thái nguồn (Annotator)
 - **Mô tả:**
   - **As an** Annotator,
-  - **I want to** inspect each source URL associated with the claim and evaluate its accessibility,
-  - **So that** I can flag invalid or broken sources.
+  - **I want to** inspect each source associated with the claim and evaluate whether the parsed source text or URL supports the claim,
+  - **So that** I can flag source issues and complete SC/HR scoring correctly.
 - **Tiêu chí nghiệm thu (Acceptance Criteria):**
-  1. Tại Workspace, hệ thống hiển thị danh sách các URL nguồn liên kết với claim đang thực hiện.
-  2. Với từng URL, Annotator bắt buộc phải chọn một trong bốn trạng thái:
-     - `Accessible` (Truy cập được)
-     - `Inaccessible` (Không truy cập)
-     - `Partially supported` (Hỗ trợ một phần)
-     - `Irrelevant` (Không liên quan)
+  1. Tại Workspace, hệ thống hiển thị danh sách source liên kết với claim gồm source order/title/tier, source text extract, source file ref và URL nếu parse được.
+  2. Với từng source, Annotator bắt buộc phải chọn trạng thái nguồn phù hợp:
+     - `source_text_parsed` (Có text từ PDF để đối chiếu)
+     - `inaccessible` (Không truy cập/không dùng được)
+     - `unparsed` hoặc `ocr_required` (Không parse được/cần OCR)
+     - `partially_supported` (Hỗ trợ một phần)
+     - `irrelevant` (Không liên quan)
   3. **Quy tắc nghiệp vụ tự động (Automated Business Rule):**
-     - Nếu Annotator đánh dấu trạng thái nguồn là `Inaccessible`, hệ thống tự động gán điểm của chiều đánh giá `SC` (Source Coverage) = `0.00` và khóa (disable) trường nhập điểm của chiều này.
-     - Annotator bắt buộc phải nhập ghi chú lý do tại nguồn bị hỏng đó thì hệ thống mới cho phép lưu/submit.
+     - Nếu Annotator đánh dấu trạng thái nguồn là `inaccessible`, `unparsed` hoặc `ocr_required`, hệ thống bắt buộc có ghi chú lý do trước khi submit.
+     - Source URL bị thiếu không tự động làm lỗi nếu source text từ PDF vẫn đối chiếu được.
 
 ### US-06: Đánh giá 6 chiều tiêu chí Vivipedia & Sửa đổi Claim (Annotator)
 - **Mô tả:**
@@ -93,7 +95,7 @@ Trong phạm vi MVP, hệ thống thực thi phân quyền cơ bản cho 3 vai t
 - **Tiêu chí nghiệm thu (Acceptance Criteria):**
   1. Annotator được phép chỉnh sửa nội dung văn bản của claim (`claim_text`) trong một ô nhập liệu nếu thuật toán tự động tách chưa chuẩn.
   2. Giao diện hiển thị trực quan điểm số gợi ý từ AI ("AI Draft") kế bên mỗi chiều đánh giá để tham chiếu.
-  3. Ô nhập điểm cho 6 chiều (SF, SC, NH, SQ, REL, COMP) chỉ chấp nhận giá trị số từ `0.00` đến `1.00`, độ chính xác tối đa 2 chữ số thập phân.
+  3. Ô nhập điểm cho 6 chiều (SF, SC, HR, SQ, REL, COMP) chỉ chấp nhận giá trị số từ `0.00` đến `1.00`, độ chính xác tối đa 2 chữ số thập phân.
   4. Hệ thống tự động tính toán điểm tổng hợp `Composite Score` bằng công thức trung bình cộng đều (tất cả trọng số bằng 1) và hiển thị kết quả ngay lập tức trên UI khi có sự thay đổi điểm.
   5. **Quy tắc bắt buộc giải trình (Justification Rule):**
      - Nếu Annotator nhập điểm lệch quá ngưỡng quy định (ví dụ: lệch quá $\pm 0.20$ so với AI Pre-score), hệ thống bắt buộc Annotator phải điền lý do vào ô "Ghi chú giải trình thay đổi điểm" cho dimension đó.
@@ -170,18 +172,18 @@ Trong phạm vi MVP, hệ thống thực thi phân quyền cơ bản cho 3 vai t
   1. Nút "Export CSV" tại màn hình quản lý dự án chỉ hiển thị và cho phép nhấn đối với người dùng có vai trò Admin.
   2. Hệ thống thực hiện truy vấn và chỉ xuất dữ liệu từ những task có trạng thái là `Approved`.
   3. Dữ liệu xuất ra ở định dạng CSV phẳng cấp độ claim (claim-level - mỗi dòng trong file CSV tương ứng với một claim đã duyệt).
-  4. File CSV xuất ra chứa đầy đủ các trường thông tin sau:
-     - `task_id` (Mã định danh của Claim Task)
+  4. File CSV xuất ra chứa đầy đủ các trường claim-level bắt buộc theo schema PDF-native, gồm tối thiểu:
+     - `bundle_id`, `answer_pdf_filename`, `source_ref_pdf_filename` (Trace về PDF bundle gốc)
+     - `claim_id` hoặc `task_id` (Mã định danh của Claim Task)
      - `parent_task_id` (Mã định danh của câu trả lời gốc)
-     - `answer_text` (Nội dung câu trả lời gốc)
-     - `claim_text` (Nội dung claim đã duyệt)
-     - `source_urls` (Danh sách URL nguồn)
-     - `source_statuses` (Trạng thái tương ứng của các URL nguồn)
-     - Điểm số chi tiết 6 chiều: `score_sf`, `score_sc`, `score_nh`, `score_sq`, `score_rel`, `score_comp`
+     - `article_code`, `title`, `answer_reference`
+     - `claim_text_original`, `claim_text_final`
+     - `mapped_source_orders`, `mapped_source_titles`, `source_file_refs`, `source_parse_status`, `source_access_status`
+     - Điểm số chi tiết 6 chiều: `ann_sf`, `ann_sc`, `ann_hr`, `ann_sq`, `ann_rel`, `ann_comp`
      - `composite_score` (Điểm tổng hợp trung bình)
      - `annotator_id` (Mã người gán nhãn)
      - `qa_id` (Mã người kiểm duyệt)
-     - `approved_at` (Thời gian phê duyệt)
+     - `submitted_at`, `reviewed_at` (Thời gian submit/review)
   5. Nhật ký hệ thống (Audit Log) ghi nhận hành động: `export` (Admin ID, Tên file, Số dòng xuất ra, Timestamp).
 
 ---
@@ -192,14 +194,14 @@ Trong phạm vi MVP, hệ thống thực thi phân quyền cơ bản cho 3 vai t
 
 ```mermaid
 state-diagram-v2
-    [*] --> Source_Mapping_Required : Import (Không có URL)
-    [*] --> Pre_scoring_Pending : Import (Có URL)
+    [*] --> Source_Mapping_Required : Import (Không map được source candidate)
+    [*] --> Pre_scoring_Pending : Import (Có source candidate)
     
     Pre_scoring_Pending --> Pre_scoring_Failed : Lỗi gọi API LLM
     Pre_scoring_Failed --> Pre_scoring_Pending : Admin bấm Retry
     
     Pre_scoring_Pending --> Assigned : LLM Pre-score thành công
-    Source_Mapping_Required --> Assigned : Đã bổ sung URL nguồn
+    Source_Mapping_Required --> Assigned : Đã bổ sung/mapping source
     
     Assigned --> Submitted : Annotator bấm Submit (Đã lưu nháp)
     Returned --> Submitted : Annotator sửa & bấm Submit lại
@@ -212,7 +214,7 @@ state-diagram-v2
 
 | Trạng thái | Ý nghĩa | Vai trò tác động |
 | :--- | :--- | :--- |
-| `Source Mapping Required` | Task bị thiếu URL nguồn, cần Admin bổ sung trước khi gán nhãn. | Admin |
+| `Source Mapping Required` | Task không map được source candidate, cần Admin/BA bổ sung hoặc xác nhận mapping trước khi gán nhãn. | Admin |
 | `Pre-scoring Pending` | Đang đợi hệ thống gọi LLM lấy điểm gợi ý. | System |
 | `Pre-scoring Failed` | Gọi API LLM lỗi, chờ Admin cấu hình lại hoặc bấm retry. | System / Admin |
 | `Assigned` | Đã gán cho Annotator, đang trong hàng đợi gán nhãn hoặc lưu nháp. | Annotator |
