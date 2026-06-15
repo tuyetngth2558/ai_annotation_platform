@@ -7,7 +7,7 @@
 > ⚠️ **FILE NÀY PHẢI ĐƯỢC CẬP NHẬT.** Quy ước "ai cập nhật gì, khi nào" ở cuối file và
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
-**Cập nhật lần cuối:** 2026-06-09 · **Bởi:** sửa security/quality review (RBAC enforce, storage path-traversal, DB constraints, quality gates)
+**Cập nhật lần cuối:** 2026-06-15 · **Bởi:** Tuấn Anh (devops) — CI pipeline + env template + uv lockfile
 
 ---
 
@@ -52,6 +52,8 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 | Storage interface (local/S3) | ✅ | path-traversal validate ✅; route đọc file chưa nối |
 | DB constraints | ✅ | CHECK score range + trigger immutable (audit/pre-score) |
 | Quality gates (ruff/eslint/CI fail-on-error) | ✅ | ruff 0 lỗi, eslint config, bỏ `||true` |
+| CI pipeline (GitHub Actions) | ✅ | backend lint+test + frontend build+test; trigger PR/push main/develop |
+| `.env.example` backend | ✅ | template đầy đủ biến cho Vercel+Render+Supabase |
 | LLM interface | 🚧 | chỉ có MockProvider; 🔒 OQ-002 chưa chốt provider |
 | ARQ worker + pipeline | 🚧 | khung xong, các bước TODO |
 | i18n (vi/en) + theme OKLCH | ✅ | |
