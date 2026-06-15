@@ -12,6 +12,7 @@ logs/
 .env
 .env.*
 !.env.example                 # template phải được commit
+!**/.env.example              # un-ignore trong subdirectory (src/backend/)
 
 # Local object storage (STORAGE_BACKEND=local)
 var/
