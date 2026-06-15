@@ -52,9 +52,9 @@ project B. Đây không phải role toàn cục đơn giản.
   chuẩn sẵn, viết nhanh.
 
 **Nhược điểm (và cách bù):**
-- **Phải tự làm đúng (dễ sai bảo mật)** — *Bù:* dùng thư viện chuẩn: `passlib[bcrypt]`
-  (hash), `pyjwt` (JWT), `cryptography`/Fernet (mã hóa API key — BR-1.2). Không tự chế
-  thuật toán.
+- **Phải tự làm đúng (dễ sai bảo mật)** — *Bù:* dùng thư viện chuẩn: `bcrypt` (hash —
+  dùng trực tiếp, không qua passlib vì passlib lỗi với bcrypt 4+), `pyjwt` (JWT),
+  `cryptography`/Fernet (mã hóa API key — BR-1.2). Không tự chế thuật toán.
 - **Phải tự làm MFA/SSO nếu sau cần** — *Bù:* MVP không cần (OQ-006 hoãn MFA); thêm sau khi
   có nhu cầu, không chặn hiện tại.
 - **Tốn công ban đầu hơn dùng dịch vụ** — *Bù:* phần khó (RBAC per-project) phải tự viết
@@ -79,7 +79,7 @@ project B. Đây không phải role toàn cục đơn giản.
 
 ## 3b. Chi phí · Rủi ro · Phương án dự phòng
 
-**Chi phí:** Tự viết = $0 (thư viện open-source: passlib/pyjwt/cryptography). Không phí
+**Chi phí:** Tự viết = $0 (thư viện open-source: bcrypt/pyjwt/cryptography). Không phí
 dịch vụ như Auth0/Clerk (trả phí theo MAU khi scale). Chi phí là **thời gian dev** — nhưng
 phần khó (RBAC per-project) phải tự viết dù chọn gì.
 
@@ -106,14 +106,17 @@ một lớp IdP (Keycloak tự host, hoặc Auth0) cho phần *authentication*, 
 > mức cho tool nội bộ.
 
 ## 5. Hệ quả & lưu ý bảo mật
-- **Hash:** bcrypt (passlib) — không bao giờ SHA/MD5/plain.
+- **Hash:** bcrypt (dùng trực tiếp, không passlib) — không bao giờ SHA/MD5/plain.
 - **Token:** JWT (pyjwt), algorithm pin cố định; `JWT_SECRET` đổi ở staging/prod (≥32 bytes).
 - **API key LLM:** mã hóa Fernet at-rest (BR-1.2), `SECRET_ENCRYPTION_KEY` không commit.
 - **RBAC:** `require_role` / `require_project_role` qua FastAPI `Depends()` trên *mọi*
   endpoint, không chỉ UI.
 - **Audit immutable** (BR-10.1): `REVOKE UPDATE,DELETE ON audit_log`.
-- **Mock login** đợt scaffold khóa bằng `AUTH_MOCK_ENABLED` (chỉ dev; staging/prod tắt → raise).
-- **TODO:** login thật (verify DB), refresh token, get_current_user — chưa implement (scaffold).
+- **Mock login** khóa bằng `AUTH_MOCK_ENABLED` (chỉ dev; staging/prod tắt → raise).
+- **Đã implement:** login thật (verify DB + bcrypt), access+refresh token (refresh revalidate
+  user trong DB), change-password, `get_current_user` (chỉ access token), Admin tạo user.
+- **TODO (phase sau, BA hoãn):** register công khai, OAuth Google/Microsoft, verify email, MFA,
+  refresh token revoke list.
 
 ## 6. Tham chiếu
 - ADR: [0003-self-written-auth.md](../../adr/0003-self-written-auth.md)

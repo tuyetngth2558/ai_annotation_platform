@@ -31,5 +31,24 @@ async def client(app):
         yield ac
 
 
-# TODO(test): db_session fixture (async engine + create_all trên aiosqlite/postgres test)
-#   để integration test chạm DB. Dùng fixtures/ cho seed data.
+@pytest.fixture
+async def db_session():
+    """AsyncSession dùng DB thật (postgres container) — cho test chạm DB.
+
+    Tạo engine riêng PER-TEST với NullPool: pytest-asyncio tạo event loop mới mỗi
+    test, dùng engine module-level (pool) sẽ lỗi "Event loop is closed" lúc teardown.
+    NullPool không giữ connection qua loop → sạch. Mỗi test tự dọn data nó tạo.
+    Cần postgres + migration head; chạy trong container (make test-be).
+    """
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from app.core.config import settings
+
+    engine = create_async_engine(settings.database_url, poolclass=NullPool)
+    maker = async_sessionmaker(bind=engine, expire_on_commit=False)
+    try:
+        async with maker() as session:
+            yield session
+    finally:
+        await engine.dispose()

@@ -33,7 +33,8 @@ async def get_current_user(
     if creds is None:
         raise AuthError("Thiếu token xác thực.")
     try:
-        payload = decode_token(creds.credentials)
+        # CHỈ chấp nhận access token — chặn refresh token (TTL dài) gọi route bảo vệ.
+        payload = decode_token(creds.credentials, expected_type="access")
     except jwt.PyJWTError as exc:
         raise AuthError("Token không hợp lệ hoặc đã hết hạn.") from exc
 

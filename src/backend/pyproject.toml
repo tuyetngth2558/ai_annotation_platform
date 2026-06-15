@@ -19,7 +19,7 @@ dependencies = [
     # --- Worker / queue ---
     "arq>=0.26",
     # --- Auth / security ---
-    "passlib[bcrypt]>=1.7",          # hash password
+    "bcrypt>=4.1",                   # hash password (dùng trực tiếp, không qua passlib)
     "pyjwt>=2.10",                   # JWT
     "cryptography>=44.0",            # Fernet — encrypt LLM API key at-rest (BR-1.2)
     # --- Storage (S3 / MinIO) ---

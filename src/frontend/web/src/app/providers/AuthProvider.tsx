@@ -1,11 +1,12 @@
 /**
  * AuthProvider — giữ session (token + role + email), expose login/logout.
- * Đợt scaffold: login gọi /auth/login (backend mock trả JWT thật) → lưu token,
- * RoleGuard điều hướng theo role. Verify thật để TODO ở backend.
+ * Login gọi /auth/login → backend verify password DB (login thật, có mock dev khi
+ * AUTH_MOCK_ENABLED) → lưu access token, RoleGuard điều hướng theo role.
+ * refresh_token có nhưng FE chưa dùng (backend-only — xem login() bên dưới).
  */
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { apiFetch, getToken, setToken } from "@/shared/lib/apiClient";
-import type { AuthSession, LoginRequest, LoginResponse, Role } from "@/shared/types/auth";
+import type { AuthSession, LoginRequest, LoginResponse } from "@/shared/types/auth";
 
 interface AuthContextValue {
   session: AuthSession | null;
@@ -34,6 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    // Backend cũng trả refresh_token, nhưng FE hiện CHƯA dùng (auth refresh là
+    // backend-only ở PR này). TODO(auth-fe): lưu refresh_token + gọi /auth/refresh
+    // khi access token hết hạn, để không bắt login lại. Xem docs/adr/0006.
     setToken(res.access_token);
     const next: AuthSession = { accessToken: res.access_token, email: res.email, role: res.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(next));
@@ -56,16 +60,4 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth phải dùng trong AuthProvider");
   return ctx;
-}
-
-/** Trang mặc định sau login theo role. */
-export function defaultRouteForRole(role: Role): string {
-  switch (role) {
-    case "ADMIN":
-      return "/admin/dashboard";
-    case "ANNOTATOR":
-      return "/annotator/tasks";
-    case "QA":
-      return "/qa/queue";
-  }
 }
