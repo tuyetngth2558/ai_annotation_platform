@@ -11,7 +11,7 @@
 |---|---|---|---:|---|
 | VR-UP-001 | Upload | Mỗi bundle phải có đúng 1 `answer_pdf` | Yes | Missing or duplicate answer PDF |
 | VR-UP-002 | Upload | Mỗi bundle phải có đúng 1 `source_ref_pdf` | Yes | Missing or duplicate source reference PDF |
-| VR-UP-003 | Upload | Mỗi bundle phải có ít nhất 1 `source_content_pdf` | Yes | At least one source content PDF is required |
+| ~~VR-UP-003~~ (removed) | Upload | `source_content_pdf` là optional (0..N). Nếu thiếu, không block import — annotator/LLM dựa vào `source_ref_pdf` metadata + optional URL. Đã bỏ rule cũ. | n/a | Deprecated; `source_content_pdf` is optional |
 | VR-UP-004 | Upload | Tất cả file phải là PDF hợp lệ | Yes | Invalid PDF file |
 | VR-UP-005 | Upload | File không vượt quá max size cấu hình | Yes | File too large |
 | VR-UP-006 | Upload | `bundle_name` không được rỗng | Yes | bundle_name is required |

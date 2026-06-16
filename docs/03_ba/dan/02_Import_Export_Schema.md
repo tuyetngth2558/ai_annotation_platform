@@ -66,7 +66,7 @@ CSV/JSON không phải input chính từ user. Hệ thống vẫn có internal n
 |---|---:|---:|---|
 | `answer_pdf` | Yes | 1 | PDF câu trả lời/bài viết nguyên bản |
 | `source_ref_pdf` | Yes | 1 | PDF danh sách nguồn, source order, title, tier và hyperlink nếu có |
-| `source_content_pdf` | Yes | 1+ | PDF nội dung nguồn/văn bản gốc để đối chiếu |
+| `source_content_pdf` | No | 0..N | PDF nội dung nguồn/văn bản gốc để đối chiếu (optional; nếu có thì là evidence chính) |
 
 ---
 
@@ -117,7 +117,7 @@ CSV/JSON không phải input chính từ user. Hệ thống vẫn có internal n
 
 Rule canonical cho MVP theo Quang AC:
 
-1. `source_content_pdf` là nguồn chứng cứ chính để annotator/LLM đối chiếu claim qua `source_text_extract`.
+1. `source_content_pdf` (nếu có) là nguồn chứng cứ chính để annotator/LLM đối chiếu claim qua `source_text_extract`. Bundle **không bắt buộc** có file này; nếu thiếu, annotator/LLM dựa vào `source_ref_pdf` metadata + optional hyperlink URL khi có.
 2. Hyperlink URL parse từ `source_ref_pdf` chỉ là metadata tham chiếu/phụ trợ trong MVP. Thiếu URL không block import.
 3. Hệ thống không yêu cầu annotator mở URL ngoài để submit.
 4. Nếu có URL, UI hiển thị URL như link tham khảo; không dùng URL fetch realtime để ghi đè `source_text_extract` trong MVP.

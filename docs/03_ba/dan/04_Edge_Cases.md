@@ -124,7 +124,7 @@
 
 | ID | Scenario | Expected Behavior | Priority |
 |---|---|---|---|
-| EC-FETCH-001 | URL return 404/403 | Post-MVP: log error; fallback sang `source_content_pdf` nếu có | Medium |
+| EC-FETCH-001 | URL return 404/403 | Post-MVP: log error; fallback sang `source_content_pdf` nếu bundle có; nếu bundle không có file source content thì `source_access_status = inaccessible`, SC = 0.00, source_note bắt buộc | Medium |
 | EC-FETCH-002 | URL redirect 301/302 | Post-MVP: follow redirect max 5 hops | Low |
 | EC-FETCH-003 | Page là PDF inline/embed | Post-MVP: detect Content-Type and extract text; trace riêng | Medium |
 | EC-FETCH-004 | Connection timeout | Post-MVP: retry 3 lần với exponential backoff | Low |

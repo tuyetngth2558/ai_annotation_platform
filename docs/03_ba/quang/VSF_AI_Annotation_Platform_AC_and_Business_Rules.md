@@ -27,7 +27,7 @@ Tài liệu gốc cho Dev viết validation và QA thiết kế test cases.
 ## 2. Import PDF Bundle
 
 ### AC
-1. **AC-2.1:** Upload nhiều file PDF; gán `file_role`: `answer_pdf` (1), `source_ref_pdf` (1), `source_content_pdf` (≥1). `bundle_name` bắt buộc.
+1. **AC-2.1:** Upload nhiều file PDF; gán `file_role`: `answer_pdf` (1), `source_ref_pdf` (1), `source_content_pdf` (0..N, optional). `bundle_name` bắt buộc.
 2. **AC-2.2:** Parse preview: metadata answer, source list (`source_order`, `source_title`, `source_tier`), warnings (vd. `SOURCE_URL_MISSING`).
 3. **AC-2.3:** Admin Confirm Import → tạo `batch`, `pdf_bundle`, `parent_task`; trigger worker parse/normalize.
 4. **AC-2.4:** Lỗi validate/PDF hỏng/`ocr_required` → block import, message rõ từng file.

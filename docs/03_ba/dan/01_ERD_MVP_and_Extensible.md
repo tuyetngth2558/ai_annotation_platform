@@ -304,7 +304,7 @@ Vì một article input không còn là một row CSV mà là một nhóm file P
 Để lưu từng file trong bundle:
 - `answer_pdf`
 - `source_ref_pdf`
-- `source_content_pdf`
+- `source_content_pdf` (optional, 0..N)
 
 ### Vì sao cần PDF_PARSE_RESULT?
 
@@ -324,4 +324,4 @@ File Excel TA mẫu tách `REL` và `COMP` ra sheet `Article Evaluation` cấp b
 
 ### Source URL và Source Content PDF dùng thế nào?
 
-`source_text_extract` từ `source_content_pdf` là evidence chính trong MVP. `source_url` parse từ hyperlink trong `source_ref_pdf` là metadata optional để hiển thị/tham khảo, không bắt buộc fetch realtime và không được ghi đè nội dung PDF đã parse trong MVP.
+Khi có, `source_text_extract` từ `source_content_pdf` là evidence chính trong MVP; `source_content_pdf` là optional (0..N) — nếu bundle không có, annotator/LLM dựa vào `source_ref_pdf` metadata + optional URL. `source_url` parse từ hyperlink trong `source_ref_pdf` là metadata optional để hiển thị/tham khảo, không bắt buộc fetch realtime và không được ghi đè nội dung PDF đã parse trong MVP.

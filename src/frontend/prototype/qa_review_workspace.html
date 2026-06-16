@@ -1631,7 +1631,8 @@
               <tbody>
                 <tr><td>${project.answerPdf}</td><td><span class="badge ready">answer_pdf</span></td><td>Required, unique</td></tr>
                 <tr><td>${project.sourceRefPdf}</td><td><span class="badge ready">source_ref_pdf</span></td><td>Required, unique</td></tr>
-                ${project.sourceContentPdfs.map(file => `<tr><td>${file}</td><td><span class="badge ready">source_content_pdf</span></td><td>At least 1 required</td></tr>`).join("")}
+                ${(project.sourceContentPdfs && project.sourceContentPdfs.length ? project.sourceContentPdfs : []).map(file => `<tr><td>${file}</td><td><span class="badge ready">source_content_pdf</span></td><td>Optional (0..N) — evidence chính nếu có</td></tr>`).join("")}
+                ${(!project.sourceContentPdfs || project.sourceContentPdfs.length === 0) ? `<tr><td class="muted">(none)</td><td><span class="badge warn">source_content_pdf</span></td><td>Optional — không block import</td></tr>` : ""}
               </tbody>
             </table></div>
             <div class="quick-actions"><button class="btn primary" id="validateBundle">Validate bundle</button></div>
@@ -1670,7 +1671,7 @@
         return `<div class="error-panel">
           <strong>Bundle validation</strong>
           <div>Thiếu answer_pdf hoặc source_ref_pdf: block import.</div>
-          <div>Không có source_content_pdf: block import.</div>
+          <div>Không có source_content_pdf: vẫn cho import (optional); annotator sẽ dùng source_ref_pdf + URL.</div>
           <div>PDF corrupt hoặc không phải PDF: block import.</div>
           <div>source_url không parse được: warning, vẫn cho import.</div>
           <div>PDF scan/image: flag ocr_required.</div>
