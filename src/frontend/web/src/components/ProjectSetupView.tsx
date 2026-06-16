@@ -83,13 +83,13 @@ export default function ProjectSetupView({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Approved":
-        return "bg-emerald-100 text-emerald-800 border-emerald-250";
+        return "bg-emerald-100 text-emerald-800 border-emerald-200";
       case "Submitted":
-        return "bg-blue-100 text-blue-800 border-blue-250";
+        return "bg-vsf-100 text-vsf-800 border-blue-250";
       case "Returned":
         return "bg-red-100 text-red-800 border-red-250";
       default:
-        return "bg-amber-100 text-amber-800 border-amber-250";
+        return "bg-amber-100 text-amber-800 border-amber-200";
     }
   };
 
@@ -129,7 +129,7 @@ export default function ProjectSetupView({
             <div className="bg-white p-5 rounded-xl border border-slate-100 shadow space-y-2">
               <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Tổng số Project</span>
               <strong className="text-2xl font-extrabold text-slate-800 block">1</strong>
-              <span className="text-[11px] text-blue-600 font-semibold uppercase">{project.name} (Active)</span>
+              <span className="text-[11px] text-vsf-600 font-semibold uppercase">{project.name} (Active)</span>
             </div>
             <div className="bg-white p-5 rounded-xl border border-slate-100 shadow space-y-2">
               <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">ID BUNDLE</span>
@@ -144,7 +144,7 @@ export default function ProjectSetupView({
             <button
               onClick={handleCreateNewProject}
               data-testid={TEST_IDS.projectCreateNew}
-              className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-xl border border-blue-500 p-5 shadow flex flex-col justify-center items-center text-center space-y-1.5 group hover:from-blue-700 hover:to-indigo-700 transition-all font-bold"
+              className="bg-gradient-to-tr from-vsf-600 to-vsf-600 text-white rounded-xl border border-vsf-500 p-5 shadow flex flex-col justify-center items-center text-center space-y-1.5 group hover:from-vsf-700 hover:to-vsf-700 transition-all font-bold"
             >
               <FolderPlus size={24} className="group-hover:scale-110 transition-transform text-teal-300" />
               <span>Tạo Dự Án Mới & Gán File</span>
@@ -180,7 +180,7 @@ export default function ProjectSetupView({
                       <span className="text-[11px] text-slate-400 block mt-0.5">{project.id}</span>
                     </td>
                     <td className="py-4 px-3 whitespace-nowrap">
-                      <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold tracking-wide uppercase text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-vsf-50 text-vsf-700 border border-vsf-200 font-bold tracking-wide uppercase text-[10px]">
                         Vivipedia
                       </span>
                       <span className="block text-slate-400 mt-1 text-[11px]">Text modality</span>
@@ -194,7 +194,7 @@ export default function ProjectSetupView({
                         <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 font-semibold text-[10px]">
                           Ready: {tasks.filter(t => t.status === "Ready for Annotation").length}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-blue-50 border border-blue-150 font-semibold text-[10px]">
+                        <span className="px-2 py-0.5 rounded-full bg-vsf-50 border border-vsf-100 font-semibold text-[10px]">
                           Sub: {tasks.filter(t => t.status === "Submitted").length}
                         </span>
                         <span className="px-2 py-0.5 rounded-full bg-red-50 border border-red-150 font-semibold text-[10px]">
@@ -217,7 +217,7 @@ export default function ProjectSetupView({
                           setWizardStep(8);
                         }}
                         data-testid={TEST_IDS.projectDetailButton(project.id)}
-                        className="py-1 px-2.5 bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-slate-800 hover:text-blue-700 font-bold rounded text-[11px] transition-all"
+                        className="py-1 px-2.5 bg-white border border-slate-200 hover:border-blue-400 hover:bg-vsf-50 text-slate-800 hover:text-vsf-700 font-bold rounded text-[11px] transition-all"
                       >
                         Chi Tiết
                       </button>
@@ -227,7 +227,7 @@ export default function ProjectSetupView({
                           setWizardStep(3);
                         }}
                         data-testid={TEST_IDS.projectImportButton(project.id)}
-                        className="py-1 px-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-[11px] shadow transition-all"
+                        className="py-1 px-2.5 bg-vsf-600 hover:bg-vsf-700 text-white font-bold rounded text-[11px] shadow transition-all"
                       >
                         Import Lại
                       </button>
@@ -249,10 +249,10 @@ export default function ProjectSetupView({
                 data-testid={TEST_IDS.projectWizardStep(s.num)}
                 className={`p-2 rounded-lg text-left transition-all border ${
                   wizardStep === s.num
-                    ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-100"
+                    ? "bg-vsf-600 border-vsf-500 text-white shadow-md shadow-vsf-100"
                     : wizardStep > s.num
                     ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                    : "bg-white border-slate-150 text-slate-500 hover:bg-slate-100"
+                    : "bg-white border-gray-200 text-slate-500 hover:bg-slate-100"
                 }`}
               >
                 <span className="block text-[10px] font-bold uppercase tracking-wide opacity-80">Bước {s.num}</span>
@@ -325,7 +325,7 @@ export default function ProjectSetupView({
                     <button
                       onClick={() => setWizardStep(2)}
                       data-testid={TEST_IDS.projectWizardNext}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
+                      className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
                     >
                       <span>Cấu hình LLM</span> <ArrowRight size={14} />
                     </button>
@@ -391,7 +391,7 @@ export default function ProjectSetupView({
                     <button
                       onClick={() => setWizardStep(3)}
                       data-testid={TEST_IDS.projectWizardNext}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
+                      className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
                     >
                       <span>Tiếp tục (Upload PDF)</span> <ArrowRight size={14} />
                     </button>
@@ -405,7 +405,7 @@ export default function ProjectSetupView({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <div className="border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-xl p-8 hover:bg-slate-50 hover:border-blue-450 transition-all text-center space-y-3 relative" data-testid={TEST_IDS.projectUploadZone}>
-                        <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                        <div className="w-12 h-12 rounded-full bg-vsf-50 text-vsf-600 flex items-center justify-center mx-auto">
                           <Upload size={20} />
                         </div>
                         <div>
@@ -424,14 +424,14 @@ export default function ProjectSetupView({
                       </div>
 
                       <div className="flex flex-wrap gap-1.5">
-                        <span data-testid={TEST_IDS.projectAnswerPdfChip} className="px-2.5 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold">
+                        <span data-testid={TEST_IDS.projectAnswerPdfChip} className="px-2.5 py-1 bg-vsf-50 text-vsf-800 border border-vsf-200 rounded-lg text-xs font-semibold">
                           {project.answerPdf}
                         </span>
-                        <span data-testid={TEST_IDS.projectSourceRefPdfChip} className="px-2.5 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold">
+                        <span data-testid={TEST_IDS.projectSourceRefPdfChip} className="px-2.5 py-1 bg-vsf-50 text-vsf-800 border border-vsf-200 rounded-lg text-xs font-semibold">
                           {project.sourceRefPdf}
                         </span>
                         {project.sourceContentPdfs.map((sc, i) => (
-                          <span key={i} data-testid={i === 0 ? TEST_IDS.projectSourceCountChip : undefined} className="px-2.5 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-semibold">
+                          <span key={i} data-testid={i === 0 ? TEST_IDS.projectSourceCountChip : undefined} className="px-2.5 py-1 bg-indigo-50 text-vsf-800 border border-indigo-200 rounded-lg text-xs font-semibold">
                             {sc}
                           </span>
                         ))}
@@ -445,7 +445,7 @@ export default function ProjectSetupView({
                       <p>
                         Các file tạm đã được ghi nhận trong bộ nhớ đệm giả lập trình duyệt. Khi tiếp tục sang bước validate, ADMIN sẽ gán các <strong>file_role</strong> tương ứng để hệ thống phân loại chính xác.
                       </p>
-                      <div className="text-xs text-teal-800 bg-emerald-100/50 p-2 rounded border border-emerald-250">
+                      <div className="text-xs text-teal-800 bg-emerald-100/50 p-2 rounded border border-emerald-200">
                         Chế độ import: <strong>pdf_bundle (Answer PDF + Source Reference list + Source Contents)</strong>
                       </div>
                     </div>
@@ -455,14 +455,14 @@ export default function ProjectSetupView({
                     <button
                       onClick={() => setWizardStep(2)}
                       data-testid={TEST_IDS.projectWizardPrev}
-                      className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-650 rounded-lg text-xs font-semibold flex items-center gap-2"
+                      className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-gray-600 rounded-lg text-xs font-semibold flex items-center gap-2"
                     >
                       <ArrowLeft size={14} /> Quay lại
                     </button>
                     <button
                       onClick={() => setWizardStep(4)}
                       data-testid={TEST_IDS.projectUploadContinue}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
+                      className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
                     >
                       <span>Tiếp tục (Gán Role)</span> <ArrowRight size={14} />
                     </button>
@@ -476,9 +476,9 @@ export default function ProjectSetupView({
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                     
                     {/* Left Builder Pane */}
-                    <div className="md:col-span-7 bg-slate-50/50 p-4 rounded-xl border border-slate-150 space-y-4">
+                    <div className="md:col-span-7 bg-slate-50/50 p-4 rounded-xl border border-gray-200 space-y-4">
                       <h4 className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">
-                        <Sliders size={15} className="text-indigo-600" /> Bundle Builder & Role Mapper
+                        <Sliders size={15} className="text-vsf-600" /> Bundle Builder & Role Mapper
                       </h4>
 
                       <div className="overflow-x-auto text-[11.5px]">
@@ -494,7 +494,7 @@ export default function ProjectSetupView({
                             <tr>
                               <td className="py-2.5 font-semibold text-slate-700">{project.answerPdf}</td>
                               <td className="py-2.5 text-left">
-                                <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-extrabold uppercase text-[10px]">
+                                <span className="inline-block px-2 py-0.5 rounded bg-vsf-50 text-vsf-700 border border-vsf-200 font-extrabold uppercase text-[10px]">
                                   answer_pdf
                                 </span>
                               </td>
@@ -503,7 +503,7 @@ export default function ProjectSetupView({
                             <tr>
                               <td className="py-2.5 font-semibold text-slate-700">{project.sourceRefPdf}</td>
                               <td className="py-2.5 text-left">
-                                <span className="inline-block px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-extrabold uppercase text-[10px]">
+                                <span className="inline-block px-2 py-0.5 rounded bg-indigo-50 text-vsf-700 border border-indigo-200 font-extrabold uppercase text-[10px]">
                                   source_ref_pdf
                                 </span>
                               </td>
@@ -528,7 +528,7 @@ export default function ProjectSetupView({
                         <button
                           onClick={handleValidateBundle}
                           data-testid={TEST_IDS.projectValidateBundle}
-                          className="w-full py-2 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white font-extrabold rounded-lg text-xs hover:indigo-800 shadow"
+                          className="w-full py-2 bg-gradient-to-tr from-vsf-600 to-vsf-700 text-white font-extrabold rounded-lg text-xs hover:vsf-800 shadow"
                         >
                           Chạy Xác Thực PDF Bundle (Validate)
                         </button>
@@ -538,7 +538,7 @@ export default function ProjectSetupView({
                     {/* Right feedback state */}
                     <div className="md:col-span-5" data-testid={TEST_IDS.projectValidationPanel}>
                       {!bundleValidated ? (
-                        <div className="bg-amber-50 border border-amber-250 p-4 rounded-xl text-amber-800 text-xs space-y-3">
+                        <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-amber-800 text-xs space-y-3">
                           <h4 className="font-bold text-sm flex items-center gap-1.5">
                             <AlertTriangle size={15} className="text-amber-700" /> Bundle validation criteria:
                           </h4>
@@ -551,7 +551,7 @@ export default function ProjectSetupView({
                           </ul>
                         </div>
                       ) : (
-                        <div className="bg-emerald-50 border border-emerald-250 p-4 rounded-xl text-emerald-800 text-xs md:text-sm space-y-2.5">
+                        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-800 text-xs md:text-sm space-y-2.5">
                           <h4 className="font-extrabold text-slate-900 flex items-center gap-1.5">
                             <CheckCircle size={15} className="text-emerald-700" /> Xác thực hoàn tất (Validation Checked)
                           </h4>
@@ -588,7 +588,7 @@ export default function ProjectSetupView({
                       }}
                       disabled={!bundleValidated}
                       data-testid={TEST_IDS.projectPreviewParse}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <span>Tiếp tục (Preview parse)</span> <ArrowRight size={14} />
                     </button>
@@ -607,7 +607,7 @@ export default function ProjectSetupView({
                   </div>
 
                   <div className="overflow-x-auto text-xs">
-                    <table className="w-full border border-slate-150" data-testid={TEST_IDS.projectParsePreviewTable}>
+                    <table className="w-full border border-gray-200" data-testid={TEST_IDS.projectParsePreviewTable}>
                       <thead>
                         <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
                           <th className="py-2 px-3 text-left">Thuộc tính</th>
@@ -616,7 +616,7 @@ export default function ProjectSetupView({
                           <th className="py-2 px-3 text-left">Trạng thái file</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-150">
+                      <tbody className="divide-y divide-gray-200">
                         <tr>
                           <td className="py-2 px-3 font-semibold text-slate-800">article_code</td>
                           <td className="py-2 px-3 text-slate-600">ODA-001</td>
@@ -670,7 +670,7 @@ export default function ProjectSetupView({
                         }
                       }}
                       data-testid={TEST_IDS.projectConfirmImport}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
+                      className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
                     >
                       <span>Xác nhận Import</span> <ArrowRight size={14} />
                     </button>
@@ -681,7 +681,7 @@ export default function ProjectSetupView({
               {/* STAGE 6: BACKGROUND PIPELINE SIMULATION PROGRESS */}
               {wizardStep === 6 && (
                 <div className="space-y-6">
-                  <div className="bg-blue-50 border border-blue-150 p-4 rounded-xl text-blue-800 text-xs md:text-sm">
+                  <div className="bg-vsf-50 border border-vsf-100 p-4 rounded-xl text-vsf-800 text-xs md:text-sm">
                      Sau khi ADMIN bấm xác nhận import, một hệ thống pipeline chạy nền sẽ xử lý PDF: Tạo <strong>Batch</strong>, nạp <strong>PDF Bundle</strong>, bóc tách <strong>Parent Task</strong> tạo <strong>Claim Tasks</strong>, map logic citations và gọi API pre-scoring LLM.
                   </div>
 
@@ -718,11 +718,11 @@ export default function ProjectSetupView({
                       <p className="text-slate-500">Mô phỏng xử lý lỗi hệ thống trong tương lai:</p>
                       
                       <div className="space-y-2.5">
-                        <div className="flex justify-between items-center text-red-650">
+                        <div className="flex justify-between items-center text-red-600">
                           <span className="font-medium text-[11px]">Trường hợp: Parse Failed (Lỗi cấu trúc)</span>
                           <span className="text-[10px] font-bold bg-red-150 px-1.5 py-0.5 rounded">Reject file</span>
                         </div>
-                        <div className="flex justify-between items-center text-red-650">
+                        <div className="flex justify-between items-center text-red-600">
                           <span className="font-medium text-[11px]">Trường hợp: LLM Pre-scoring endpoint dead</span>
                           <span className="text-[10px] font-bold bg-red-150 px-1.5 py-0.5 rounded">Show error box</span>
                         </div>
@@ -745,7 +745,7 @@ export default function ProjectSetupView({
                     <button
                       onClick={() => setWizardStep(7)}
                       data-testid={TEST_IDS.projectAssignmentNext}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
+                      className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
                     >
                       <span>Tiếp tục (Assignment)</span> <ArrowRight size={14} />
                     </button>
@@ -773,7 +773,7 @@ export default function ProjectSetupView({
                                   setSelectedAnnotators(selectedAnnotators.filter(item => item !== ann));
                                 }
                               }}
-                              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-100"
+                              className="w-4 h-4 rounded text-vsf-600 focus:ring-vsf-100"
                             />
                             <div>
                               <strong className="block text-sm text-slate-800">{ann}</strong>
@@ -795,7 +795,7 @@ export default function ProjectSetupView({
                               checked={selectedQa === qaName}
                               data-testid={TEST_IDS.projectQa(toTestSlug(qaName))}
                               onChange={() => setSelectedQa(qaName)}
-                              className="w-4 h-4 text-blue-600 focus:ring-blue-100"
+                              className="w-4 h-4 text-vsf-600 focus:ring-vsf-100"
                             />
                             <div>
                               <strong className="block text-sm text-slate-800">{qaName}</strong>
@@ -857,7 +857,7 @@ export default function ProjectSetupView({
                   <section className="border border-slate-100 rounded-xl overflow-hidden shadow mt-4">
                     <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                       <h4 className="font-bold text-slate-800 text-sm">Danh Sách Câu Đánh Giá Cận Cảnh</h4>
-                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">BAT-001 list</span>
+                      <span className="px-2 py-0.5 rounded bg-vsf-50 text-vsf-700 text-[10px] font-bold">BAT-001 list</span>
                     </div>
 
                     <div className="overflow-x-auto text-[11.5px]">
@@ -871,12 +871,12 @@ export default function ProjectSetupView({
                             <th className="py-2 px-3">Composite Score</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-150">
+                        <tbody className="divide-y divide-gray-200">
                           {tasks.map((t) => (
                             <tr key={t.id} className="hover:bg-slate-50/50" data-testid={TEST_IDS.projectDetailTaskRow(t.id)}>
                               <td className="py-2.5 px-3 font-semibold text-slate-800">{t.id}</td>
-                              <td className="py-2.5 px-3 max-w-sm font-medium text-slate-700 truncate" title={t.question}>
-                                {t.question}
+                              <td className="py-2.5 px-3 max-w-sm font-medium text-slate-700 truncate" title={t.claimFinal}>
+                                {t.claimFinal}
                               </td>
                               <td className="py-2.5 px-3 font-semibold text-slate-600">{t.annotator}</td>
                               <td className="py-2.5 px-3">
@@ -905,7 +905,7 @@ export default function ProjectSetupView({
                     </button>
                     <button
                       onClick={onBackToDashboard}
-                      className="py-1.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs shadow-md shadow-blue-100"
+                      className="py-1.5 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs shadow-md shadow-vsf-100"
                     >
                       Mở Dashboard
                     </button>

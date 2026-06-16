@@ -85,9 +85,9 @@ export default function ExportView({
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
         
         {/* Creating job card */}
-        <section className="md:col-span-6 bg-white p-5 rounded-xl border border-slate-150 shadow space-y-4">
+        <section className="md:col-span-6 bg-white p-5 rounded-xl border border-gray-200 shadow space-y-4">
           <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5 border-b pb-2">
-            <Play size={15} className="text-blue-600" /> Cấu hình xuất kết quả (Create Export Job)
+            <Play size={15} className="text-vsf-600" /> Cấu hình xuất kết quả (Create Export Job)
           </h3>
 
           <form onSubmit={handleCreateExportJob} className="grid grid-cols-2 gap-3.5 text-xs text-slate-700 font-semibold" data-testid={TEST_IDS.exportCreateForm}>
@@ -145,7 +145,7 @@ export default function ExportView({
               </select>
             </div>
 
-            <div className="col-span-2 bg-blue-50/40 p-3 rounded-xl border border-blue-150 text-[11px] text-blue-800 leading-relaxed font-semibold">
+            <div className="col-span-2 bg-vsf-50/40 p-3 rounded-xl border border-vsf-100 text-[11px] text-vsf-800 leading-relaxed font-semibold">
               <strong>Hướng dẫn bảo mật:</strong> Chỉ có những hạng mục có kết luận duyệt <strong>Approved</strong> từ QA Specialist mới được hạch toán xuất tệp. File tải về sẽ giữ nguyên tên tài liệu PDF gốc phục vụ đối chiếu sau này.
             </div>
 
@@ -153,7 +153,7 @@ export default function ExportView({
               <button
                 type="submit"
                 data-testid={TEST_IDS.exportSubmit}
-                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold shadow flex items-center justify-center gap-1.5"
               >
                 <FileCheck2 size={14} /> Chạy tiến trình xuất (Export Job)
               </button>
@@ -162,12 +162,12 @@ export default function ExportView({
         </section>
 
         {/* History log card */}
-        <section className="md:col-span-6 bg-white p-5 rounded-xl border border-slate-150 shadow space-y-4">
+        <section className="md:col-span-6 bg-white p-5 rounded-xl border border-gray-200 shadow space-y-4">
           <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5 border-b pb-2">
             <History size={15} className="text-teal-600" /> Nhật ký chiết xuất (Export History)
           </h3>
 
-          <div className="overflow-x-auto text-[11px] font-semibold text-slate-650" data-testid={TEST_IDS.exportHistoryTable}>
+          <div className="overflow-x-auto text-[11px] font-semibold text-gray-600" data-testid={TEST_IDS.exportHistoryTable}>
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b text-slate-400 uppercase text-[9.5px]">
@@ -190,7 +190,7 @@ export default function ExportView({
                       <span className="block text-[10px] text-slate-400 mt-0.5">{job.sourceRefPdf}</span>
                     </td>
                     <td className="py-3 text-center">
-                      <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-bold">
+                      <span className="px-1.5 py-0.5 rounded bg-vsf-50 text-vsf-700 font-bold">
                         {job.count}
                       </span>
                     </td>

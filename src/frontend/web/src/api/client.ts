@@ -1,4 +1,5 @@
 import { UserRole } from "../types";
+import { demoLogin, isDemoAuthEnabled, shouldFallbackToDemoAuth } from "./demoAuth";
 
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ||
@@ -75,11 +76,19 @@ export const apiClient = {
       method: "PUT",
       body: body ? JSON.stringify(body) : undefined,
     }),
-  login: (email: string, password: string) =>
-    request<LoginResponse>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-      headers: { "Content-Type": "application/json" },
-    }),
+  login: async (email: string, password: string) => {
+    try {
+      return await request<LoginResponse>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      if (isDemoAuthEnabled() && shouldFallbackToDemoAuth(error)) {
+        return demoLogin(email, password);
+      }
+      throw error;
+    }
+  },
 };
 

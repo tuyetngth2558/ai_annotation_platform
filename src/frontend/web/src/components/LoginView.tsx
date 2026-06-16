@@ -2,12 +2,19 @@ import React, { useState } from "react";
 import { UserRole } from "../types";
 import { TEST_IDS } from "../testability";
 import { apiClient, authToken } from "../api/client";
-import { Eye, EyeOff, Lock, User } from "lucide-react";
+import BrandLogo from "./BrandLogo";
+import { Eye, EyeOff, Lock, Mail, ArrowRight, Shield, BarChart3, FileCheck } from "lucide-react";
 
 interface LoginViewProps {
   onLoginSuccess: (email: string, role: UserRole) => void;
   showToast: (msg: string) => void;
 }
+
+const BENEFITS = [
+  { icon: <FileCheck size={18} className="text-brand-400" />, title: "Đánh giá claim từ PDF", desc: "Import tài liệu, đối chiếu nguồn, chấm điểm 6 tiêu chí chất lượng." },
+  { icon: <Shield size={18} className="text-teal-500" />, title: "QA chéo đảm bảo chất lượng", desc: "Mỗi claim được reviewer kiểm duyệt trước khi xuất dữ liệu." },
+  { icon: <BarChart3 size={18} className="text-blue-400" />, title: "Theo dõi tiến độ", desc: "Dashboard tổng quan cho admin, annotator và QA reviewer." },
+];
 
 export default function LoginView({ onLoginSuccess, showToast }: LoginViewProps) {
   const [email, setEmail] = useState("");
@@ -18,7 +25,7 @@ export default function LoginView({ onLoginSuccess, showToast }: LoginViewProps)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes("@")) {
-      showToast("Email đăng nhập chưa hợp lệ.");
+      showToast("Vui lòng nhập email hợp lệ.");
       return;
     }
     if (!password) {
@@ -31,69 +38,73 @@ export default function LoginView({ onLoginSuccess, showToast }: LoginViewProps)
       const session = await apiClient.login(email, password);
       authToken.set(session.access_token);
       onLoginSuccess(session.email, session.role);
-      showToast(`Đăng nhập thành công với vai trò ${session.role}!`);
+      showToast(`Đăng nhập thành công — ${session.role}`);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Không thể kết nối backend đăng nhập.");
+      showToast(error instanceof Error ? error.message : "Không thể kết nối. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-2 md:p-8" id="login_screen" data-testid={TEST_IDS.view("login")}>
-      <div className="w-full max-w-4xl grid md:grid-cols-12 gap-8 items-center bg-white rounded-2xl border border-slate-100 shadow-2xl overflow-hidden p-6 md:p-10">
-        
-        {/* Intro pane */}
-        <div className="md:col-span-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-tr from-blue-600 to-teal-500 text-white font-extrabold text-lg shadow-lg">
-              VSF
+    <div className="min-h-screen flex bg-canvas" id="login_screen" data-testid={TEST_IDS.view("login")}>
+      {/* Hero panel */}
+      <div className="hidden lg:flex lg:w-[45%] xl:w-[42%] relative flex-col justify-between p-10 xl:p-14 overflow-hidden"
+        style={{ background: "linear-gradient(145deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)" }}
+      >
+        {/* Subtle gradient accent */}
+        <div className="absolute inset-0 opacity-30"
+          style={{ background: "radial-gradient(ellipse at 70% 20%, #dc2626 0%, transparent 50%), radial-gradient(ellipse at 20% 80%, #0d9488 0%, transparent 50%)" }}
+        />
+
+        <div className="relative z-10">
+          <BrandLogo variant="hero" className="mb-14" />
+          <h1 className="login-hero-title">
+            Nền tảng đánh giá<br />chất lượng dữ liệu
+          </h1>
+          <p className="login-hero-subtitle">
+            Công cụ nội bộ VinSmart Future hỗ trợ quy trình kiểm định claim Vivipedia — chuẩn hóa, chính xác, có thể truy vết.
+          </p>
+        </div>
+
+        <div className="relative z-10 space-y-3 mt-auto">
+          {BENEFITS.map((b) => (
+            <div key={b.title} className="benefit-card">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 shrink-0">{b.icon}</div>
+                <div>
+                  <strong className="text-white text-[13px] font-semibold">{b.title}</strong>
+                  <p className="text-gray-400 text-xs mt-0.5 leading-relaxed">{b.desc}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <strong className="block text-slate-800 text-lg font-bold tracking-tight">AI Annotation Platform</strong>
-              <span className="block text-xs text-slate-400 font-medium tracking-wide">Vivipedia MVP v1.0</span>
-            </div>
+          ))}
+        </div>
+
+        <p className="relative z-10 text-[11px] text-gray-600 mt-8">© 2026 VinSmart Future · Nội bộ</p>
+      </div>
+
+      {/* Login form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+        <div className="w-full max-w-[400px]">
+          <div className="lg:hidden mb-10 flex justify-center">
+            <BrandLogo variant="compact" />
           </div>
 
-          <div className="space-y-4">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-none">
-              VSF AI Annotation Platform
-            </h1>
-            <p className="text-slate-500 text-sm md:text-base leading-relaxed">
-              Workspace nội bộ cho Vivipedia MVP: import PDF Bundle, review claim-level, chấm điểm chất lượng nguồn và export CSV theo vai trò.
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Đăng nhập</h2>
+            <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+              Sử dụng tài khoản nội bộ để truy cập workspace.
             </p>
           </div>
 
-          <ul className="space-y-3" aria-label="Tính năng chính">
-            <li className="flex items-center gap-3 text-slate-600 text-sm">
-              <span className="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs">✓</span>
-              <span><strong>QUẢN TRỊ (ADMIN):</strong> Tạo Project, upload & validate PDF, phân chia bài.</span>
-            </li>
-            <li className="flex items-center gap-3 text-slate-600 text-sm">
-              <span className="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs">✓</span>
-              <span><strong>ANNOTATION:</strong> Đối chiếu Claim, chấm 6 tiêu chí, mapping source.</span>
-            </li>
-            <li className="flex items-center gap-3 text-slate-600 text-sm">
-              <span className="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs">✓</span>
-              <span><strong>QA REVIEW:</strong> Đánh giá so sánh Baseline, duyệt hoặc trả về (Return).</span>
-            </li>
-          </ul>
-        </div>
-
-        {/* Form panel */}
-        <div className="md:col-span-6 bg-slate-50/50 rounded-xl p-6 border border-slate-100">
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Đăng nhập</h2>
-            <p className="text-xs text-slate-400 mt-1">Sử dụng tài khoản hệ thống để truy cập workspace.</p>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label htmlFor="loginEmail" className="block text-xs font-bold text-slate-700">Email hệ thống</label>
+            <div className="space-y-1.5">
+              <label htmlFor="loginEmail" className="block text-sm font-medium text-gray-700">
+                Email
+              </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                  <User size={16} />
-                </span>
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   id="loginEmail"
                   type="email"
@@ -101,21 +112,19 @@ export default function LoginView({ onLoginSuccess, showToast }: LoginViewProps)
                   onChange={(e) => setEmail(e.target.value)}
                   data-testid={TEST_IDS.loginEmail}
                   aria-label="Login email"
-                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-blue-500"
+                  placeholder="name@vsf.local"
+                  className="field-input pl-10"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <label htmlFor="loginPassword" className="block text-xs font-bold text-slate-700">Mật khẩu</label>
-                
-              </div>
+            <div className="space-y-1.5">
+              <label htmlFor="loginPassword" className="block text-sm font-medium text-gray-700">
+                Mật khẩu
+              </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                  <Lock size={16} />
-                </span>
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   id="loginPassword"
                   type={showPassword ? "text" : "password"}
@@ -123,34 +132,38 @@ export default function LoginView({ onLoginSuccess, showToast }: LoginViewProps)
                   onChange={(e) => setPassword(e.target.value)}
                   data-testid={TEST_IDS.loginPassword}
                   aria-label="Login password"
-                  className="w-full pl-9 pr-9 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-blue-500"
+                  className="field-input pl-10 pr-10"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
-            <button
-              type="submit"
-              data-testid={TEST_IDS.loginSubmit}
-              disabled={isSubmitting}
-              className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-lg text-sm hover:indigo-700 hover:from-blue-700 hover:to-indigo-800 focus:ring-4 focus:ring-blue-100 transition-all shadow-md shadow-blue-200"
-            >
-              {isSubmitting ? "Đang kết nối backend..." : "Đăng Nhập"}
+            <button type="submit" data-testid={TEST_IDS.loginSubmit} disabled={isSubmitting} className="btn-primary w-full !py-3 mt-2">
+              {isSubmitting ? "Đang kết nối..." : "Đăng nhập"}
+              {!isSubmitting && <ArrowRight size={16} />}
             </button>
           </form>
 
-          <p className="mt-5 pt-4 border-t border-slate-200/60 text-[11px] leading-relaxed text-slate-500">
-            Tài khoản và phân quyền được xác thực bởi backend qua <span className="font-mono">/api/v1/auth/login</span>.
-          </p>
+          <div
+            className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-500 leading-relaxed"
+            data-testid="login-demo-note"
+          >
+            <strong className="text-gray-700 font-semibold block mb-2">Tài khoản thử nghiệm</strong>
+            <div className="space-y-1 font-mono text-[11px] text-gray-500">
+              <p><span className="text-gray-700">admin@vsf.local</span> · admin-demo-2026</p>
+              <p><span className="text-gray-700">annotator@vsf.local</span> · annotator-demo-2026</p>
+              <p><span className="text-gray-700">qa@vsf.local</span> · qa-demo-2026</p>
+            </div>
+          </div>
         </div>
-
       </div>
     </div>
   );

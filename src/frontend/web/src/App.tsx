@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { UserRole, ClaimTask, Project, ExportJob, AuditLog, UserAccount } from "./types";
 import { TEST_IDS, VIEW_LABELS, VIEW_URL_MAP } from "./testability";
 import { ApiError, apiClient, authToken } from "./api/client";
+import { demoProject, demoTasks } from "./data/demoTasks";
+import { enrichClaimTask } from "./sqRules";
 
 // Components
 import LoginView from "./components/LoginView";
@@ -14,6 +16,7 @@ import QaReviewView from "./components/QaReviewView";
 import ExportView from "./components/ExportView";
 import UsersView from "./components/UsersView";
 import AuditLogView from "./components/AuditLogView";
+import BrandLogo from "./components/BrandLogo";
 
 // Lucide Icons
 import {
@@ -29,6 +32,13 @@ import {
 } from "lucide-react";
 
 type ViewKey = keyof typeof VIEW_URL_MAP;
+
+const demoWorkspaceUsers: UserAccount[] = [
+  { name: "Admin Tri", email: "admin@vsf.local", role: "ADMIN", status: "Đang hoạt động" },
+  { name: "Annotator Mai", email: "annotator.mai@vsf.local", role: "ANNOTATOR", status: "Đang hoạt động" },
+  { name: "Annotator Nam", email: "annotator.nam@vsf.local", role: "ANNOTATOR", status: "Đang hoạt động" },
+  { name: "QA Linh", email: "qa@vsf.local", role: "QA", status: "Đang hoạt động" },
+];
 
 const emptyProject: Project = {
   id: "",
@@ -59,6 +69,18 @@ const hashToView = (hash: string) => {
 const viewToHash = (view: string) => {
   const url = VIEW_URL_MAP[view as ViewKey] || VIEW_URL_MAP.dashboard;
   return url.replace("/", "");
+};
+
+const buildWorkspaceUsers = (email: string, role: UserRole): UserAccount[] => {
+  const normalizedEmail = email.toLowerCase();
+  const hasUser = demoWorkspaceUsers.some((user) => user.email.toLowerCase() === normalizedEmail);
+
+  if (hasUser) return demoWorkspaceUsers;
+
+  return [
+    { name: email.split("@")[0], email, role, status: "Đang hoạt động" },
+    ...demoWorkspaceUsers,
+  ];
 };
 
 export default function App() {
@@ -109,24 +131,34 @@ export default function App() {
       apiClient.get<AuditLog[]>("/audit-logs"),
     ]);
 
-    if (projectsResult.status === "fulfilled") {
-      setProject(projectsResult.value[0] || emptyProject);
+    if (projectsResult.status === "fulfilled" && projectsResult.value.length > 0) {
+      setProject(projectsResult.value[0]);
     } else {
-      setProject(emptyProject);
-      setBackendNotice(backendMessage(projectsResult.reason, "Không tải được projects từ backend."));
+      setProject(demoProject);
+      if (projectsResult.status === "rejected") {
+        setBackendNotice(backendMessage(projectsResult.reason, "Không tải được projects — dùng dữ liệu demo."));
+      }
     }
 
-    if (tasksResult.status === "fulfilled") {
-      setTasks(tasksResult.value);
-      setSelectedTaskId(tasksResult.value[0]?.id || "");
+    if (tasksResult.status === "fulfilled" && tasksResult.value.length > 0) {
+      const enriched = tasksResult.value.map(enrichClaimTask);
+      setTasks(enriched);
+      setSelectedTaskId(enriched[0]?.id || "");
       setSelectedQaTaskId(
-        tasksResult.value.find((task) => task.status === "Submitted")?.id || tasksResult.value[0]?.id || ""
+        enriched.find((task) => task.status === "Submitted")?.id || enriched[0]?.id || ""
       );
     } else {
-      setTasks([]);
-      setSelectedTaskId("");
-      setSelectedQaTaskId("");
-      setBackendNotice((prev) => prev || backendMessage(tasksResult.reason, "Không tải được tasks từ backend."));
+      setTasks(demoTasks);
+      setSelectedTaskId(demoTasks[0]?.id || "");
+      setSelectedQaTaskId(
+        demoTasks.find((task) => task.status === "Submitted")?.id || demoTasks[0]?.id || ""
+      );
+      setBackendNotice((prev) =>
+        prev ||
+          (tasksResult.status === "rejected"
+            ? backendMessage(tasksResult.reason, "Không tải được tasks — dùng dữ liệu demo PDF-native.")
+            : "Backend chưa có task — hiển thị demo CT-001/CT-002 (SQ rule engine).")
+      );
     }
 
     if (auditsResult.status === "fulfilled") {
@@ -159,7 +191,7 @@ export default function App() {
     setCurrentUser(email);
     setCurrentRole(role);
     setActiveView("dashboard");
-    setUsers([{ name: email, email, role, status: "Đang hoạt động" }]);
+    setUsers(buildWorkspaceUsers(email, role));
     void loadWorkspaceData();
   };
 
@@ -182,24 +214,24 @@ export default function App() {
     switch (currentRole) {
       case "ADMIN":
         return [
-          { view: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
-          { view: "projects", label: "Projects / PDF Import", icon: <Files size={16} /> },
-          { view: "export", label: "Export CSV results", icon: <FileSpreadsheet size={16} /> },
-          { view: "users", label: "Member list (Users)", icon: <Users size={16} /> },
-          { view: "audit", label: "Audit log trace", icon: <History size={16} /> }
+          { view: "dashboard", label: "Tổng quan", icon: <LayoutDashboard size={17} /> },
+          { view: "projects", label: "Import dữ liệu", icon: <Files size={17} /> },
+          { view: "export", label: "Xuất kết quả", icon: <FileSpreadsheet size={17} /> },
+          { view: "users", label: "Thành viên", icon: <Users size={17} /> },
+          { view: "audit", label: "Nhật ký", icon: <History size={17} /> }
         ];
       case "ANNOTATOR":
         return [
-          { view: "dashboard", label: "Dashboard overview", icon: <LayoutDashboard size={16} /> },
-          { view: "tasks", label: "My Assigned Tasks", icon: <CheckSquare size={16} /> },
-          { view: "annotation", label: "Annotation Workspace", icon: <Files size={16} /> }
+          { view: "dashboard", label: "Tổng quan", icon: <LayoutDashboard size={17} /> },
+          { view: "tasks", label: "Task của tôi", icon: <CheckSquare size={17} /> },
+          { view: "annotation", label: "Chấm điểm", icon: <Files size={17} /> }
         ];
       case "QA":
         return [
-          { view: "dashboard", label: "Dashboard overview", icon: <LayoutDashboard size={16} /> },
-          { view: "qa", label: "QA Queue", icon: <CheckSquare size={16} /> },
-          { view: "qaReview", label: "QA Review Workspace", icon: <Files size={16} /> },
-          { view: "export", label: "Export CSV results", icon: <FileSpreadsheet size={16} /> }
+          { view: "dashboard", label: "Tổng quan", icon: <LayoutDashboard size={17} /> },
+          { view: "qa", label: "Hàng đợi QA", icon: <CheckSquare size={17} /> },
+          { view: "qaReview", label: "Kiểm duyệt", icon: <Files size={17} /> },
+          { view: "export", label: "Xuất kết quả", icon: <FileSpreadsheet size={17} /> }
         ];
     }
   };
@@ -215,31 +247,53 @@ export default function App() {
     setActiveView("qaReview");
   };
 
+  const updateTaskInState = (updatedTask: ClaimTask) => {
+    setTasks((prev) =>
+      prev.map((task) => (task.id === updatedTask.id ? enrichClaimTask(updatedTask) : task))
+    );
+  };
+
   const handleAnnotationSubmit = async (updatedTask: ClaimTask) => {
+    updateTaskInState(updatedTask);
     try {
       await apiClient.post(`/tasks/${updatedTask.id}/submit`, updatedTask);
       showToast(`Đã gửi task ${updatedTask.id} lên backend.`);
-      await loadWorkspaceData();
     } catch (error) {
       showToast(backendMessage(error, "Không gửi được annotation lên backend."));
     }
   };
 
   const handleQaApprove = async (taskId: string) => {
+    const targetTask = tasks.find((task) => task.id === taskId);
+    if (targetTask) {
+      updateTaskInState({
+        ...targetTask,
+        status: "Approved",
+      });
+    }
+
     try {
       await apiClient.post(`/qa-reviews/${taskId}/approve`);
       showToast(`Backend đã duyệt task ${taskId}.`);
-      await loadWorkspaceData();
     } catch (error) {
       showToast(backendMessage(error, "Không duyệt được task qua backend."));
     }
   };
 
   const handleQaReturn = async (taskId: string, errorType: string, comment: string) => {
+    const targetTask = tasks.find((task) => task.id === taskId);
+    if (targetTask) {
+      updateTaskInState({
+        ...targetTask,
+        status: "Returned",
+        qaComment: `${errorType}: ${comment}`,
+        returnCount: (targetTask.returnCount || 0) + 1,
+      });
+    }
+
     try {
       await apiClient.post(`/qa-reviews/${taskId}/return`, { errorType, comment });
       showToast(`Backend đã trả task ${taskId} cho annotator.`);
-      await loadWorkspaceData();
     } catch (error) {
       showToast(backendMessage(error, "Không trả task qua backend."));
     }
@@ -273,14 +327,14 @@ export default function App() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className="w-full max-w-sm bg-white rounded-xl border border-slate-100 shadow-2xl p-4 flex items-start gap-4 pointer-events-auto animate-slide-up border-l-4 border-l-blue-600"
+          className="w-full max-w-sm bg-white rounded-xl border border-gray-200 shadow-lg p-4 flex items-start gap-3 pointer-events-auto animate-slide-up border-l-4 border-l-vsf-600"
         >
-          <div className="w-5 h-5 rounded-full bg-blue-50 text-blue-650 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <CheckSquare size={12} />
+          <div className="w-8 h-8 rounded-lg bg-vsf-50 text-vsf-600 flex items-center justify-center flex-shrink-0">
+            <CheckSquare size={14} />
           </div>
           <div className="text-xs">
-            <strong className="text-slate-800 font-bold block">Thông báo tiến trình</strong>
-            <p className="text-slate-500 mt-1 leading-relaxed font-semibold">{toast.message}</p>
+            <strong className="text-gray-900 font-semibold block">Thông báo</strong>
+            <p className="text-gray-500 mt-0.5 leading-relaxed">{toast.message}</p>
           </div>
         </div>
       ))}
@@ -305,130 +359,99 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen text-slate-800 bg-slate-50/30 flex flex-col font-sans" data-testid={TEST_IDS.appShell}>
-      
-      {/* Root Layout Layer: Left sidebar + Main viewport */}
-      <div className="flex-1 flex flex-col md:flex-row">
-        
-        {/* SIDEBAR NAVIGATION PANE */}
-        <aside className="w-full md:w-64 bg-white border-r border-slate-150 p-5 flex flex-col justify-between shrink-0" data-testid={TEST_IDS.sidebar}>
-          <div className="space-y-6">
-            
-            {/* VSF Logo Branding */}
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-tr from-blue-600 to-teal-500 text-white font-extrabold text-base shadow-lg shadow-blue-100">
-                VSF
-              </div>
-              <div>
-                <strong className="block text-slate-800 text-sm font-bold tracking-tight">AI Annotation</strong>
-                <span className="block text-[11px] text-slate-400 font-medium">Vivipedia MVP platform</span>
-              </div>
-            </div>
+    <div className="min-h-screen bg-canvas font-sans" data-testid={TEST_IDS.appShell}>
+      <aside className="app-shell-sidebar" data-testid={TEST_IDS.sidebar}>
+        <BrandLogo variant="sidebar" />
 
-            {/* Menu Listing */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block px-2 mb-1">
-                Điều hướng
-              </span>
-              <nav className="space-y-1" aria-label="Điều hướng chính" data-testid={TEST_IDS.primaryNav}>
-                {getNavLinks().map((link) => (
-                  <button
-                    key={link.view}
-                    onClick={() => setActiveView(link.view)}
-                    data-testid={TEST_IDS.navLink(link.view)}
-                    aria-label={`Navigate to ${link.label}`}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                      activeView === link.view
-                        ? "bg-blue-50/75 text-blue-700 shadow-sm shadow-blue-50/50 border border-blue-100/50 font-extrabold"
-                        : "text-slate-650 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
-                    }`}
-                  >
-                    <span className={activeView === link.view ? "text-blue-600" : "text-slate-400"}>
-                      {link.icon}
-                    </span>
-                    <span>{link.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-
+        <div className="flex-1 min-h-0 px-3 pt-4 overflow-y-auto">
+          <nav className="space-y-0.5" aria-label="Điều hướng chính" data-testid={TEST_IDS.primaryNav}>
+              {getNavLinks().map((link) => (
+                <button
+                  key={link.view}
+                  onClick={() => setActiveView(link.view)}
+                  data-testid={TEST_IDS.navLink(link.view)}
+                  aria-label={`Navigate to ${link.label}`}
+                  className={`nav-item ${activeView === link.view ? "nav-item-active" : ""}`}
+                >
+                  <span className={activeView === link.view ? "text-white" : "text-gray-400"}>
+                    {link.icon}
+                  </span>
+                  <span className="truncate">{link.label}</span>
+                </button>
+              ))}
+            </nav>
           </div>
 
-          <div className="pt-5 border-t border-slate-100 space-y-1 mt-6">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-              Phiên đăng nhập
-            </span>
-            <p className="text-[11px] text-slate-500 leading-relaxed font-semibold break-all">
-              {currentUser}
-            </p>
-            <span className="inline-flex px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold">
-              {currentRole}
-            </span>
+          <div className="shrink-0 px-4 py-3 border-t border-sidebar-border bg-sidebar">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
+                {currentUser?.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-700 font-medium truncate">{currentUser}</p>
+                <span className="text-[10px] text-gray-400 font-medium">{currentRole}</span>
+              </div>
+            </div>
           </div>
         </aside>
 
-        {/* MAIN BODY AREA & TOP NAV BAR */}
-        <section className="flex-1 flex flex-col min-w-0">
-          
-          {/* HEADER TOP NAV */}
-          <header className="bg-white border-b border-slate-150 px-6 py-3.5 flex items-center justify-between sticky top-0 z-40 backdrop-blur-md bg-white/95">
-            <div>
-              <div className="text-slate-400 text-xs flex items-center gap-1">
-                <span>VSF Platform</span> <span className="opacity-60">/</span> <span>{getBreadcrumbTitle()}</span>
+        <section className="app-shell-main">
+          <header className="app-topbar">
+            <div className="app-topbar-inner">
+              <div className="text-sm text-gray-500 min-w-0">
+                <span className="font-semibold text-gray-900">{getBreadcrumbTitle()}</span>
               </div>
-              <h1 className="text-lg font-extrabold text-slate-900 tracking-tight mt-0.5">
-                {getBreadcrumbTitle()}
-              </h1>
-            </div>
 
-            {/* Profile Dropdown controller */}
-            <div className="relative">
+              <div className="relative">
               <button
                 onClick={toggleDropdown}
                 data-testid={TEST_IDS.profileMenuButton}
                 aria-label="Open profile menu"
-                className="flex items-center gap-2.5 px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 text-xs font-semibold text-slate-650 transition-all focus:outline-none"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
               >
-                <div className="w-6.5 h-6.5 rounded-full flex items-center justify-center bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-extrabold text-xs">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-800 text-white font-semibold text-[10px]">
                   {currentRole === "ADMIN" ? "AD" : currentRole === "QA" ? "QA" : "AN"}
                 </div>
-                <div className="text-left hidden sm:block">
-                  <span className="block font-bold text-slate-800 leading-tight">
-                    {currentUser}
-                  </span>
-                  <span className="block text-[10px] text-slate-400 tracking-wide">{currentRole} role</span>
-                </div>
-                <ChevronDown size={14} className="text-slate-400" />
+                <ChevronDown size={14} className="text-gray-400" />
               </button>
 
               {showProfileDropdown && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-150 rounded-xl shadow-2xl p-1.5 z-50 animate-slide-up text-xs font-medium" data-testid={TEST_IDS.profileMenu}>
+                <div
+                  className="absolute right-0 top-full mt-1.5 w-52 bg-white border border-gray-200 rounded-lg p-1 z-50 animate-scale-in text-[13px]"
+                  style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)' }}
+                  data-testid={TEST_IDS.profileMenu}
+                >
+                  <div className="px-3 py-2 border-b border-gray-100 mb-1">
+                    <p className="font-semibold text-gray-900 text-sm truncate">{currentUser}</p>
+                    <p className="text-[11px] text-gray-400">{currentRole}</p>
+                  </div>
                   <button
                     onClick={() => {
                       setActiveView("changePassword");
                       setShowProfileDropdown(false);
                     }}
                     data-testid={TEST_IDS.profileChangePassword}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 text-slate-700 rounded-lg text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-600 rounded-md text-left"
                   >
-                    <Lock size={14} className="text-slate-400" /> Đổi mật khẩu
+                    <Lock size={14} className="text-gray-400" /> Đổi mật khẩu
                   </button>
                   <button
                     onClick={handleLogout}
                     data-testid={TEST_IDS.profileLogout}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-red-50 text-red-700 rounded-lg text-left border-t border-slate-100"
+                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 text-red-600 rounded-md text-left"
                   >
-                    <LogOut size={14} className="text-red-500" /> Đăng xuất
+                    <LogOut size={14} /> Đăng xuất
                   </button>
                 </div>
               )}
+              </div>
             </div>
           </header>
 
-          {/* COMPONENT VIEWPORT PORT */}
-          <main className="flex-1 p-4 md:p-6 overflow-y-auto" data-testid={TEST_IDS.mainViewport}>
+          <main className="app-content" data-testid={TEST_IDS.mainViewport}>
             {backendNotice && (
-              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
+              <div className="mb-5 rounded-lg border border-amber-200/60 bg-amber-50/80 px-4 py-2.5 text-[13px] text-amber-800 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                 {backendNotice}
               </div>
             )}
@@ -468,63 +491,74 @@ export default function App() {
 
             {activeView === "tasks" && (
               <div className="space-y-4" data-testid={TEST_IDS.view("tasks")}>
-                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow flex justify-between items-center">
+                <div className="app-card p-5 flex justify-between items-center">
                   <div>
-                    <h2 className="text-lg font-extrabold text-slate-900">Nhiệm Vụ Được Giao (My Tasks)</h2>
-                    <p className="text-xs text-slate-400 mt-1">Danh sách chỉ hiển thị các Claim task được phân công cho điều phối viên hiện tại.</p>
+                    <h2 className="page-title">Nhiệm vụ được giao</h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Claim task phân công cho annotator hiện tại.
+                    </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded bg-blue-50 text-blue-700 text-xs font-bold font-mono">
+                  <span className="status-pill bg-vsf-50 text-vsf-700 border-vsf-200 font-mono">
                     Annotator Mai
                   </span>
                 </div>
 
-                <div className="bg-white rounded-xl border border-slate-100 shadow overflow-hidden">
-                  <div className="overflow-x-auto text-[11.5px]">
-                    <table className="w-full text-left" data-testid={TEST_IDS.tasksAssignedTable}>
+                <div className="app-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="data-table" data-testid={TEST_IDS.tasksAssignedTable}>
                       <thead>
-                        <tr className="bg-slate-50/70 border-b border-slate-205 text-slate-400 font-bold uppercase text-[10px]">
-                          <th className="py-2.5 px-3">ID Task</th>
-                          <th className="py-2.5 px-3">Mã Bài Viết</th>
-                          <th className="py-2.5 px-3">Câu Hỏi trích xuất</th>
-                          <th className="py-2.5 px-3">Citations Map</th>
-                          <th className="py-2.5 px-3">Trạng Thái</th>
-                          <th className="py-2.5 px-3 text-center">Hành động</th>
+                        <tr>
+                          <th className="py-3 px-4">ID Task</th>
+                          <th className="py-3 px-4">Mã bài</th>
+                          <th className="py-3 px-4">Claim</th>
+                          <th className="py-3 px-4">Citations</th>
+                          <th className="py-3 px-4">Trạng thái</th>
+                          <th className="py-3 px-4 text-center">Hành động</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-650">
+                      <tbody className="text-gray-700">
                         {tasks
                           .filter((t) => t.annotator === "Annotator Mai")
                           .map((t) => (
-                            <tr key={t.id} className="hover:bg-slate-50/30" data-testid={TEST_IDS.taskRow(t.id)}>
-                              <td className="py-3 px-3 font-bold text-slate-900">{t.id}</td>
-                              <td className="py-3 px-3 font-mono text-slate-700">{t.articleCode}</td>
-                              <td className="py-3 px-3 max-w-sm truncate text-slate-700 font-medium" title={t.question}>
-                                {t.question}
+                            <tr key={t.id} data-testid={TEST_IDS.taskRow(t.id)}>
+                              <td className="py-3 px-4 font-semibold text-gray-900">{t.id}</td>
+                              <td className="py-3 px-4 font-mono text-sm">{t.articleCode}</td>
+                              <td className="py-3 px-4 max-w-sm truncate font-medium" title={t.claimFinal}>
+                                {t.claimFinal}
                               </td>
-                              <td className="py-3 px-3">
+                              <td className="py-3 px-4">
                                 {t.mappedSourceOrders.map((o) => (
-                                  <span key={o} className="px-1 rounded bg-slate-100 border text-slate-500 font-bold text-[10px] mr-1">
+                                  <span
+                                    key={o}
+                                    className="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 text-gray-600 font-mono text-[10px] mr-1"
+                                  >
                                     [{o}]
                                   </span>
                                 ))}
                               </td>
-                              <td className="py-3 px-3">
-                                <span data-testid={TEST_IDS.taskStatus(t.id)} className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold ${
-                                  t.status === "Returned" ? "bg-red-50 text-red-800 border border-red-200" :
-                                  t.status === "Submitted" ? "bg-blue-50 text-blue-800 border border-blue-200" :
-                                  t.status === "Approved" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" :
-                                  "bg-amber-50 text-amber-805 border border-amber-205"
-                                }`}>
+                              <td className="py-3 px-4">
+                                <span
+                                  data-testid={TEST_IDS.taskStatus(t.id)}
+                                  className={`status-pill ${
+                                    t.status === "Returned"
+                                      ? "bg-red-50 text-red-800 border-red-200"
+                                      : t.status === "Submitted"
+                                        ? "bg-vsf-50 text-vsf-800 border-vsf-200"
+                                        : t.status === "Approved"
+                                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                          : "bg-amber-50 text-amber-800 border-amber-200"
+                                  }`}
+                                >
                                   {t.status}
                                 </span>
                               </td>
-                              <td className="py-3 px-3 text-center">
+                              <td className="py-3 px-4 text-center">
                                 <button
                                   onClick={() => handleOpenTaskAnnotation(t.id)}
                                   data-testid={TEST_IDS.taskOpenAnnotation(t.id)}
-                                  className="px-2.5 py-1 bg-gradient-to-tr from-blue-600 to-blue-700 hover:indigo-700 text-white font-bold rounded-lg text-[11px] shadow shadow-blue-100"
+                                  className="btn-primary !py-1.5 !px-3 !text-xs"
                                 >
-                                  {t.status === "Returned" ? "Chỉnh sửa" : "Bản đồ nguồn (Claim)"}
+                                  {t.status === "Returned" ? "Chỉnh sửa" : "Mở workspace"}
                                 </button>
                               </td>
                             </tr>
@@ -614,22 +648,19 @@ export default function App() {
           </main>
 
         </section>
-      </div>
 
-      {/* TOAST SYSTEM CONTAINER */}
-      <div className="fixed right-5 bottom-5 z-55 flex flex-col gap-2 pointer-events-none" data-testid={TEST_IDS.toastRegion} aria-live="polite">
+      {/* Toast */}
+      <div className="fixed right-5 bottom-5 z-50 flex flex-col gap-2 pointer-events-none" data-testid={TEST_IDS.toastRegion} aria-live="polite">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className="w-full max-w-sm bg-white rounded-xl border border-slate-100 shadow-2xl p-4 flex items-start gap-4 pointer-events-auto animate-slide-up border-l-4 border-l-blue-600"
+            className="w-full max-w-xs bg-gray-900 rounded-lg p-3.5 flex items-start gap-2.5 pointer-events-auto animate-slide-up"
+            style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
           >
-            <div className="w-5 h-5 rounded-full bg-blue-50 text-blue-650 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <CheckSquare size={12} />
+            <div className="w-5 h-5 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <CheckSquare size={11} className="text-white" />
             </div>
-            <div className="text-xs">
-              <strong className="text-slate-800 font-bold block">Thông báo tiến trình</strong>
-              <p className="text-slate-500 mt-1 leading-relaxed font-semibold">{toast.message}</p>
-            </div>
+            <p className="text-[13px] text-gray-200 leading-relaxed">{toast.message}</p>
           </div>
         ))}
       </div>
