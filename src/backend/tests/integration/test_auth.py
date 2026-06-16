@@ -38,6 +38,34 @@ async def test_mock_login_wrong_password(client):
     assert res.json()["error"]["code"] == "unauthorized"
 
 
+async def test_login_subject_is_user_id_not_email(client, db_session):
+    """JWT subject = str(user.id), KHÔNG phải email (fix #1 auth — khớp downstream resolve).
+
+    /auth/me trả subject; phải là UUID của user demo trong DB, không phải 'admin@vsf.local'.
+    """
+    import uuid as _uuid
+
+    from sqlalchemy import select
+
+    from app.models.user import UserAccount
+
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@vsf.local", "password": "admin-demo-2026"},
+    )
+    token = login.json()["access_token"]
+    me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    subject = me.json()["subject"]
+    # subject parse được thành UUID (không phải email)
+    parsed = _uuid.UUID(subject)
+    assert "@" not in subject
+    # và đúng id của admin trong DB
+    row = await db_session.execute(
+        select(UserAccount.id).where(UserAccount.email == "admin@vsf.local")
+    )
+    assert row.scalar_one() == parsed
+
+
 async def test_login_returns_refresh_token(client):
     res = await client.post(
         "/api/v1/auth/login",
