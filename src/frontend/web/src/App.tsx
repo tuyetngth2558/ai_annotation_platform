@@ -1,9 +1,20 @@
 import { useEffect, useState } from "react";
-import { UserRole, ClaimTask, Project, ExportJob, AuditLog, UserAccount } from "./types";
+import { UserRole, ClaimTask, Project, ExportJob, AuditLog, UserAccount, Dimension } from "./types";
 import { TEST_IDS, VIEW_LABELS, VIEW_URL_MAP } from "./testability";
 import { ApiError, apiClient, authToken } from "./api/client";
 import { demoProject, demoTasks } from "./data/demoTasks";
 import { enrichClaimTask } from "./sqRules";
+import {
+  fetchMyTasks,
+  fetchTaskDetail,
+  fetchQaQueue,
+  fetchQaReviewDetail,
+  fetchProjects,
+  fetchAuditLogs,
+  fetchUsers,
+  dimensionsToScoreBlock,
+  downloadExportCsv,
+} from "./api/adapters";
 
 // Components
 import LoginView from "./components/LoginView";
@@ -32,13 +43,6 @@ import {
 } from "lucide-react";
 
 type ViewKey = keyof typeof VIEW_URL_MAP;
-
-const demoWorkspaceUsers: UserAccount[] = [
-  { name: "Admin Tri", email: "admin@vsf.local", role: "ADMIN", status: "Đang hoạt động" },
-  { name: "Annotator Mai", email: "annotator.mai@vsf.local", role: "ANNOTATOR", status: "Đang hoạt động" },
-  { name: "Annotator Nam", email: "annotator.nam@vsf.local", role: "ANNOTATOR", status: "Đang hoạt động" },
-  { name: "QA Linh", email: "qa@vsf.local", role: "QA", status: "Đang hoạt động" },
-];
 
 const emptyProject: Project = {
   id: "",
@@ -69,18 +73,6 @@ const hashToView = (hash: string) => {
 const viewToHash = (view: string) => {
   const url = VIEW_URL_MAP[view as ViewKey] || VIEW_URL_MAP.dashboard;
   return url.replace("/", "");
-};
-
-const buildWorkspaceUsers = (email: string, role: UserRole): UserAccount[] => {
-  const normalizedEmail = email.toLowerCase();
-  const hasUser = demoWorkspaceUsers.some((user) => user.email.toLowerCase() === normalizedEmail);
-
-  if (hasUser) return demoWorkspaceUsers;
-
-  return [
-    { name: email.split("@")[0], email, role, status: "Đang hoạt động" },
-    ...demoWorkspaceUsers,
-  ];
 };
 
 export default function App() {
@@ -122,50 +114,54 @@ export default function App() {
     return fallback;
   };
 
-  const loadWorkspaceData = async () => {
+  // Tải dữ liệu theo ĐÚNG role (tránh gọi endpoint ADMIN-only khi ANNOTATOR/QA → 403).
+  // Demo data chỉ dùng khi gọi API LỖI (BE down) — không che dữ liệu rỗng thật.
+  const loadWorkspaceData = async (role: UserRole) => {
     setBackendNotice("");
 
-    const [projectsResult, tasksResult, auditsResult] = await Promise.allSettled([
-      apiClient.get<Project[]>("/projects"),
-      apiClient.get<ClaimTask[]>("/tasks"),
-      apiClient.get<AuditLog[]>("/audit-logs"),
-    ]);
-
-    if (projectsResult.status === "fulfilled" && projectsResult.value.length > 0) {
-      setProject(projectsResult.value[0]);
-    } else {
-      setProject(demoProject);
-      if (projectsResult.status === "rejected") {
+    if (role === "ADMIN") {
+      const [projectsResult, auditsResult, usersResult] = await Promise.allSettled([
+        fetchProjects(),
+        fetchAuditLogs(),
+        fetchUsers(),
+      ]);
+      if (projectsResult.status === "fulfilled") {
+        setProject(projectsResult.value[0] || emptyProject);
+      } else {
+        setProject(demoProject);
         setBackendNotice(backendMessage(projectsResult.reason, "Không tải được projects — dùng dữ liệu demo."));
       }
+      if (auditsResult.status === "fulfilled") setAuditLogs(auditsResult.value);
+      if (usersResult.status === "fulfilled") setUsers(usersResult.value);
+      setTasks([]);
+      return;
     }
 
-    if (tasksResult.status === "fulfilled" && tasksResult.value.length > 0) {
-      const enriched = tasksResult.value.map(enrichClaimTask);
-      setTasks(enriched);
-      setSelectedTaskId(enriched[0]?.id || "");
-      setSelectedQaTaskId(
-        enriched.find((task) => task.status === "Submitted")?.id || enriched[0]?.id || ""
-      );
-    } else {
-      setTasks(demoTasks);
-      setSelectedTaskId(demoTasks[0]?.id || "");
-      setSelectedQaTaskId(
-        demoTasks.find((task) => task.status === "Submitted")?.id || demoTasks[0]?.id || ""
-      );
-      setBackendNotice((prev) =>
-        prev ||
-          (tasksResult.status === "rejected"
-            ? backendMessage(tasksResult.reason, "Không tải được tasks — dùng dữ liệu demo PDF-native.")
-            : "Backend chưa có task — hiển thị demo CT-001/CT-002 (SQ rule engine).")
-      );
+    if (role === "ANNOTATOR") {
+      try {
+        const t = await fetchMyTasks();
+        const enriched = t.map(enrichClaimTask);
+        setTasks(enriched);
+        setSelectedTaskId(enriched[0]?.id || "");
+      } catch (error) {
+        setTasks(demoTasks);
+        setSelectedTaskId(demoTasks[0]?.id || "");
+        setBackendNotice(backendMessage(error, "Không tải được tasks — dùng dữ liệu demo."));
+      }
+      return;
     }
 
-    if (auditsResult.status === "fulfilled") {
-      setAuditLogs(auditsResult.value);
-    } else {
-      setAuditLogs([]);
-      setBackendNotice((prev) => prev || backendMessage(auditsResult.reason, "Không tải được audit logs từ backend."));
+    if (role === "QA") {
+      try {
+        const q = await fetchQaQueue();
+        setTasks(q.map(enrichClaimTask));
+        setSelectedQaTaskId(q[0]?.id || "");
+      } catch (error) {
+        setTasks(demoTasks);
+        setSelectedQaTaskId(demoTasks.find((t) => t.status === "Submitted")?.id || demoTasks[0]?.id || "");
+        setBackendNotice(backendMessage(error, "Không tải được QA queue — dùng dữ liệu demo."));
+      }
+      return;
     }
   };
 
@@ -191,8 +187,7 @@ export default function App() {
     setCurrentUser(email);
     setCurrentRole(role);
     setActiveView("dashboard");
-    setUsers(buildWorkspaceUsers(email, role));
-    void loadWorkspaceData();
+    void loadWorkspaceData(role);
   };
 
   const handleLogout = () => {
@@ -227,94 +222,134 @@ export default function App() {
           { view: "annotation", label: "Chấm điểm", icon: <Files size={17} /> }
         ];
       case "QA":
+        // Export là ADMIN-only (BE require ADMIN) → không hiển cho QA.
         return [
           { view: "dashboard", label: "Tổng quan", icon: <LayoutDashboard size={17} /> },
           { view: "qa", label: "Hàng đợi QA", icon: <CheckSquare size={17} /> },
-          { view: "qaReview", label: "Kiểm duyệt", icon: <Files size={17} /> },
-          { view: "export", label: "Xuất kết quả", icon: <FileSpreadsheet size={17} /> }
+          { view: "qaReview", label: "Kiểm duyệt", icon: <Files size={17} /> }
         ];
     }
   };
 
-  // Task workflows
-  const handleOpenTaskAnnotation = (taskId: string) => {
+  // Gộp 1 task đã fetch chi tiết vào state.
+  const mergeTaskDetail = (detail: ClaimTask) => {
+    setTasks((prev) => {
+      const exists = prev.some((t) => t.id === detail.id);
+      const enriched = enrichClaimTask(detail);
+      return exists ? prev.map((t) => (t.id === detail.id ? { ...t, ...enriched } : t)) : [...prev, enriched];
+    });
+  };
+
+  // Mở workspace → fetch detail (pre_score + sources + answer_context).
+  const handleOpenTaskAnnotation = async (taskId: string) => {
     setSelectedTaskId(taskId);
     setActiveView("annotation");
+    try {
+      mergeTaskDetail(await fetchTaskDetail(taskId));
+    } catch (error) {
+      showToast(backendMessage(error, "Không tải được chi tiết task."));
+    }
   };
 
-  const handleOpenTaskQa = (taskId: string) => {
+  const handleOpenTaskQa = async (taskId: string) => {
     setSelectedQaTaskId(taskId);
     setActiveView("qaReview");
+    try {
+      mergeTaskDetail(await fetchQaReviewDetail(taskId));
+    } catch (error) {
+      showToast(backendMessage(error, "Không tải được chi tiết QA review."));
+    }
   };
 
-  const updateTaskInState = (updatedTask: ClaimTask) => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === updatedTask.id ? enrichClaimTask(updatedTask) : task))
-    );
+  const toSourceAccessStatus = (ui: string): string => {
+    const map: Record<string, string> = {
+      source_text_parsed: "accessible",
+      "Truy cập được - hỗ trợ rõ": "accessible",
+      accessible: "accessible",
+      "Truy cập được - hỗ trợ một phần": "partial",
+      "Truy cập được - không hỗ trợ": "partial",
+      "Không liên quan": "partial",
+      partial: "partial",
+      "inaccessible / Không truy cập được": "inaccessible",
+      inaccessible: "inaccessible",
+      unknown: "not_checked",
+      not_checked: "not_checked",
+    };
+    return map[ui] || "not_checked";
   };
 
   const handleAnnotationSubmit = async (updatedTask: ClaimTask) => {
-    updateTaskInState(updatedTask);
     try {
-      await apiClient.post(`/tasks/${updatedTask.id}/submit`, updatedTask);
+      const justifications: Record<string, string | null> = {};
+      const dims: { ui: Dimension; be: string }[] = [
+        { ui: "SF", be: "sf" }, { ui: "SC", be: "sc" }, { ui: "NH", be: "hr" },
+        { ui: "SQ", be: "sq" }, { ui: "REL", be: "rel" }, { ui: "COMP", be: "comp" },
+      ];
+      for (const { ui, be } of dims) {
+        const delta = Math.abs((updatedTask.ann[ui] ?? 0) - (updatedTask.pre[ui] ?? 0));
+        justifications[be] = delta >= 0.2 ? (updatedTask.reason || null) : null;
+      }
+      await apiClient.post(`/tasks/${updatedTask.id}/submit`, {
+        scores: dimensionsToScoreBlock(updatedTask.ann),
+        source_access_status: toSourceAccessStatus(updatedTask.sourceStatus),
+        annotator_note: updatedTask.notes || null,
+        justifications,
+      });
       showToast(`Đã gửi task ${updatedTask.id} lên backend.`);
+      await loadWorkspaceData(currentRole);
     } catch (error) {
       showToast(backendMessage(error, "Không gửi được annotation lên backend."));
+      throw error;
     }
   };
 
   const handleQaApprove = async (taskId: string) => {
-    const targetTask = tasks.find((task) => task.id === taskId);
-    if (targetTask) {
-      updateTaskInState({
-        ...targetTask,
-        status: "Approved",
-      });
-    }
-
     try {
-      await apiClient.post(`/qa-reviews/${taskId}/approve`);
+      await apiClient.post(`/qa-reviews/${taskId}/approve`, { qa_comment: null });
       showToast(`Backend đã duyệt task ${taskId}.`);
+      await loadWorkspaceData(currentRole);
     } catch (error) {
       showToast(backendMessage(error, "Không duyệt được task qua backend."));
+      throw error;
     }
+  };
+
+  const toErrorCategory = (ui: string): string => {
+    const map: Record<string, string> = {
+      "Factual Error": "factual_error",
+      "Guideline Violation": "guideline_violation",
+      "Source Mismatch": "source_mismatch",
+      "Incomplete": "incomplete",
+      "Other": "other",
+    };
+    return map[ui] || "other";
   };
 
   const handleQaReturn = async (taskId: string, errorType: string, comment: string) => {
-    const targetTask = tasks.find((task) => task.id === taskId);
-    if (targetTask) {
-      updateTaskInState({
-        ...targetTask,
-        status: "Returned",
-        qaComment: `${errorType}: ${comment}`,
-        returnCount: (targetTask.returnCount || 0) + 1,
-      });
-    }
-
     try {
-      await apiClient.post(`/qa-reviews/${taskId}/return`, { errorType, comment });
+      await apiClient.post(`/qa-reviews/${taskId}/return`, {
+        error_category: toErrorCategory(errorType),
+        qa_comment: comment,
+      });
       showToast(`Backend đã trả task ${taskId} cho annotator.`);
+      await loadWorkspaceData(currentRole);
     } catch (error) {
       showToast(backendMessage(error, "Không trả task qua backend."));
-    }
-  };
-
-  const handleAddExportJob = async (newJob: ExportJob) => {
-    try {
-      await apiClient.post("/exports", newJob);
-      showToast("Backend đã nhận yêu cầu tạo export job.");
-    } catch (error) {
-      showToast(backendMessage(error, "Không tạo được export job qua backend."));
-    }
-  };
-
-  const callImportEndpoint = async (path: string, successMessage: string) => {
-    try {
-      await apiClient.post(path);
-      showToast(successMessage);
-    } catch (error) {
-      showToast(backendMessage(error, "Không kết nối được import endpoint."));
       throw error;
+    }
+  };
+
+  // Export: tải CSV thật từ BE (GET /exports/{project_id}/download). Bỏ "tạo job" giả.
+  const handleExportDownload = async () => {
+    if (!project.id) {
+      showToast("Chưa có project để export.");
+      return;
+    }
+    try {
+      await downloadExportCsv(project.id);
+      showToast("Đã tải file CSV export.");
+    } catch (error) {
+      showToast(backendMessage(error, "Không tải được CSV export."));
     }
   };
 
@@ -471,20 +506,13 @@ export default function App() {
 
             {activeView === "projects" && (
               <div data-testid={TEST_IDS.view("projects")}>
+                {/* TODO(import): nối wizard 4 bước thật (upload→validate→preview→confirm→poll)
+                    qua adapter — hiện chạy luồng nội bộ của ProjectSetupView. */}
                 <ProjectSetupView
                   project={project}
                   tasks={tasks}
                   onBackToDashboard={() => setActiveView("dashboard")}
                   showToast={showToast}
-                  onValidateBundle={() =>
-                    callImportEndpoint("/import-bundles/validate", "Backend đã validate PDF bundle.")
-                  }
-                  onPreviewParse={() =>
-                    callImportEndpoint("/import-bundles/preview", "Backend đã trả parse preview.")
-                  }
-                  onConfirmImport={() =>
-                    callImportEndpoint("/import-bundles/confirm", "Backend đã xác nhận import bundle.")
-                  }
                 />
               </div>
             )}
@@ -517,9 +545,8 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody className="text-gray-700">
-                        {tasks
-                          .filter((t) => t.annotator === "Annotator Mai")
-                          .map((t) => (
+                        {/* BE /tasks đã chỉ trả task của annotator hiện tại (OQ-008). */}
+                        {tasks.map((t) => (
                             <tr key={t.id} data-testid={TEST_IDS.taskRow(t.id)}>
                               <td className="py-3 px-4 font-semibold text-gray-900">{t.id}</td>
                               <td className="py-3 px-4 font-mono text-sm">{t.articleCode}</td>
@@ -618,7 +645,7 @@ export default function App() {
                   project={project}
                   tasks={tasks}
                   exportJobs={exportJobs}
-                  onAddExportJob={handleAddExportJob}
+                  onAddExportJob={handleExportDownload}
                   showToast={showToast}
                   userName={currentUser || ""}
                 />

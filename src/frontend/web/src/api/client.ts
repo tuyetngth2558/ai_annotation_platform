@@ -14,18 +14,39 @@ export interface LoginResponse {
   email: string;
 }
 
+/** Rút message + code từ body lỗi BE: {error:{code,message}} (AppError) hoặc {detail} (422 FastAPI). */
+function parseError(status: number, payload: unknown): { message: string; code: string } {
+  if (typeof payload === "object" && payload !== null) {
+    const obj = payload as Record<string, unknown>;
+    if (obj.error && typeof obj.error === "object") {
+      const err = obj.error as Record<string, unknown>;
+      return { message: String(err.message ?? `Lỗi backend (status ${status})`), code: String(err.code ?? "error") };
+    }
+    if ("detail" in obj) {
+      const detail = obj.detail;
+      if (Array.isArray(detail)) {
+        const msgs = detail
+          .map((d) => (typeof d === "object" && d && "msg" in d ? String((d as { msg: unknown }).msg) : String(d)))
+          .join("; ");
+        return { message: msgs || `Dữ liệu không hợp lệ (status ${status})`, code: "validation_error" };
+      }
+      return { message: String(detail), code: "validation_error" };
+    }
+  }
+  return { message: `Backend request failed with status ${status}`, code: "error" };
+}
+
 export class ApiError extends Error {
   status: number;
+  code: string;
   detail: unknown;
 
   constructor(status: number, detail: unknown) {
-    const message =
-      typeof detail === "object" && detail && "detail" in detail
-        ? String((detail as { detail: unknown }).detail)
-        : `Backend request failed with status ${status}`;
+    const { message, code } = parseError(status, detail);
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
     this.detail = detail;
   }
 }
@@ -89,6 +110,21 @@ export const apiClient = {
       }
       throw error;
     }
+  },
+  /** Tải file (blob) kèm Bearer token — dùng cho export CSV. */
+  download: async (path: string): Promise<{ blob: Blob; filename: string }> => {
+    const token = authToken.get();
+    const headers = new Headers();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+    if (!response.ok) {
+      const ct = response.headers.get("content-type") || "";
+      const payload = ct.includes("application/json") ? await response.json() : await response.text();
+      throw new ApiError(response.status, payload);
+    }
+    const disposition = response.headers.get("content-disposition") || "";
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    return { blob: await response.blob(), filename: match ? match[1] : "export.csv" };
   },
 };
 

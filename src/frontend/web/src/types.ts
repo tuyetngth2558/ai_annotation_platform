@@ -114,6 +114,7 @@ export interface AuditLog {
 export interface UserAccount {
   name: string;
   email: string;
-  role: UserRole;
+  // "" = role chưa xác định (user cũ chưa set default_role) — hiển "—".
+  role: UserRole | "";
   status: "Đang hoạt động" | "Bị khóa";
 }
