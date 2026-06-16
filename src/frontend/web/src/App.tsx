@@ -506,13 +506,11 @@ export default function App() {
 
             {activeView === "projects" && (
               <div data-testid={TEST_IDS.view("projects")}>
-                {/* TODO(import): nối wizard 4 bước thật (upload→validate→preview→confirm→poll)
-                    qua adapter — hiện chạy luồng nội bộ của ProjectSetupView. */}
                 <ProjectSetupView
                   project={project}
-                  tasks={tasks}
                   onBackToDashboard={() => setActiveView("dashboard")}
                   showToast={showToast}
+                  onImported={() => void loadWorkspaceData(currentRole)}
                 />
               </div>
             )}
@@ -654,7 +652,11 @@ export default function App() {
 
             {activeView === "users" && (
               <div data-testid={TEST_IDS.view("users")}>
-                <UsersView users={users} />
+                <UsersView
+                  users={users}
+                  showToast={showToast}
+                  onUserCreated={() => void loadWorkspaceData(currentRole)}
+                />
               </div>
             )}
 

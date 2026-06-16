@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Lock, Check, AlertCircle } from "lucide-react";
 import { TEST_IDS } from "../testability";
+import { changePassword } from "../api/adapters";
 
 interface ChangePasswordViewProps {
   onCancel: () => void;
@@ -11,8 +12,9 @@ export default function ChangePasswordView({ onCancel, showToast }: ChangePasswo
   const [currentPass, setCurrentPass] = useState("");
   const [newPass, setNewPass] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!currentPass) {
@@ -32,8 +34,17 @@ export default function ChangePasswordView({ onCancel, showToast }: ChangePasswo
       return;
     }
 
-    showToast("Đổi mật khẩu thành công (Mô phỏng nâng cấp tài khoản)!");
-    onCancel();
+    // Gọi BE thật: POST /auth/change-password → 204. Lỗi (sai pass cũ) hiện message BE.
+    setSubmitting(true);
+    try {
+      await changePassword(currentPass, newPass);
+      showToast("Đổi mật khẩu thành công!");
+      onCancel();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Không đổi được mật khẩu.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -126,10 +137,11 @@ export default function ChangePasswordView({ onCancel, showToast }: ChangePasswo
             </button>
             <button
               type="submit"
+              disabled={submitting}
               data-testid={TEST_IDS.changePasswordSubmit}
-              className="flex-1 py-2 px-3 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-sm font-bold shadow-md shadow-vsf-100"
+              className="flex-1 py-2 px-3 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-sm font-bold shadow-md shadow-vsf-100 disabled:opacity-50"
             >
-              Cập nhật
+              {submitting ? "Đang cập nhật…" : "Cập nhật"}
             </button>
           </div>
         </form>
