@@ -14,6 +14,7 @@ from app.features.auth import service
 from app.features.auth.deps import CurrentUser, get_current_user
 from app.features.auth.schemas import (
     AccessTokenResponse,
+    BootstrapAdminRequest,
     ChangePasswordRequest,
     LoginRequest,
     RefreshRequest,
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     """Đăng nhập. Dev: mock (AUTH_MOCK_ENABLED). Prod: verify password DB."""
     if settings.auth_mock_enabled:
-        return service.mock_login(payload)
+        return await service.mock_login(db, payload)
     return await service.login(db, payload)
 
 
@@ -47,6 +48,18 @@ async def change_password(
 ) -> None:
     """Đổi mật khẩu của chính mình (verify mật khẩu cũ)."""
     await service.change_password(db, user.subject, payload)
+
+
+@router.post("/bootstrap-admin", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def bootstrap_admin(
+    payload: BootstrapAdminRequest, db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
+    """Tạo Admin đầu tiên — chỉ hoạt động khi DB chưa có user nào, tự khóa sau.
+
+    Dùng 1 lần duy nhất để bootstrap hệ thống. Sau đó Admin dùng endpoint này
+    để tạo user tiếp theo qua POST /api/v1/users.
+    """
+    return await service.bootstrap_admin(db, payload.email, payload.password, payload.full_name)
 
 
 @router.get("/me")
