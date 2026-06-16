@@ -110,13 +110,7 @@ export default function LoginView({ onLoginSuccess, showToast }: LoginViewProps)
             <div className="space-y-1">
               <div className="flex justify-between items-center">
                 <label htmlFor="loginPassword" className="block text-xs font-bold text-slate-700">Mật khẩu</label>
-                <button
-                  type="button"
-                  onClick={() => showToast("Chức năng quên mật khẩu chưa được kết nối backend thật.")}
-                  className="text-xs text-blue-600 hover:underline font-semibold"
-                >
-                  Quên mật khẩu?
-                </button>
+                
               </div>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
@@ -148,7 +142,7 @@ export default function LoginView({ onLoginSuccess, showToast }: LoginViewProps)
               disabled={isSubmitting}
               className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-lg text-sm hover:indigo-700 hover:from-blue-700 hover:to-indigo-800 focus:ring-4 focus:ring-blue-100 transition-all shadow-md shadow-blue-200"
             >
-              {isSubmitting ? "Đang kết nối backend..." : "Vào Workspace"}
+              {isSubmitting ? "Đang kết nối backend..." : "Đăng Nhập"}
             </button>
           </form>
 
