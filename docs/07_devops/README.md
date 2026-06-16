@@ -1,9 +1,11 @@
 # DevOps Docs
 
-Đặt tại đây:
+Tài liệu quản lý vận hành và triển khai:
 
-- environment setup
-- staging / production notes
+- [Kế hoạch & Hướng dẫn Triển khai DevOps (Tuấn Anh)](./tuananh/README.md)
+- Environment setup
+- Staging / Production notes
 - CI/CD setup
-- secret/config guideline
-- release checklist
+- Secret/Config guideline
+- Release checklist
+
