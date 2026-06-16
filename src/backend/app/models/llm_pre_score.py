@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import CheckConstraint, ForeignKey, Numeric, String
+from sqlalchemy import CheckConstraint, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -46,7 +46,6 @@ class LlmPreScore(UUIDPkMixin, TimestampMixin, Base):
     composite_score: Mapped[float | None] = mapped_column(_SCORE, nullable=True)
 
     rationale_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    raw_response_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     claim: Mapped[ClaimTask] = relationship(back_populates="pre_scores")
-
-    # TODO(annotation): raw_response_reference (VR-LLM-005 traceability).
