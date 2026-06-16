@@ -1,11 +1,11 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
@@ -14,5 +14,12 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+  },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    // E2E (Playwright) chạy riêng qua `npm run e2e`, không nằm trong Vitest.
+    exclude: ["e2e/**", "node_modules/**"],
   },
 });
