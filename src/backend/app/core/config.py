@@ -67,6 +67,31 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
+    def assert_safe_for_env(self) -> None:
+        """Chặn khởi động nếu staging/production dùng cấu hình dev nguy hiểm.
+
+        Gọi ở app startup (main.lifespan). Dev/test bỏ qua. Tránh deploy nhầm với
+        debug bật, secret mặc định, mock auth, hoặc thiếu khóa mã hóa LLM key.
+        """
+        if self.app_env not in ("staging", "production"):
+            return
+        problems: list[str] = []
+        if self.app_debug:
+            problems.append("app_debug phải = False")
+        if self.jwt_secret in ("", "dev-only-change-me-please"):
+            problems.append("jwt_secret phải đặt giá trị mạnh (không dùng default dev)")
+        if self.auth_mock_enabled:
+            problems.append("auth_mock_enabled phải = False")
+        if not self.secret_encryption_key:
+            problems.append("secret_encryption_key (Fernet) phải được set để mã hóa LLM key")
+        if self.s3_secret_key in ("", "minioadmin"):
+            problems.append("s3_secret_key phải đổi khỏi default 'minioadmin'")
+        if problems:
+            raise RuntimeError(
+                f"Cấu hình không an toàn cho app_env={self.app_env}: "
+                + "; ".join(problems)
+            )
+
 
 @lru_cache
 def get_settings() -> Settings:
