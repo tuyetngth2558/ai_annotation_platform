@@ -7,7 +7,7 @@
 > ⚠️ **FILE NÀY PHẢI ĐƯỢC CẬP NHẬT.** Quy ước "ai cập nhật gì, khi nào" ở cuối file và
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
-**Cập nhật lần cuối:** 2026-06-09 · **Bởi:** sửa security/quality review (RBAC enforce, storage path-traversal, DB constraints, quality gates)
+**Cập nhật lần cuối:** 2026-06-16 · **Bởi:** Codex dọn UI shell để chuẩn bị kết nối backend thật
 
 ---
 
@@ -35,13 +35,13 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 
 | Feature | Backend (BE) | Frontend (FE) | Test | Ghi chú / Blocker |
 |---|:---:|:---:|:---:|---|
-| **auth** (login/RBAC) | 🚧 mock + RBAC enforce thật (require_role + get_current_user) | ✅ login + guard | 🚧 mẫu xong | Login thật (verify DB) chờ; OQ-006 |
-| **projects** (tạo/cấu hình LLM) | ⬜ route 501 | ⬜ skeleton | ⬜ | API key encrypt (BR-1.2) |
-| **import_bundle** (upload PDF) | ⬜ route 501 | ⬜ skeleton | ⬜ | 🔒 parser chờ OQ-PDF-004 (OCR) |
-| **annotation** (chấm 6 chiều) | ⬜ route 501, scoring helper ✅ | ⬜ skeleton | 🚧 scoring test ✅ | OQ-004 ngưỡng ±0.20 |
-| **qa_review** (approve/return) | ⬜ route 501 | ⬜ skeleton | ⬜ | |
-| **export** (CSV) | ⬜ route 501 | ⬜ skeleton | ⬜ | |
-| **audit** (log) | ⬜ route 501 | ⬜ skeleton | ⬜ | Cần REVOKE UPDATE/DELETE (BR-10.1) |
+| **auth** (login/RBAC) | 🚧 mock + RBAC enforce thật (require_role + get_current_user) | ✅ login qua `/auth/login`, bỏ demo picker | 🚧 mẫu xong | Login thật (verify DB) chờ; OQ-006 |
+| **projects** (tạo/cấu hình LLM) | ⬜ route 501 | 🚧 UI shell gọi API | ⬜ | API key encrypt (BR-1.2) |
+| **import_bundle** (upload PDF) | ⬜ route 501 | 🚧 UI shell gọi API | ⬜ | 🔒 parser chờ OQ-PDF-004 (OCR) |
+| **annotation** (chấm 6 chiều) | ⬜ route 501, scoring helper ✅ | 🚧 UI shell gọi API | 🚧 scoring test ✅ | OQ-004 ngưỡng ±0.20 |
+| **qa_review** (approve/return) | ⬜ route 501 | 🚧 UI shell gọi API + panel bài gốc | ⬜ | |
+| **export** (CSV) | ⬜ route 501 | 🚧 UI shell gọi API | ⬜ | |
+| **audit** (log) | ⬜ route 501 | 🚧 UI shell gọi API | ⬜ | Cần REVOKE UPDATE/DELETE (BR-10.1) |
 
 **Hạ tầng & cross-cutting:**
 | Hạng mục | Trạng thái | Ghi chú |
