@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPkMixin
@@ -43,9 +44,8 @@ class AnnotationSubmission(UUIDPkMixin, TimestampMixin, Base):
 
     source_access_status: Mapped[str | None] = mapped_column(String(48), nullable=True)
     annotator_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    justifications_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="submitted", nullable=False)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     claim: Mapped[ClaimTask] = relationship(back_populates="submissions")
-
-    # TODO(annotation): justification_note theo từng dimension khi lệch ngưỡng (BR-7.3).
