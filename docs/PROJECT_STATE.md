@@ -7,7 +7,7 @@
 > ⚠️ **FILE NÀY PHẢI ĐƯỢC CẬP NHẬT.** Quy ước "ai cập nhật gì, khi nào" ở cuối file và
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
-**Cập nhật lần cuối:** 2026-06-16 · **Bởi:** Codex dọn UI shell để chuẩn bị kết nối backend thật
+**Cập nhật lần cuối:** 2026-06-16 · **Bởi:** Codex sửa cấu hình dev login mock
 
 ---
 
@@ -46,7 +46,7 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 **Hạ tầng & cross-cutting:**
 | Hạng mục | Trạng thái | Ghi chú |
 |---|:---:|---|
-| docker-compose (6 service) | ✅ | verify chạy thật |
+| docker-compose (6 service) | ✅ | web trỏ đúng `/api/v1`; compose dev bật mock login cho API |
 | 16 models + Alembic | ✅ | migration đầu đã generate |
 | core (config/security/perm/crypto/...) | 🚧 | khung xong, một số logic TODO |
 | Storage interface (local/S3) | ✅ | path-traversal validate ✅; route đọc file chưa nối |

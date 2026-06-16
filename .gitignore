@@ -11,7 +11,7 @@ logs/
 # Env files
 .env
 .env.*
-!.env.example                 # template phải được commit
+!.env.example
 
 # Local object storage (STORAGE_BACKEND=local)
 var/
