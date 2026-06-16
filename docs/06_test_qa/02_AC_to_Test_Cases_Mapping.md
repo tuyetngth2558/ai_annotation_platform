@@ -28,6 +28,8 @@ Bảng này trả lời câu hỏi: “Đọc AC xong thì tester cần viết/t
 
 | Nhóm AC | Tester cần test gì | Test case/checklist tương ứng | Kết quả mong đợi |
 |---|---|---|---|
+| Authentication | Login/logout/session, direct URL protection, role landing/menu | FT-AUTH-001..012, E2E-AUTH-001..006, REG-AUTH-001 | Auth đúng role, login sai bị block, session/direct URL an toàn |
+| Main workflow integration | Kiểm data/state handoff từ Auth -> Project -> Import -> Parse -> Normalize -> Claim -> LLM -> Annotation -> QA -> Export | INT-001..018 | Module tích hợp đúng, state/data không bị đứt giữa các bước |
 | Project setup | Tạo project Vivipedia text-only, nhập LLM config, gán Annotator/QA | FT-PRJ-001..009, E2E-001 | Project tạo được, modality là Text, LLM config hợp lệ, assignment đủ người |
 | PDF bundle import | Upload Answer PDF, Source Reference PDF, Source Content PDF; gán file role | FT-IMP-001..009, E2E-IMP-001..005 | Bundle hợp lệ được import; thiếu/trùng/sai role bị block |
 | PDF parsing preview | Xem metadata, source list, warning source URL missing | FT-IMP-010..013, E2E-003, E2E-IMP-006..007 | Preview hiển thị đúng; warning không block; parse fail bị block |
@@ -38,7 +40,8 @@ Bảng này trả lời câu hỏi: “Đọc AC xong thì tester cần viết/t
 | QA workflow | QA xem queue, diff, approve, return, không sửa trực tiếp score/claim | FT-QA-001..010, E2E-QA-001..007 | Approve -> Approved; Return yêu cầu error/comment và trả task về annotator |
 | Export CSV | Export approved-only, required columns, UTF-8, quoting, PDF trace | FT-EXP-001..010, E2E-EXP-001..006 | CSV chỉ có Approved claims, đúng schema, trace được PDF gốc |
 | RBAC/Audit | Kiểm tra quyền Admin/Annotator/QA và log các action chính | FT-AUTH-001..006, FT-AUD-001..007, E2E-RBAC-001..003, E2E-AUD-001 | Role bị giới hạn đúng; audit có import/edit/submit/approve/return/export |
-| Staging/storage/config sanity | Kiểm tra staging, migration, file metadata/storage, không lộ secret | FT-ENV-001..004, FT-STO-001..003, API-001, API-022..023 | Build test được, PDF metadata đúng, lỗi config không lộ secret |
+| Staging/storage/config sanity | Kiểm tra staging, migration, file metadata/storage, không lộ secret | FT-ENV-001..008, FT-STO-001..005, API-001, API-022..025 | Build test được, PDF metadata đúng, lỗi config không lộ secret |
+| Logging/debuggability | Kiểm tra log cho upload, parse, scoring, export | FT-LOG-001..005, API-024, UI-026 | Dev/Test tra được lỗi theo bundle/task/export ID, không lộ secret |
 
 ---
 
@@ -46,10 +49,11 @@ Bảng này trả lời câu hỏi: “Đọc AC xong thì tester cần viết/t
 
 | Requirement ID | Requirement | Source BA | Test Coverage | Priority | Status |
 |---|---|---|---|---|---|
-| REQ-AUTH-001 | User login theo tài khoản nội bộ | IA/Auth | FT-AUTH-001..004, API-002..003, UI-001..002 | P0 | Covered |
+| REQ-AUTH-001 | User login theo tài khoản nội bộ | IA/Auth | FT-AUTH-001..004, FT-AUTH-007..012, E2E-AUTH-001..006, API-002..003, UI-001..002, REG-AUTH-001 | P0 | Covered |
 | REQ-RBAC-001 | Admin truy cập Project/Import/User/Audit/Export | IA/RBAC | FT-AUTH-001, FT-AUTH-005, E2E-RBAC-001, API-N-002 | P0 | Covered |
 | REQ-RBAC-002 | Annotator chỉ thấy task được giao | IA/My Tasks, US-04 | FT-ANN-001, E2E-ANN-001, API-013 | P0 | Covered |
 | REQ-RBAC-003 | QA chỉ review task trong scope được giao | IA/QA Queue, US-08 | FT-QA-001, E2E-QA-001, API-016 | P0 | Covered |
+| REQ-INT-001 | Main workflow integration từ import PDF đến export CSV | Scope MVP, Workflow baseline | INT-001..018, E2E-001..003, REG-SMOKE-001..005 | P0 | Covered |
 | REQ-PRJ-001 | Admin tạo project text Vivipedia | Screen Spec 2.1 | FT-PRJ-001..004, API-005, UI-006..007 | P0 | Covered |
 | REQ-LLM-001 | Admin cấu hình LLM endpoint/key/prompt | Screen Spec 2.1, BR-1 | FT-PRJ-005..008, API-006 | P0 | Covered |
 | REQ-ASSIGN-001 | Admin gán Annotator và QA | Screen Spec 2.3 | FT-PRJ-009, E2E-001 | P0 | Covered |
@@ -57,7 +61,7 @@ Bảng này trả lời câu hỏi: “Đọc AC xong thì tester cần viết/t
 | REQ-IMP-002 | Validate missing/duplicate/corrupt/invalid PDF | Validation Rules | FT-IMP-002..009, E2E-IMP-002..005, API-N-009..010 | P0 | Covered |
 | REQ-PARSE-001 | Parse Answer PDF thành raw và normalized text | DRD-003, VR-PARSE | FT-PIP-001..002, E2E-IMP-007 | P0 | Covered |
 | REQ-SRC-001 | Extract source order/title/tier, URL optional | DRD-006, VR-SRC | FT-IMP-010..012, FT-PIP-003, E2E-IMP-006 | P1 | Covered |
-| REQ-STO-001 | PDF file metadata/storage trace theo bundle/file role | Scope DevOps, Import Schema | FT-STO-001..003, API-022, E2E-EXP-002 | P0 | Covered |
+| REQ-STO-001 | PDF file metadata/storage trace theo bundle/file role | Scope DevOps, Import Schema | FT-STO-001..005, API-022, API-N-012, E2E-EXP-002 | P0 | Covered |
 | REQ-CLAIM-001 | Claim extraction tạo Claim Task | Screen Flow, VR-CE | FT-PIP-004..005, E2E-IMP-001 | P0 | Covered |
 | REQ-MAP-001 | Citation/source mapping và Source Mapping Required | VR-MAP | FT-PIP-006..007, E2E-IMP-008 | P1 | Covered |
 | REQ-LLM-002 | LLM pre-score đủ 6 dimension | VR-LLM | FT-PIP-008..010, E2E-IMP-009..010, API-012 | P0 | Covered |
@@ -79,7 +83,8 @@ Bảng này trả lời câu hỏi: “Đọc AC xong thì tester cần viết/t
 | REQ-EXP-003 | CSV UTF-8 và quoting đúng | VR-EXP-006, BR-9.2 | FT-EXP-007..008, E2E-EXP-003, API-020 | P0 | Covered |
 | REQ-EXP-004 | Multiple sources join bằng delimiter thống nhất | Edge Cases EC-EXP-003 | FT-EXP-009, E2E-EXP-004 | P1 | Covered |
 | REQ-AUD-001 | Audit log core actions | Scope, BR-10 | FT-AUD-001..007, E2E-AUD-001, API-021 | P1 | Covered |
-| REQ-ENV-001 | Staging/deploy/migration/config sanity cho UAT | Scope DevOps, Test Plan | FT-ENV-001..004, API-001, API-023, API-N-011 | P1 | Covered |
+| REQ-LOG-001 | Log/debug cho upload, parse, scoring, export | Scope DevOps, Test Plan | FT-LOG-001..005, API-024, UI-026 | P1 | Covered |
+| REQ-ENV-001 | Staging/deploy/migration/config sanity cho UAT | Scope DevOps, Test Plan | FT-ENV-001..008, API-001, API-023, API-025, API-N-011 | P1 | Covered |
 | REQ-ERR-001 | Empty/loading/error state tối thiểu | Screen Spec 6 | UI-024..025 | P2 | Covered |
 
 ---

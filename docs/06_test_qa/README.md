@@ -19,3 +19,7 @@
 | `05_Functional_Test_Checklist.md` | Checklist functional test theo module |
 | `06_API_UI_Sanity_Checklist.md` | Checklist sanity test API và UI |
 | `07_Test_Execution_Report_Template.md` | Template báo cáo kết quả chạy test và sign-off |
+| `08_Regression_Checklist.md` | Checklist regression sau deploy/fix bug và trước UAT/demo |
+| `09_Integration_Test_Plan_Main_Workflow.md` | Integration test plan cho workflow chính PDF-native |
+| `10_UAT_Checklist_Signoff.md` | Checklist UAT/demo và ký nhận nội bộ |
+| `11_UI_UX_Testability_Acceptance_Checklist.md` | Checklist UI/UX testability theo PRD URL & Element Map, co pass/fail va bug severity |

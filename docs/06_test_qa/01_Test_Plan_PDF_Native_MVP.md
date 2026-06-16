@@ -204,6 +204,7 @@ Functional Checklist và API/UI Sanity là checklist hỗ trợ để không b�
 
 - Test Plan MVP.
 - E2E Test Scenarios.
+- Integration Test Plan cho main workflow.
 - Main Flow E2E Test Cases.
 - PDF Parsing & Normalization Test Cases.
 - Validation Test Cases map với Validation Rules.
@@ -211,7 +212,7 @@ Functional Checklist và API/UI Sanity là checklist hỗ trợ để không b�
 - Functional Test Checklist.
 - API/UI Sanity Test Checklist.
 - Test Execution Report khi chạy test.
-- UAT Checklist/Sign-off note nếu được yêu cầu ở tuần 4.
+- UAT Checklist/Sign-off note cho demo/mentor review.
 
 ---
 
@@ -221,10 +222,11 @@ Functional Checklist và API/UI Sanity là checklist hỗ trợ để không b�
 |---|---|---|
 | Test Plan - PDF-native MVP | Test strategy, scope, entry/exit criteria, risk | `01_Test_Plan_PDF_Native_MVP.md` |
 | Test Cases - E2E Workflow PDF | Happy path, QA Return/Resubmit, Export CSV | `03_E2E_Test_Scenarios.md` |
+| Integration Test Plan - Main Workflow | Data/state handoff giữa Auth, Project, Import, Parse, Normalize, Claim, LLM, Annotation, QA, Export | `09_Integration_Test_Plan_Main_Workflow.md` |
 | Validation Test Cases | Upload validation, parse fail, source issue, score, QA return comment | `05_Functional_Test_Checklist.md`, `02_AC_to_Test_Cases_Mapping.md` |
 | PDF Parsing & Normalization Test Cases | Raw text, normalized text, metadata, source list, traceability | `05_Functional_Test_Checklist.md`, `03_E2E_Test_Scenarios.md` |
-| Regression Checklist | Re-run luồng chính sau bug fix | `05_Functional_Test_Checklist.md` |
-| UAT Checklist | Mentor/stakeholder review theo scope MVP | UAT checklist/sign-off note |
+| Regression Checklist | Re-run luồng chính sau bug fix | `08_Regression_Checklist.md` |
+| UAT Checklist | Mentor/stakeholder review theo scope MVP và ký nhận nội bộ | `10_UAT_Checklist_Signoff.md` |
 | Functional Test Execution | Chạy test, ghi bug, báo cáo kết quả | `07_Test_Execution_Report_Template.md`, `04_Bug_Log_Template.md` |
 | API/UI Sanity Test | Build/staging sanity, route/API/action chính | `06_API_UI_Sanity_Checklist.md` |
 | Workflow Export Verification | CSV approved-only, UTF-8, quoting, PDF trace | `03_E2E_Test_Scenarios.md`, `05_Functional_Test_Checklist.md` |

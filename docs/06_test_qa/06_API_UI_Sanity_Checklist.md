@@ -34,6 +34,8 @@
 | API-021 | Audit log | `/audit` | GET | Admin-only audit list returned | Not Run |
 | API-022 | Storage/file metadata | Implementation-specific | GET | Uploaded PDF metadata maps to bundle/file role | Not Run |
 | API-023 | Migration/build info | Implementation-specific | GET | Build/schema version visible or confirmable for staging sanity | Not Run |
+| API-024 | Log stream/dashboard | Implementation-specific | GET | Upload/parse/scoring/export logs are searchable by bundle/task/export ID | Not Run |
+| API-025 | Release/config status | Implementation-specific | GET | Required env/config/storage/parser settings are present without exposing secret values | Not Run |
 
 ---
 
@@ -52,6 +54,7 @@
 | API-N-009 | Upload non-PDF file as PDF bundle | 400 validation error | Not Run |
 | API-N-010 | Confirm invalid bundle | 400 validation error, no batch created | Not Run |
 | API-N-011 | Error/log response with bad LLM/parser config | No API key/secret leaked | Not Run |
+| API-N-012 | Storage file request without permission or invalid reference | 401/403/404 response, no file leak | Not Run |
 
 ---
 
@@ -84,6 +87,21 @@
 | UI-023 | Audit | Audit list | Admin can filter/view action logs | Not Run |
 | UI-024 | Global | Loading state | No broken blank screen during loading | Not Run |
 | UI-025 | Global | Error state | API error shown in user-readable way | Not Run |
+| UI-026 | Log/Debug view if available | Search by bundle/task/export ID | Related technical logs visible for Dev/Test without secret values | Not Run |
+| UI-027 | Global route map | Directly open `/login`, `/admin/projects/new`, `/admin/import`, `/annotator/tasks`, `/qa/queue`, `/admin/export` | Correct screen loads for authorized user; unauthorized role is blocked/redirected | Not Run |
+| UI-028 | Global test IDs | Check every MVP screen root | Page-level `data-testid` is present once and matches UI Testability map | Not Run |
+| UI-029 | Login | Labels/placeholders/buttons | Email/password labels, placeholders, required fields, submit text, and error message match fixed UI map | Not Run |
+| UI-030 | Project Setup | Required controls | Name, description, deadline, modality, LLM URL, API key, prompt, and next button visible with stable labels/test IDs | Not Run |
+| UI-031 | Import | Wizard step state | Step 4 next disabled before validation; step 5 confirm only after preview; step 6 pipeline status visible after confirm | Not Run |
+| UI-032 | Import | Dynamic upload rows | Staged file chips and role rows render for answer/source-ref/source-content files | Not Run |
+| UI-033 | My Tasks | Dynamic row/open action | Claim row `CT-001` and open/edit action are visible and navigate to `/annotator/tasks/CT-001` | Not Run |
+| UI-034 | Annotation | Claim reset and composite | Reset restores original claim; changing six scores updates composite score | Not Run |
+| UI-035 | Annotation | Right panel tabs | Rubric, guideline, and example tabs switch content without losing draft inputs | Not Run |
+| UI-036 | QA Queue | Search/filter | Search input and Submitted/Returned/Approved filters update visible rows correctly | Not Run |
+| UI-037 | QA Review | Return modal cancel | Cancel closes modal and does not change task status/history | Not Run |
+| UI-038 | QA Review | History tab | Returned/resubmitted claim shows history entries with QA comment/error type | Not Run |
+| UI-039 | Export | Disabled state/history | Download disabled until project selected; history row and re-download link are visible after export | Not Run |
+| UI-040 | Global accessibility fallback | Required inputs/buttons | Required fields have label or aria-label; buttons/links have stable accessible names for Playwright fallback locators | Not Run |
 
 ---
 
@@ -99,5 +117,8 @@
 8. QA approve one task.
 9. Export CSV and verify approved-only plus PDF trace.
 10. Check audit/log stream for import/submit/approve/export.
-11. Run one negative validation each for upload, score, QA return.
-12. Record result in test execution notes.
+11. Confirm release checklist items: route, storage, config backup note, support owner.
+12. Run one negative validation each for upload, score, QA return.
+13. Verify UI Testability selectors for Login, Import, Annotation, QA Review, and Export.
+14. Run `11_UI_UX_Testability_Acceptance_Checklist.md` section "Manual test cases - thao tac de chay" for strict UI/UX contract pass/fail before frontend sign-off.
+15. Record result in test execution notes.

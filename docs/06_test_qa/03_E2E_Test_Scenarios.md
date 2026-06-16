@@ -30,15 +30,31 @@
 | Happy path PDF-native | E2E-001 |
 | QA Return và Resubmit | E2E-002 |
 | PDF parse warning nhưng vẫn đi hết pipeline | E2E-003 |
+| Authentication/login/logout/session | E2E-AUTH-001..006 |
 | Import/pipeline negative cases | E2E-IMP-002..011 |
 | Annotation validation | E2E-ANN-003..005 |
 | QA validation | E2E-QA-004..007 |
 | Export CSV claim-level | E2E-EXP-001..006 |
 | RBAC và audit smoke | E2E-RBAC-001..003, E2E-AUD-001 |
+| UI testability contract theo URL & Element Map | E2E-UI-001..009 |
 
 ---
 
-## 3. E2E happy path
+## 3. Authentication scenarios
+
+| ID | Scenario | Preconditions | Steps | Expected result | Priority |
+|---|---|---|---|---|---|
+| E2E-AUTH-001 | Login success by role | Admin, Annotator, QA accounts exist and are active | 1. Open login page. 2. Login with each valid account. | User logs in successfully; landing page and visible menu match role. | P0 |
+| E2E-AUTH-002 | Login failed with invalid credentials | Login page is available | 1. Enter wrong email/password. 2. Submit. | Login is blocked; clear error message shown; no session is created. | P0 |
+| E2E-AUTH-003 | Unauthenticated user cannot access protected pages | User is logged out | 1. Open Project Setup/My Tasks/QA Queue/Export URL directly. | User is redirected to Login or receives unauthorized state; protected data is not shown. | P0 |
+| E2E-AUTH-004 | Logout clears session | User is logged in | 1. Click Logout. 2. Open a protected page again. | Session is cleared; protected page requires login again. | P0 |
+| E2E-AUTH-005 | Role menu and direct URL restriction | Active Admin, Annotator, QA accounts exist | 1. Login as Annotator and QA. 2. Try to open Admin-only screens by URL. 3. Login as Admin and open admin screens. | Annotator/QA are blocked from unauthorized screens; Admin can access allowed admin screens. | P0 |
+| E2E-AUTH-006 | Disabled/inactive user cannot login if supported | Inactive user account exists | 1. Login with inactive account. | Login is blocked with clear message; no session is created. | P1 |
+| E2E-AUTH-007 | Role landing URLs match UI map | Admin, Annotator, QA accounts exist | 1. Login as Admin. 2. Login as Annotator. 3. Login as QA. | Admin lands on `/admin/dashboard`; Annotator lands on `/annotator/tasks`; QA lands on `/qa/queue`. | P0 |
+
+---
+
+## 4. E2E happy path
 
 | ID | Scenario | Preconditions | Steps | Expected result | Priority |
 |---|---|---|---|---|---|
@@ -48,7 +64,7 @@
 
 ---
 
-## 4. Import and pipeline scenarios
+## 5. Import and pipeline scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -63,10 +79,12 @@
 | E2E-IMP-009 | LLM pre-scoring success | Pipeline calls LLM/mock provider with valid output | Task becomes `Ready for Annotation`; immutable pre-score saved. | P0 |
 | E2E-IMP-010 | LLM pre-scoring failed | Provider timeout or invalid output schema | Task becomes `Pre-scoring Failed`; Admin can see error/retry entry if implemented. | P1 |
 | E2E-IMP-011 | Internal normalization creates traceable parent task | Import valid PDF Bundle and inspect created data | Raw text, normalized text, metadata, source list, parse status, bundle ID, and PDF filenames are stored and traceable to generated claim tasks. | P0 |
+| E2E-IMP-012 | Import wizard step guards | Open `/admin/import`; upload no file or unvalidated role mapping | Step 4 next is disabled until validation passes; step 5 confirm is available only after parse preview loads; step 6 shows pipeline status list. | P0 |
+| E2E-IMP-013 | Staged file chips and dynamic role rows | Upload multiple PDF files with names including answer/source refs/source content | Each staged file chip is visible; answer/source-ref rows and every source-content row render with stable dynamic test IDs and correct role badge text. | P1 |
 
 ---
 
-## 5. Annotation scenarios
+## 6. Annotation scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -78,10 +96,13 @@
 | E2E-ANN-006 | Claim edit audit | Edit claim text and save/auto-save | `claim_text_original` preserved; `claim_text_final` saved; audit logs before/after. | P1 |
 | E2E-ANN-007 | Auto-save | Modify score/note; wait 30 seconds or blur field | Draft saved asynchronously; UI shows last saved time; data persists after reload. | P1 |
 | E2E-ANN-008 | Returned task resubmit | Open Returned task, view QA comment, update data, resubmit | Task returns to QA Queue with history retained. | P0 |
+| E2E-ANN-009 | Claim reset restores original text | Open annotation workspace, edit claim text, click reset claim | Claim text returns to original AI/parsed value; draft state updates without losing scores/notes. | P1 |
+| E2E-ANN-010 | Rubric/guideline/example tabs | Open annotation workspace and switch all right-panel tabs | Rubric, guideline, and example content panels render without losing unsaved annotation data. | P1 |
+| E2E-ANN-011 | Composite score updates from six dimensions | Change each SF/SC/NH/SQ/REL/COMP score | Composite display recalculates consistently and rounds according to product rule. | P0 |
 
 ---
 
-## 6. QA review scenarios
+## 7. QA review scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -92,10 +113,13 @@
 | E2E-QA-005 | Return requires comment | Click Return with no/short comment | Return blocked until comment >= 10 characters. | P0 |
 | E2E-QA-006 | QA cannot edit score or claim | Try to edit annotator score/claim in QA screen | Fields are read-only or no edit action exists. | P1 |
 | E2E-QA-007 | QA cannot review non-submitted task | Open/act on task not in `Submitted` state | API/UI blocks action with invalid status. | P0 |
+| E2E-QA-008 | QA queue search and status filters | Open QA Queue with submitted/returned/approved data; use search and each filter | Results update correctly by claim/task/article/annotator text and by Submitted/Returned/Approved state; opening a row navigates to `/qa/review/:claimId`. | P1 |
+| E2E-QA-009 | Return modal cancel does not change status | Open return modal, enter error type/comment, click cancel | Modal closes; task remains `Submitted`; no return audit/history record is created. | P0 |
+| E2E-QA-010 | Review history tab after resubmit | Complete return and resubmit flow, open QA Review history tab | History tab shows prior submit, QA return comment/error type, resubmit, and actor/time metadata. | P0 |
 
 ---
 
-## 7. Export scenarios
+## 8. Export scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -105,10 +129,12 @@
 | E2E-EXP-004 | Multiple sources delimiter | Export claim mapped to multiple sources | Source orders/titles/file refs joined consistently with `;`. | P1 |
 | E2E-EXP-005 | No approved claims | Export project/batch with no approved claim | UI shows no data message or header-only CSV according to implementation decision. | P2 |
 | E2E-EXP-006 | Export audit log | Create export job | Audit log contains export action with actor, target, row count, timestamp. | P1 |
+| E2E-EXP-007 | Export button disabled until project selected | Open `/admin/export` without selecting project | Export/download button is disabled; status note states only approved claims are exported. | P0 |
+| E2E-EXP-008 | Export history download | Create or use existing export history row, click download again | History table shows filename/date/user/claim count; download link retrieves a `.csv` file without creating duplicate export rows. | P1 |
 
 ---
 
-## 8. RBAC and audit scenarios
+## 9. RBAC and audit scenarios
 
 | ID | Scenario | Steps | Expected result | Priority |
 |---|---|---|---|---|
@@ -119,7 +145,23 @@
 
 ---
 
-## 9. Final UAT watchlist
+## 10. UI testability and route scenarios
+
+| ID | Scenario | Steps | Expected result | Priority |
+|---|---|---|---|---|
+| E2E-UI-001 | Canonical route smoke | Navigate directly to `/login`, `/admin/projects/new`, `/admin/import`, `/annotator/tasks`, `/annotator/tasks/CT-001`, `/qa/queue`, `/qa/review/CT-001`, `/admin/export` with allowed roles | Each URL resolves to the expected screen component; protected URLs apply RoleGuard. | P0 |
+| E2E-UI-002 | Page-level `data-testid` contract | Open every MVP screen in the UI map | `login-page`, `import-bundle-page`, `annotator-tasks-page`, `annotation-workspace-page`, `qa-queue-page`, `qa-review-page`, and `export-page` are present exactly once per page. | P0 |
+| E2E-UI-003 | Login form selector/text contract | Open `/login` | Email/password inputs expose stable test IDs, labels, placeholders, required attributes, fixed login button text, and auth error test ID when login fails. | P0 |
+| E2E-UI-004 | Import selector/text contract | Complete import wizard steps 3-6 | All documented step panels, upload/dropzone, role mapping, validate, preview, warning, confirm, pipeline, and next buttons have stable test IDs and fixed text. | P0 |
+| E2E-UI-005 | Annotator list selector contract | Open `/annotator/tasks` with claim `CT-001` assigned | Task table, row `annotator-tasks-row-CT-001`, and open button `annotator-tasks-open-CT-001` are available and navigate to the workspace. | P0 |
+| E2E-UI-006 | Annotation workspace selector contract | Open `/annotator/tasks/CT-001` | Claim, six score inputs, reason, notes, source status/note, auto-save indicator, submit button, status badge, and tabs expose expected test IDs and labels. | P0 |
+| E2E-UI-007 | QA queue/review selector contract | Open queue and review for `CT-001` | Search/filter controls, row/open buttons, review tabs, diff panels, approve/return buttons, and return modal controls expose expected test IDs. | P0 |
+| E2E-UI-008 | Export selector/download contract | Open `/admin/export` and export an approved project | Project/batch selects, status note, download button, history table/row/download link expose expected test IDs; browser download filename ends with `.csv`. | P0 |
+| E2E-UI-009 | Fixed Vietnamese UI copy for E2E | Open every MVP screen | Button text, placeholders, tab text, and modal labels used by E2E remain stable and match the UI Testability map. | P1 |
+
+---
+
+## 11. Final UAT watchlist
 
 - Export permission: Admin only or Admin + QA được cấp quyền.
 - OCR handling for scan/image PDFs: reject or flag `ocr_required`.
