@@ -76,12 +76,14 @@
 ## 6. LLM Pre-scoring Validation
 
 | Rule ID | Area | Rule | Blocking? | Error Message / Behavior |
-|---|---|---|---:|---|
+|---|---|---|---|---:|
 | VR-LLM-001 | LLM output | Phải có đủ 6 score: SF, SC, HR, SQ, REL, COMP | Yes | Missing required score |
 | VR-LLM-002 | Score | Score nằm trong 0.00–1.00 | Yes | Score must be between 0.00 and 1.00 |
 | VR-LLM-003 | Score | Tối đa 2 chữ số thập phân | Yes | Score supports max 2 decimal places |
 | VR-LLM-004 | LLM output | Sai schema thì task `pre_scoring_failed` | Yes | Invalid LLM schema |
 | VR-LLM-005 | Trace | Lưu provider/model/prompt_version/raw_response_reference | Yes | Missing LLM traceability fields |
+| VR-LLM-006 | Batch size | Tổng token ước tính phải < 80% context window | Yes | Batch exceeds context window limit |
+| VR-LLM-007 | Token budget | Input + output token phải được log per API call | Yes | Missing token usage trace |
 
 ---
 
@@ -106,6 +108,18 @@
 | VR-QA-002 | QA Return | Return bắt buộc có `qa_comment` | Yes | QA comment required |
 | VR-QA-003 | QA Approve | Approve không bắt buộc comment | No | N/A |
 | VR-QA-004 | QA status | QA không review task chưa submitted | Yes | Task not ready for QA |
+
+---
+
+## 10. Source Fetch Validation
+
+| Rule ID | Area | Rule | Blocking? | Error Message / Behavior |
+|---|---|---|---|---:|
+| VR-FETCH-001 | Source URL | Nếu `source_url` có giá trị thì phải thử fetch để lấy source text | No (flag warning) | Source fetch recommended but not required |
+| VR-FETCH-002 | Fetch fail | Nếu fetch fail thì dùng `source_content_pdf` làm fallback; flag warning | No | Using fallback source_content_pdf |
+| VR-FETCH-003 | Fetch empty | Nếu fetch thành công nhưng source_text rỗng (<100 chars) thì flag `source_text_empty` | No | Source text empty after fetch |
+| VR-FETCH-004 | Encoding | Source text fetch được phải là UTF-8; nếu không decode được thì flag `encoding_error` | No | Source text encoding error |
+| VR-FETCH-005 | Retry | Fetch timeout phải retry tối đa 3 lần với exponential backoff; sau 3 lần fail thì fallback | Yes (after 3 retries) | Source fetch failed after max retries |
 
 ---
 

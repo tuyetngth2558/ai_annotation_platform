@@ -1,26 +1,30 @@
-# VSF AI Annotation Platform - AC & Business Rules Specification (MVP)
+# VSF AI Annotation Platform — AC & Business Rules (MVP)
 
-Tài liệu này đặc tả chi tiết **Tiêu chí nghiệm thu (Acceptance Criteria - AC)** và **Quy tắc nghiệp vụ (Business Rules - BR)** cho các tính năng thuộc nhóm Must-Have trong phạm vi MVP 4 tuần. Đây là tài liệu gốc để lập trình viên viết code/validation và đội ngũ kiểm thử thiết kế bộ test cases.
+**Owner:** Quang  
+**Phiên bản:** 1.2 (PDF-native)  
+**Ngày:** 09/06/2026  
+**Baseline:** `VSF_AI_Annotation_Platform_Scope_Breakdown.md` v1.2 · `docs/03_ba/dan/03_Validation_Rules.md` · `docs/03_ba/dan/02_Import_Export_Schema.md`
 
-Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI_Annotation_Platform_Scope_Breakdown.md](file:///d:/BA/VSF_AI_Annotation_Platform_Scope_Breakdown.md).
-
----
-
-## 1. Project Setup (Cấu hình dự án)
-
-### AC - Tiêu chí nghiệm thu:
-1. **AC-1.1:** Admin có thể tạo dự án mới thông qua form bao gồm: Tên dự án (bắt buộc), Mô tả (không bắt buộc), và Modality (mặc định là `text` và không cho sửa đổi).
-2. **AC-1.2:** Admin cấu hình được LLM connection cho dự án gồm: API Endpoint (URL), API Key, Model Name, và Prompt Template.
-3. **AC-1.3:** Admin có thể gán danh sách Annotators và QA Specialists vào dự án bằng cách chọn từ danh sách tài khoản hiện có.
-4. **AC-1.4:** Danh sách dự án hiển thị tổng quan các thông tin: Tên, Ngày tạo, Số lượng nhân sự gán vào, và Trạng thái cấu hình LLM (Đầy đủ / Lỗi cấu hình).
-
-### BR - Quy tắc nghiệp vụ:
-- **BR-1.1 (Modality Constraint):** Trong cơ sở dữ liệu, cột `modality_type` phải sử dụng kiểu dữ liệu `Enum ('text', 'audio', 'image')`. Tuy nhiên, giao diện tạo dự án của MVP bắt buộc phải khóa cứng giá trị này là `text`.
-- **BR-1.2 (LLM Configuration Security):** API Key của LLM phải được mã hóa khi lưu trữ trong cơ sở dữ liệu (encryption-at-rest) và không được hiển thị dưới dạng bản rõ (plain text) trên giao diện sau khi đã lưu (chỉ hiển thị dạng che dấu kiểu `••••••••`).
-- **BR-1.3 (Prompt Template Variables):** Mẫu prompt cấu hình bắt buộc phải chứa các biến đặt trong dấu ngoặc nhọn song song: `{{claim_text}}` và `{{source_context}}`. Hệ thống phải thực hiện validate kiểm tra sự tồn tại của hai biến này trước khi cho phép lưu cấu hình.
+Tài liệu gốc cho Dev viết validation và QA thiết kế test cases.
 
 ---
 
+## 1. Project Setup
+
+### AC
+1. **AC-1.1:** Admin tạo project: Tên (bắt buộc), Mô tả (optional), Modality = `text` (khóa cứng).
+2. **AC-1.2:** Admin cấu hình LLM: Endpoint, API Key, Model Name, Prompt Template (2 bước: claim extraction + pre-scoring).
+3. **AC-1.3:** Admin gán Annotator/QA từ danh sách user seed (**không** User Management UI đầy đủ).
+4. **AC-1.4:** Danh sách project: Tên, Ngày tạo, Số nhân sự, Trạng thái LLM (Đầy đủ / Lỗi).
+
+### BR
+- **BR-1.1:** `modality_type` Enum `('text','audio','image')`; MVP UI khóa `text`.
+- **BR-1.2:** API Key mã hóa at-rest; UI chỉ hiển thị masked sau khi lưu.
+- **BR-1.3:** Prompt template validate biến bắt buộc theo từng bước LLM (claim: `{{claim_text}}`, `{{source_context}}`; pre-score tương tự).
+
+---
+
+<<<<<<< HEAD
 ## 2. Import PDF Bundle (Nhập dữ liệu)
 
 ### AC - Tiêu chí nghiệm thu:
@@ -35,11 +39,30 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
   - **File Role:** File role chỉ được thuộc `answer_pdf`, `source_ref_pdf`, `source_content_pdf`.
 - **BR-2.2 (Null/Empty Validation):** `answer_text_normalized` sau parse không được rỗng. Nếu không parse được answer text, bundle bị block.
 - **BR-2.3 (Audit Log):** Hệ thống bắt buộc phải ghi log sự kiện `import` bao gồm: `user_id` (Admin), `timestamp`, `action_type: import`, `target_object: BatchID/BundleID`, danh sách file PDF và số claim/task sinh ra nếu có.
+=======
+## 2. Import PDF Bundle
+
+### AC
+1. **AC-2.1:** Upload nhiều file PDF; gán `file_role`: `answer_pdf` (1), `source_ref_pdf` (1), `source_content_pdf` (≥1). `bundle_name` bắt buộc.
+2. **AC-2.2:** Parse preview: metadata answer, source list (`source_order`, `source_title`, `source_tier`), warnings (vd. `SOURCE_URL_MISSING`).
+3. **AC-2.3:** Admin Confirm Import → tạo `batch`, `pdf_bundle`, `parent_task`; trigger worker parse/normalize.
+4. **AC-2.4:** Lỗi validate/PDF hỏng/`ocr_required` → block import, message rõ từng file.
+
+### BR
+- **BR-2.1 (Bundle constraints):** VR-UP-001..008 — đủ file role, PDF hợp lệ, max size, không trùng role bắt buộc.
+- **BR-2.2 (OCR gate):** PDF scan/image → `source_parse_status = ocr_required` → **block import** (OQ-PDF-004). MVP không có OCR pipeline.
+- **BR-2.3 (Text extraction):** Parse answer → `answer_text_raw`, `answer_text_normalized`. Rỗng → VR-PARSE-001/002 fail.
+- **BR-2.4 (Source URL):** `source_url` optional; thiếu → warning, **không block** (VR-SRC-006, OQ-PDF-003).
+- **BR-2.5 (Audit):** `import` — `user_id`, `bundle_id`/`batch_id`, số file, timestamp.
+
+**Không dùng trong MVP:** ZIP là input chính; CSV/JSON user-facing import.
+>>>>>>> origin/fe
 
 ---
 
-## 3. Claim Extraction (Tự động tách Claim)
+## 3. Parse, Normalize & Claim Extraction
 
+<<<<<<< HEAD
 ### AC - Tiêu chí nghiệm thu:
 1. **AC-3.1:** Hệ thống tự động phân tích và tách `answer_text_normalized` thành các claim đơn lẻ có nghĩa ngay sau khi PDF bundle được import và parse thành công.
 2. **AC-3.2:** Mỗi claim được lưu thành một bản ghi `Claim Task` độc lập liên kết với câu trả lời gốc (`parent_task_id`).
@@ -50,11 +73,24 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
 - **BR-3.2 (Source Check on Import):** 
   - Nếu claim không map được source candidate từ citation marker/source order, hệ thống tự động gán trạng thái `Claim Task` là `Source Mapping Required`.
   - Task ở trạng thái này sẽ không được nạp vào hàng đợi công việc của Annotator cho đến khi Admin/BA thực hiện ánh xạ/bổ sung source mapping.
+=======
+### AC
+1. **AC-3.1:** Sau import, worker parse 3 loại PDF; normalize internal representation.
+2. **AC-3.2:** LLM **bước 1** tách claim từ `answer_text_normalized`.
+3. **AC-3.3:** Mỗi claim → `Claim Task` với `claim_order` từ 1; liên kết `bundle_id`, `parent_task_id`.
+4. **AC-3.4:** Annotator sửa `claim_text_final`; giữ `claim_text_original`; audit edit (VR-ANN-005).
+
+### BR
+- **BR-3.1:** `claim_order` liên tiếp trong parent task.
+- **BR-3.2:** Claim không map source → `source_mapping_required` (VR-MAP-003); **không** block vì thiếu URL.
+- **BR-3.3:** Citation `[n]` map `source_order = n` khi có thể (VR-MAP-001 warning).
+>>>>>>> origin/fe
 
 ---
 
-## 4. Source Mapping & Validation (Xác thực nguồn)
+## 4. Source Verification (PDF-native)
 
+<<<<<<< HEAD
 ### AC - Tiêu chí nghiệm thu:
 1. **AC-4.1:** Màn hình làm việc hiển thị danh sách source được liên kết với claim hiện tại gồm source order/title/tier, source text extract, source file ref và URL nếu parse được.
 2. **AC-4.2:** Với mỗi source, Annotator bắt buộc phải chọn trạng thái phù hợp: `source_text_parsed`, `inaccessible`, `unparsed`, `ocr_required`, `partially_supported`, hoặc `irrelevant`.
@@ -66,23 +102,38 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
     - Điểm số của chiều đánh giá `SC` (Source Coverage) tự động gán bằng `0.00`.
     - Ô nhập điểm của chiều `SC` trên giao diện sẽ bị khóa (read-only) và không cho phép Annotator sửa đổi thủ công.
   - Nếu tất cả các nguồn của claim đều ở trạng thái khác (`source_text_parsed`, `partially_supported`, `irrelevant`), ô nhập điểm `SC` sẽ được mở khóa để đánh giá bình thường.
+=======
+### AC
+1. **AC-4.1:** Workspace hiển thị per source: `source_order`, `source_title`, `source_tier`, `source_text_extract`, optional `source_url` link.
+2. **AC-4.2:** Annotator chọn `source_access_status`: `source_text_parsed` | `inaccessible` | `unknown`.
+3. **AC-4.3:** `inaccessible` → bắt buộc `source_note` (VR-ANN-004).
+
+### BR
+- **BR-4.1 (SC lock):** Bất kỳ source `inaccessible` → `SC = 0.00` (locked, read-only).
+- **BR-4.2:** Không bắt buộc mở URL ngoài để submit; ưu tiên `source_text_extract` từ PDF.
+- **BR-4.3:** `source_parse_status = unparsed` → warning; annotator ghi note nếu cần.
+
+**Đã bỏ:** 4 trạng thái URL-centric (`Accessible` / `Partially supported` / `Irrelevant`).
+>>>>>>> origin/fe
 
 ---
 
-## 5. LLM Pre-scoring (Tính điểm gợi ý từ AI)
+## 5. LLM Pre-scoring (bước 2)
 
-### AC - Tiêu chí nghiệm thu:
-1. **AC-5.1:** Hệ thống gửi request API đến LLM provider đã cấu hình để tính toán điểm số cho 6 chiều Vivipedia.
-2. **AC-5.2:** Điểm số nhận về từ LLM phải được hiển thị trên giao diện của Annotator dưới dạng nhãn gợi ý ("AI Draft") bên cạnh ô nhập điểm tương ứng.
-3. **AC-5.3:** Nếu gọi API LLM thất bại, hệ thống chuyển trạng thái task sang `Pre-scoring Failed` và hiển thị mã lỗi (ví dụ: HTTP 500, Timeout) trên bảng quản lý của Admin.
+### AC
+1. **AC-5.1:** Sau claim extraction + mapping, gọi LLM **bước 2** qua `LLMProvider` (OQ-003).
+2. **AC-5.2:** Pre-score 6 chiều hiển thị "AI Draft" trên workspace.
+3. **AC-5.3:** Lỗi API/schema → `pre_scoring_failed`; Admin retry.
 
-### BR - Quy tắc nghiệp vụ:
-- **BR-5.1 (Immutable Baseline):** Bản ghi kết quả trả về từ LLM (`llm_pre_score` bao gồm điểm của 6 chiều) là dữ liệu **bất biến** (Read-Only). Không có bất kỳ API nào (kể cả quyền Admin) được phép sửa đổi hoặc xóa bản ghi này sau khi đã lưu, nhằm phục vụ mục đích đo lường chênh lệch (diff score) và cải tiến prompt sau này.
+### BR
+- **BR-5.1:** Provider working MVP: **Gemini 2.5 Flash** (OQ-002); Mock khi chưa có key.
+- **BR-5.2:** `llm_pre_score` **bất biến** sau khi lưu — không API sửa/xóa.
 
 ---
 
-## 6. Annotation Workspace (Màn hình gán nhãn)
+## 6. Annotation Workspace
 
+<<<<<<< HEAD
 ### AC - Tiêu chí nghiệm thu:
 1. **AC-6.1:** Màn hình gán nhãn hiển thị đầy đủ ngữ cảnh: nội dung câu trả lời gốc đã parse (`answer_text_normalized` - read-only), claim text đang đánh giá (editable), và danh sách nguồn.
 2. **AC-6.2:** Annotator nhập điểm số cho các chiều, hệ thống tự động tính toán và hiển thị điểm tổng hợp trung bình (`Composite Score`) theo thời gian thực.
@@ -97,11 +148,22 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
   2. Toàn bộ 6 chiều điểm số đã được điền đầy đủ giá trị hợp lệ (trừ chiều SC bị khóa).
   3. Văn bản của claim (`claim_text`) không bị để trống hoặc chỉ có dấu cách.
   4. Đã nhập lý do giải trình nếu điểm số vượt ngưỡng chênh lệch quy định.
+=======
+### AC
+1. **AC-6.1:** Hiển thị: claim editable, source text extract, pre-score, rubric 6 chiều.
+2. **AC-6.2:** Composite Score tính real-time.
+3. **AC-6.3:** Submit → validation pass → `submitted` → QA queue **100%**.
+
+### BR
+- **BR-6.1 (Auto-save):** 30 giây hoặc blur; async, không block UI (DEC-UX-01).
+- **BR-6.2 (Submit):** Enabled khi: đủ 6 scores hợp lệ; mỗi source có `source_access_status`; `claim_text_final` non-empty; justification nếu delta ≥ ±0.20; `source_note` nếu inaccessible.
+>>>>>>> origin/fe
 
 ---
 
-## 7. Structured Evaluation (Bộ tiêu chí Vivipedia)
+## 7. Structured Evaluation (Vivipedia 6 chiều)
 
+<<<<<<< HEAD
 ### AC - Tiêu chí nghiệm thu:
 1. **AC-7.1:** Giao diện hiển thị đúng 6 chiều tiêu chí: SF, SC, HR, SQ, REL, COMP.
 2. **AC-7.2:** Các ô nhập điểm chỉ chấp nhận giá trị số thập phân trong khoảng từ `0.00` đến `1.00`.
@@ -116,54 +178,79 @@ Tài liệu được xây dựng dựa trên ranh giới phạm vi của [VSF_AI
   - Ngưỡng chênh lệch bắt buộc giải trình được cấu hình cố định trong MVP là **$\ge \pm 0.20$**.
   - Công thức kiểm tra: Với mỗi chiều $i$, nếu $|\text{Điểm Annotator}_i - \text{Điểm AI Pre-score}_i| \ge 0.20$, hệ thống bắt buộc Annotator phải nhập văn bản giải thích vào trường `justification_note` của chiều đó.
   - Trường `justification_note` bắt buộc phải có độ dài từ **15 ký tự trở lên** (không tính khoảng trắng ở đầu và cuối chuỗi).
+=======
+### AC
+1. **AC-7.1:** SF, SC, NH (UI label), SQ, REL, COMP — export DB dùng `hr` cho NH.
+2. **AC-7.2:** Giá trị `0.00`–`1.00`, tối đa 2 chữ số thập phân.
+3. **AC-7.3:** Composite = trung bình 6 chiều, round 2 decimals.
+
+### BR
+- **BR-7.1:** Regex `^(0(\.\d{1,2})?|1(\.0{1,2})?)$` (VR-ANN-002, VR-ANN-003).
+- **BR-7.2:** $\text{Composite} = \text{Round}((SF+SC+NH+SQ+REL+COMP)/6, 2)$.
+- **BR-7.3 (Justification — OQ-004):** Nếu $|\text{ann}_i - \text{pre}_i| \ge 0.20$ → `justification_note` **non-empty** (sau trim) cho chiều đó.
+>>>>>>> origin/fe
 
 ---
 
-## 8. QA Review (Quy trình kiểm duyệt)
+## 8. QA Review
 
-### AC - Tiêu chí nghiệm thu:
-1. **AC-8.1:** Màn hình QA Review hiển thị song song điểm của Annotator và điểm AI Pre-score, đồng thời làm nổi bật (ví dụ: đổi màu nền đỏ/vàng) các chiều điểm có chênh lệch $\ge 0.20$.
-2. **AC-8.2:** QA Specialist bấm "Approve" để duyệt task, hệ thống đổi trạng thái task sang `Approved` và khóa không cho phép sửa đổi nữa.
-3. **AC-8.3:** QA Specialist bấm "Return" để trả lại task, hệ thống hiển thị modal yêu cầu chọn loại lỗi và viết lý do trả về. Sau khi xác nhận, task quay về hàng đợi của Annotator kèm thông tin phản hồi từ QA.
+### AC
+1. **AC-8.1:** QA queue = **100%** task `submitted` trong project được giao (OQ-007). Không sampling, không auto-approve.
+2. **AC-8.2:** Diff view: annotator vs pre-score; highlight delta ≥ ±0.20; tab history.
+3. **AC-8.3:** Approve → `approved` (VR-QA-001). Return → `error_category` + `qa_comment` ≥ 10 ký tự → `returned`.
 
-### BR - Quy tắc nghiệp vụ:
-- **BR-8.1 (QA Action Constraints):**
-  - QA Specialist trong MVP **không** có quyền chỉnh sửa trực tiếp điểm số hay claim text trên giao diện. QA chỉ có quyền phê duyệt hoặc trả lại yêu cầu sửa đổi.
-- **BR-8.2 (Return Validation):**
-  - Khi thực hiện action `Return`, hệ thống bắt buộc QA phải chọn 1 trong các mã phân loại lỗi trong Enum: `['wrong_score', 'missing_notes', 'incorrect_source_status', 'bad_claim_text']`.
-  - Ô comment lý do trả về (`qa_comment`) bắt buộc phải điền tối thiểu **10 ký tự**.
-- **BR-8.3 (Task History Logging):** Mỗi hành động Approve hoặc Return phải tạo ra một bản ghi trong bảng `task_history` ghi nhận: `task_id`, `actor_id`, `from_state` (Submitted), `to_state` (Approved hoặc Returned), `error_category` (nếu Return), `comment` (nếu Return) và `timestamp`.
+### BR
+- **BR-8.1:** QA **không** sửa điểm/claim (DEC-QA-01).
+- **BR-8.2:** Return `error_category` ∈ `wrong_score` | `missing_notes` | `incorrect_source_status` | `bad_claim_text`.
+- **BR-8.3:** Mỗi Approve/Return → `task_history` + audit log.
+- **BR-8.4:** Không nút Dispute (OQ-005).
 
 ---
 
-## 9. Export (Xuất dữ liệu)
+## 9. Export CSV
 
-### AC - Tiêu chí nghiệm thu:
-1. **AC-9.1:** Chỉ người dùng có quyền Admin mới nhìn thấy và bấm được nút "Export CSV".
-2. **AC-9.2:** Tệp tin tải xuống có định dạng `.csv`, được đặt tên theo định dạng `export_claims_batch_[BatchID]_[YYYYMMDD_HHMMSS].csv`.
-3. **AC-9.3:** File CSV chứa đầy đủ dữ liệu ở cấp độ claim-level của tất cả các task đã được duyệt (`Approved`).
+### AC
+1. **AC-9.1:** **Admin** export mọi project; **QA** export chỉ project được giao (§6.5, OQ-009).
+2. **AC-9.2:** Chỉ claims `approved` (VR-EXP-001).
+3. **AC-9.3:** CSV UTF-8 theo `docs/03_ba/dan/02_Import_Export_Schema.md` §10 — gồm `bundle_id`, PDF filenames, `article_code`, mapped source fields, `pre_*`, `ann_*`, `composite_score`, QA fields.
+4. **AC-9.4:** Tên file gợi ý: `export_claims_{project}_{YYYYMMDD_HHMMSS}.csv`.
 
+<<<<<<< HEAD
 ### BR - Quy tắc nghiệp vụ:
 - **BR-9.1 (Export State Filtering):** Query xuất dữ liệu bắt buộc phải lọc nghiêm ngặt theo điều kiện `status = 'Approved'`. Tuyệt đối không xuất các task ở trạng thái nháp (`Assigned`), đang đợi duyệt (`Submitted`) hoặc bị trả về (`Returned`).
 - **BR-9.2 (CSV Formatting):** Nội dung text trong các trường như `claim_text_original`, `claim_text_final`, `mapped_source_titles` và note khi xuất ra CSV phải được bao quanh bởi dấu ngoặc kép đôi `"` và thực hiện escape các ký tự đặc biệt (ví dụ: dấu phẩy `,`, dấu xuống dòng `\n`, dấu ngoặc kép `"`) để tránh phá vỡ cấu trúc file CSV.
 - **BR-9.3 (Audit Log):** Ghi nhận hành động export vào Audit Log: `user_id` (Admin), `timestamp`, `action_type: export`, `target_object: ProjectID/BatchID`, `exported_row_count`.
+=======
+### BR
+- **BR-9.1:** Query strict `status = approved`.
+- **BR-9.2:** Escape CSV chuẩn (quote, newline, comma).
+- **BR-9.3:** Audit `export` — user, project, row count.
+>>>>>>> origin/fe
 
 ---
 
-## 10. Audit Log (Nhật ký hệ thống)
+## 10. Audit Log
 
-### AC - Tiêu chí nghiệm thu:
-1. **AC-10.1:** Hệ thống tự động ghi lại nhật ký cho mọi hành động nghiệp vụ chính mà không gây ảnh hưởng đến tốc độ phản hồi của API.
-2. **AC-10.2:** Chỉ Admin mới có quyền truy cập màn hình xem danh sách Audit Log.
+### AC
+1. **AC-10.1:** Ghi log async cho: `import`, `claim_edit`, `submit`, `approve`, `return`, `export`.
+2. **AC-10.2:** Chỉ Admin xem Audit Log UI.
 
-### BR - Quy tắc nghiệp vụ:
-- **BR-10.1 (Immutable Log):** Bảng cơ sở dữ liệu `audit_log` chỉ hỗ trợ thao tác `INSERT`. Hệ thống **không cung cấp** bất kỳ API nào có quyền `UPDATE` hoặc `DELETE` trên bảng này (kể cả tài khoản Admin hệ thống) để đảm bảo tính minh bạch và bảo mật.
-- **BR-10.2 (Log Fields Spec):** Mỗi dòng log bắt buộc phải ghi nhận đầy đủ các thông tin:
-  - `log_id` (UUIDv4)
-  - `user_id` (ID người thực hiện)
-  - `user_role` (Vai trò lúc thực hiện: Admin, Annotator, QA)
-  - `action_type` (Phân loại: `import`, `claim_edit`, `submit`, `approve`, `return`, `export`)
-  - `target_object_id` (ID của Batch, Task hoặc File liên quan)
-  - `description` (Mô tả tóm tắt hành động nghiệp vụ)
-  - `client_ip` (Địa chỉ IP của client gửi request)
-  - `created_at` (Thời gian ghi log)
+### BR
+- **BR-10.1:** `audit_log` INSERT-only.
+- **BR-10.2:** Fields: `log_id`, `user_id`, `user_role`, `action_type`, `target_object_id`, `description`, `client_ip`, `created_at`.
+
+---
+
+## 11. Tham chiếu validation (dan)
+
+| Nhóm | Rule IDs chính |
+|---|---|
+| Upload | VR-UP-001..008 |
+| Parse | VR-PARSE-001..007 |
+| Source | VR-SRC-001..008 |
+| Mapping | VR-MAP-001..005 |
+| Annotator | VR-ANN-001..006 |
+| QA | VR-QA-001..004 |
+| Export | VR-EXP-001..006 |
+
+Chi tiết message/error code: `docs/03_ba/dan/03_Validation_Rules.md`.

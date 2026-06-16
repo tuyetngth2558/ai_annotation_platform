@@ -1,9 +1,0 @@
-{
-  "title": "Sign in",
-  "subtitle": "Enter your internal account to open the workspace.",
-  "email": "Email",
-  "password": "Password",
-  "submit": "Sign in",
-  "demoNote": "Mock accounts (dev only):",
-  "invalid": "Invalid email or password."
-}
