@@ -18,6 +18,7 @@ import { QaQueuePage } from "@/features/qa-review/pages/QaQueuePage";
 import { QaReviewWorkspacePage } from "@/features/qa-review/pages/QaReviewWorkspacePage";
 import { ExportPage } from "@/features/export/pages/ExportPage";
 import { AuditLogPage } from "@/features/audit-log/pages/AuditLogPage";
+import { UsersPage } from "@/features/users/pages/UsersPage";
 import { ForbiddenPage, NotFoundPage } from "@/shared/ui/StatusPage";
 
 export const router = createBrowserRouter([
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
       { path: "/admin/projects/new", element: <ProjectSetupPage /> },
       { path: "/admin/import", element: <ImportBundlePage /> },
       { path: "/admin/export", element: <ExportPage /> },
+      { path: "/admin/users", element: <UsersPage /> },
       { path: "/admin/audit", element: <AuditLogPage /> },
     ],
   },

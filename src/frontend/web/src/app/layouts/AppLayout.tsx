@@ -21,6 +21,7 @@ const NAV: NavItem[] = [
   { to: "/admin/projects", labelKey: "nav.projects", roles: ["ADMIN"] },
   { to: "/admin/import", labelKey: "nav.import", roles: ["ADMIN"] },
   { to: "/admin/export", labelKey: "nav.export", roles: ["ADMIN"] },
+  { to: "/admin/users", labelKey: "nav.users", roles: ["ADMIN"] },
   { to: "/admin/audit", labelKey: "nav.audit", roles: ["ADMIN"] },
   { to: "/annotator/tasks", labelKey: "nav.tasks", roles: ["ANNOTATOR"] },
   { to: "/qa/queue", labelKey: "nav.qaQueue", roles: ["QA"] },
