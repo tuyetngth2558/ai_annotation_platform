@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import {
   createProject,
+  assignMembers,
+  fetchUserOptions,
   uploadBundleFile,
   validateBundle,
   previewBundle,
@@ -25,6 +27,7 @@ import {
   ValidateResult,
   PreviewResult,
   BundleStatus,
+  type UserOption,
 } from "../api/adapters";
 
 interface ProjectSetupViewProps {
@@ -119,6 +122,16 @@ export default function ProjectSetupView({
   );
   const [projectId, setProjectId] = useState<string>("");
   const [useExistingProject, setUseExistingProject] = useState(false);
+  // Thành viên chọn lúc tạo (gán sau khi tạo project xong).
+  const [userOpts, setUserOpts] = useState<UserOption[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<{ userId: string; role: "ANNOTATOR" | "QA" }[]>([]);
+  useEffect(() => { fetchUserOptions().then(setUserOpts).catch(() => {}); }, []);
+  const toggleMember = (userId: string, role: "ANNOTATOR" | "QA") =>
+    setSelectedMembers((prev) => {
+      const exists = prev.find((m) => m.userId === userId);
+      if (exists) return prev.filter((m) => m.userId !== userId);
+      return [...prev, { userId, role }];
+    });
 
   // Step 2 — file staging (2 slot cố định: answer + source_ref)
   const [staged, setStaged] = useState<StagedFile[]>([]);
@@ -199,7 +212,17 @@ export default function ProjectSetupView({
         promptTemplate,
       });
       setProjectId(created.id);
-      showToast(`Đã tạo project "${created.name}".`);
+      // Gán thành viên đã chọn (nếu có) vào project vừa tạo.
+      if (selectedMembers.length > 0) {
+        try {
+          await assignMembers(created.id, selectedMembers);
+          showToast(`Đã tạo project + gán ${selectedMembers.length} thành viên.`);
+        } catch {
+          showToast(`Đã tạo project "${created.name}" (gán thành viên lỗi — gán lại ở trang chi tiết).`);
+        }
+      } else {
+        showToast(`Đã tạo project "${created.name}".`);
+      }
       setStep(2);
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Không tạo được project.");
@@ -384,6 +407,29 @@ export default function ProjectSetupView({
                       <div className="sm:col-span-2 space-y-1.5">
                         <label className="text-xs font-bold text-slate-700">Prompt template (phải chứa {"{{claim_text}}"} và {"{{source_context}}"})</label>
                         <textarea value={promptTemplate} onChange={(e) => setPromptTemplate(e.target.value)} data-testid={TEST_IDS.projectPromptTemplateTextarea} className={inputCls} rows={3} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chọn thành viên gán vào project (tùy chọn — có thể gán sau ở trang chi tiết) */}
+                  {!useExistingProject && (
+                    <div className="space-y-2 pt-2">
+                      <label className="text-xs font-bold text-slate-700">Gán thành viên (tùy chọn — gán sau cũng được)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {userOpts.filter((u) => u.role === "ANNOTATOR" || u.role === "QA").length === 0 && (
+                          <span className="text-xs text-slate-400">Chưa có annotator/QA nào — tạo ở trang Thành viên.</span>
+                        )}
+                        {userOpts.filter((u) => u.role === "ANNOTATOR" || u.role === "QA").map((u) => {
+                          const sel = selectedMembers.find((m) => m.userId === u.id);
+                          const role: "ANNOTATOR" | "QA" = u.role === "QA" ? "QA" : "ANNOTATOR";
+                          return (
+                            <button key={u.id} type="button" onClick={() => toggleMember(u.id, role)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                                sel ? "bg-vsf-600 text-white border-vsf-500" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}>
+                              {u.email} · {role}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

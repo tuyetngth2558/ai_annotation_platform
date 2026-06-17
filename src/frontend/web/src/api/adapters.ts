@@ -431,6 +431,29 @@ export async function fetchQaReviewDetail(claimId: string): Promise<ClaimTask> {
 }
 
 /** GET /projects — lấy project đầu tiên (MVP single project), đã map. */
+export interface Paged<T> { items: T[]; total: number; limit: number; offset: number }
+
+function mapProjectOut(p: ProjectOutBE): Project {
+  return {
+    id: p.id,
+    name: p.project_name,
+    batch: "", bundleId: "", bundleName: "", importType: "pdf_bundle",
+    answerPdf: "", sourceRefPdf: "", sourceContentPdfs: [],
+    status: p.status === "active" ? "Active" : p.status === "completed" ? "Completed" : "Pending",
+    createdAt: p.created_at, deadline: p.deadline || "", owner: "", annotators: [], qa: "",
+  };
+}
+
+/** GET /projects phân trang. */
+export async function fetchProjectsPaged(limit = 10, offset = 0): Promise<Paged<Project>> {
+  const res = await apiClient.get<Page<ProjectOutBE>>(`/projects?limit=${limit}&offset=${offset}`);
+  return {
+    items: res.items.map(mapProjectOut),
+    total: res.meta?.total ?? res.items.length,
+    limit, offset,
+  };
+}
+
 export async function fetchProjects(): Promise<Project[]> {
   const res = await apiClient.get<Page<ProjectOutBE>>("/projects");
   return res.items.map((p) => ({
@@ -452,17 +475,29 @@ export async function fetchProjects(): Promise<Project[]> {
   }));
 }
 
-/** GET /audit-logs — đã map sang shape FE AuditLog. */
-export async function fetchAuditLogs(): Promise<AuditLog[]> {
-  const res = await apiClient.get<{ items: AuditLogOutBE[]; total: number }>("/audit-logs");
-  return res.items.map((a) => ({
+function mapAudit(a: AuditLogOutBE): AuditLog {
+  return {
     id: a.id,
     user: a.user_id || "system",
     action: a.action_type,
     entity: a.entity_id ? `${a.entity_type}:${a.entity_id}` : a.entity_type,
     time: a.timestamp,
     detail: a.description || a.reason || "",
-  }));
+  };
+}
+
+/** GET /audit-logs — đã map sang shape FE AuditLog. */
+export async function fetchAuditLogs(): Promise<AuditLog[]> {
+  const res = await apiClient.get<{ items: AuditLogOutBE[]; total: number }>("/audit-logs");
+  return res.items.map(mapAudit);
+}
+
+/** GET /audit-logs phân trang. */
+export async function fetchAuditLogsPaged(limit = 10, offset = 0): Promise<Paged<AuditLog>> {
+  const res = await apiClient.get<{ items: AuditLogOutBE[]; total: number }>(
+    `/audit-logs?limit=${limit}&offset=${offset}`
+  );
+  return { items: res.items.map(mapAudit), total: res.total ?? res.items.length, limit, offset };
 }
 
 /** Chuẩn hóa role BE (string|null) → UserRole | "" cho FE. */
@@ -471,15 +506,28 @@ function normalizeRole(role: string | null): UserAccount["role"] {
   return "";
 }
 
-/** GET /users — đã map sang shape FE UserAccount (role = default_role). */
-export async function fetchUsers(): Promise<UserAccount[]> {
-  const res = await apiClient.get<UserOutBE[]>("/users");
-  return res.map((u) => ({
+function mapUser(u: UserOutBE): UserAccount {
+  return {
     name: u.full_name,
     email: u.email,
     role: normalizeRole(u.role),
     status: u.status === "active" ? "Đang hoạt động" : "Bị khóa",
-  }));
+  };
+}
+
+/** GET /users — đã map sang shape FE UserAccount (role = default_role). */
+export async function fetchUsers(): Promise<UserAccount[]> {
+  const res = await apiClient.get<UserOutBE[]>("/users");
+  return res.map(mapUser);
+}
+
+/** GET /users phân trang. BE trả mảng (chưa có total) → fetch limit+1 để biết còn trang sau. */
+export async function fetchUsersPaged(
+  limit = 10, offset = 0
+): Promise<{ items: UserAccount[]; hasMore: boolean; limit: number; offset: number }> {
+  const res = await apiClient.get<UserOutBE[]>(`/users?limit=${limit + 1}&offset=${offset}`);
+  const hasMore = res.length > limit;
+  return { items: res.slice(0, limit).map(mapUser), hasMore, limit, offset };
 }
 
 export interface CreateUserInput {

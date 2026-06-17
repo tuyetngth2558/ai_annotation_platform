@@ -181,8 +181,8 @@ Chỉ chạy khi DB chưa có user nào. Sau đó tự khóa.
 ```
 > Không gán `ADMIN` qua đây (→ 422).
 
-### GET `/projects/{project_id}/claims` → `ProjectClaimsOut`
-Danh sách claim của project (cho trang chi tiết + gán annotator).
+### GET `/projects/{project_id}/claims?limit=&offset=&status=&annotator_id=&unassigned=` → `ProjectClaimsOut`
+Danh sách claim của project — **phân trang + filter** + thống kê tiến độ.
 ```json
 {
   "items": [
@@ -190,9 +190,17 @@ Danh sách claim của project (cho trang chi tiết + gán annotator).
       "status": "ready", "article_code": "ART_...", "title": "...",
       "assigned_annotator_id": "uuid|null", "assigned_annotator_email": "ann@vsf.local|null" }
   ],
-  "total": 6
+  "total": 6, "limit": 10, "offset": 0,
+  "stats": { "total": 6, "ready": 6, "in_annotation": 0, "submitted": 0,
+             "returned": 0, "approved": 0, "unassigned": 6 }
 }
 ```
+- `status` filter (ready/in_annotation/submitted/returned/approved). `unassigned=true` chỉ claim chưa gán.
+- `annotator_id` lọc theo annotator (bỏ qua nếu `unassigned=true`).
+- `stats` đếm toàn project (KHÔNG theo filter) → hiển tiến độ.
+
+### DELETE `/projects/{project_id}/members/{user_id}` → **204**
+Gỡ thành viên khỏi project (deactivate role, không xóa cứng).
 
 ### POST `/projects/{project_id}/assign-claims` → 200 → `AssignClaimsOut`
 Gán claim cho 1 annotator (bù khâu auto-assign). `claim_ids` rỗng = gán **tất cả** claim của project.
@@ -500,8 +508,9 @@ Form fields:
 | POST | `/projects` | ADMIN | JSON → 201 |
 | GET | `/projects/{id}` | ADMIN | — |
 | POST | `/projects/{id}/assignments` | ADMIN | JSON |
-| GET | `/projects/{id}/claims` | ADMIN | — |
+| GET | `/projects/{id}/claims` | ADMIN | `?limit&offset&status&annotator_id&unassigned` |
 | POST | `/projects/{id}/assign-claims` | ADMIN | JSON |
+| DELETE | `/projects/{id}/members/{user_id}` | ADMIN | → 204 |
 | POST | `/import-bundles/upload-file` | ADMIN | multipart |
 | POST | `/import-bundles/validate` | ADMIN | JSON + `?upload_tokens` |
 | POST | `/import-bundles/preview` | ADMIN | JSON + `?upload_tokens` |

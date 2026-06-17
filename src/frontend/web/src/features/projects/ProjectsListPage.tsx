@@ -2,17 +2,24 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FolderPlus, FileText } from "lucide-react";
-import { fetchProjects } from "@/api/adapters";
+import { fetchProjectsPaged } from "@/api/adapters";
+import { Pagination } from "@/shared/Pagination";
 import type { Project } from "@/types";
+
+const PAGE = 10;
 
 export function ProjectsListPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProjects().then(setProjects).catch((e) => setError(e?.message ?? "Không tải được project."));
-  }, []);
+    fetchProjectsPaged(PAGE, offset)
+      .then((p) => { setProjects(p.items); setTotal(p.total); })
+      .catch((e) => setError(e?.message ?? "Không tải được project."));
+  }, [offset]);
 
   return (
     <div className="space-y-5">
@@ -47,6 +54,10 @@ export function ProjectsListPage() {
             <p className="text-xs text-gray-400 mt-2">Bấm để xem chi tiết & gán nhân sự →</p>
           </button>
         ))}
+      </div>
+
+      <div className="app-card p-0">
+        <Pagination offset={offset} limit={PAGE} total={total} onChange={setOffset} />
       </div>
     </div>
   );
