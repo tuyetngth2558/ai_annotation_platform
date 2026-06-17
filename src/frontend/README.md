@@ -1,11 +1,9 @@
 # Frontend
 
-Thư mục này dành cho mã nguồn giao diện web của MVP.
+| Thư mục | Trạng thái |
+|---|---|
+| `web/` | ⭐ App React + Vite + TypeScript thật. Code UI hiện ở đây. |
+| `prototype/` | 4 HTML vanilla — **tham chiếu UX**, không build tiếp. |
 
-Gợi ý sau này:
-
-- `app/` hoặc `src/`
-- `components/`
-- `pages/` hoặc router
-- `features/annotation-workspace/`
-- `features/import-dataset/`
+## Chạy / phát triển
+Xem [web/README.md](web/README.md) và [docs/onboarding/frontend-dev.md](../../docs/onboarding/frontend-dev.md).
