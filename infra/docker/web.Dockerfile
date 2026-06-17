@@ -1,5 +1,5 @@
 # Web (React + Vite) — dev image.
-# Context build: src/frontend/web
+# Context build: fe_ui
 FROM node:20-alpine
 
 WORKDIR /app

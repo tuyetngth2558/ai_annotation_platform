@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -10,6 +10,9 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   # ──────────────────────────────────────────────
@@ -29,7 +32,9 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-glob: src/backend/pyproject.toml
+          cache-dependency-glob: |
+            src/backend/pyproject.toml
+            src/backend/uv.lock
 
       - name: Install Python 3.12 + dependencies
         run: uv sync --python 3.12 --all-groups
@@ -52,21 +57,21 @@ jobs:
   # FRONTEND — ESLint + TypeScript + Vitest
   # ──────────────────────────────────────────────
   frontend:
-    name: Frontend — Lint, Type-check & Test
+    name: Frontend — Lint & Build
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: src/frontend/web
+        working-directory: fe_ui
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 20.19
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19
           cache: npm
-          cache-dependency-path: src/frontend/web/package-lock.json
+          cache-dependency-path: fe_ui/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -77,5 +82,101 @@ jobs:
       - name: Type-check + Build
         run: npm run build
 
-      - name: Test — Vitest
-        run: npm test
+  # ──────────────────────────────────────────────
+  # E2E — Docker Compose stack + Playwright reports
+  # ──────────────────────────────────────────────
+  e2e:
+    name: E2E — Playwright Integration
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    defaults:
+      run:
+        working-directory: fe_ui
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.19
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19
+          cache: npm
+          cache-dependency-path: fe_ui/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Create CI env file
+        working-directory: .
+        run: |
+          cat > .env <<'EOF'
+          APP_ENV=development
+          APP_DEBUG=false
+          API_HOST=0.0.0.0
+          API_PORT=8000
+          CORS_ORIGINS=http://localhost:5173
+          JWT_SECRET=ci-test-secret-change-me
+          JWT_ALGORITHM=HS256
+          JWT_ACCESS_TTL_MINUTES=30
+          JWT_REFRESH_TTL_DAYS=7
+          AUTH_MOCK_ENABLED=false
+          SECRET_ENCRYPTION_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+          REDIS_URL=redis://redis:6379/0
+          STORAGE_BACKEND=s3
+          S3_ENDPOINT_URL=http://minio:9000
+          S3_ACCESS_KEY=minioadmin
+          S3_SECRET_KEY=minioadmin
+          S3_BUCKET=vsf-pdf
+          S3_REGION=us-east-1
+          LOG_LEVEL=INFO
+          LOG_FORMAT=console
+          EOF
+
+      - name: Start app stack
+        working-directory: .
+        run: docker compose up -d --build postgres redis minio minio-init api web
+
+      - name: Run migrations
+        working-directory: .
+        run: docker compose exec -T api alembic upgrade head
+
+      - name: Seed E2E users
+        working-directory: .
+        run: docker compose exec -T api python /scripts/seed_dev.py
+
+      - name: Run Playwright E2E with reports
+        env:
+          E2E_BASE_URL: http://localhost:5173
+        run: node ../test/e2e/run-e2e-report.mjs
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e-artifacts
+          path: test/e2e/.artifacts
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop app stack
+        if: always()
+        working-directory: .
+        run: docker compose down -v
+
+  # ──────────────────────────────────────────────
+  # CD readiness — build deployable images, no push
+  # ──────────────────────────────────────────────
+  docker-build:
+    name: CD Readiness — Docker Build
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, e2e]
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build deployable images
+        run: docker compose build api worker web

@@ -15,8 +15,8 @@ Hướng dẫn cho Test/QA: chạy test, viết test case, dùng fixtures. Đọ
 | Backend unit | pytest | `src/backend/tests/unit/` | `make test-be` |
 | Backend integration | pytest + httpx | `src/backend/tests/integration/` | `make test-be` |
 | Frontend unit | Vitest + Testing Library | `src/frontend/web/src/**/*.test.tsx` | `make test-fe` |
-| E2E (browser) | Playwright | `src/frontend/web/e2e/` | `make e2e` |
-| Fixtures (data test) | — | `tests/fixtures/`, `e2e/fixtures/` | (import) |
+| E2E (browser) | Playwright | `test/e2e/` | `make e2e` |
+| Fixtures (data test) | — | `tests/fixtures/`, `test/e2e/fixtures/` | (import) |
 
 ---
 
@@ -42,7 +42,7 @@ npm run test:watch                         # watch mode khi dev
 npx playwright install chromium            # lần đầu: cài browser
 npm run e2e                                # smoke + auth specs
 npx playwright test --headed               # xem browser chạy
-npx playwright test e2e/auth.spec.ts       # 1 file
+npx playwright test ../test/e2e/auth.spec.ts # 1 file
 ```
 
 ---
@@ -106,9 +106,9 @@ it("hiển thị form đăng nhập", () => {
 ## 5. E2E — Playwright
 
 ### Mẫu (đã có)
-- `e2e/smoke.spec.ts` — login page load; route bảo vệ → redirect /login.
-- `e2e/auth.spec.ts` — login 3 role → điều hướng đúng trang.
-- `e2e/fixtures/{users,routes}.ts` — data test (USERS, LANDING_BY_ROLE).
+- `test/e2e/smoke.spec.ts` — login page load; route bảo vệ → redirect /login.
+- `test/e2e/auth.spec.ts` — login 3 role → điều hướng đúng trang.
+- `test/e2e/fixtures/{users,routes}.ts` — data test (USERS, LANDING_BY_ROLE).
 
 ### Viết E2E mới
 ```ts

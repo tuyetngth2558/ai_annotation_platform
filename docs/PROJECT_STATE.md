@@ -8,7 +8,7 @@
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
 
-**Cập nhật lần cuối:** 2026-06-15 · **Bởi:** Khải (auth/users BE) + Tuấn Anh (devops CI) + Nhung (QA test plan)
+**Cập nhật lần cuối:** 2026-06-17 · **Bởi:** Hưng (Playwright JS E2E + GitHub Actions CI/CD)
 
 ---
 
@@ -53,14 +53,14 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 | core (config/security/perm/crypto/...) | 🚧 | khung xong, một số logic TODO |
 | Storage interface (local/S3) | ✅ | path-traversal validate ✅; route đọc file chưa nối |
 | DB constraints | ✅ | CHECK score range + trigger immutable (audit/pre-score) |
-| Quality gates (ruff/eslint/CI fail-on-error) | ✅ | ruff 0 lỗi, eslint config, bỏ `||true` |
-| CI pipeline (GitHub Actions) | ✅ | backend lint+test + frontend build+test; trigger PR/push main/develop |
+| Quality gates (ruff/eslint/CI fail-on-error) | ✅ | ruff 0 lỗi, eslint config, Playwright E2E report artifacts |
+| CI/CD pipeline (GitHub Actions) | ✅ | backend lint+test, `fe_ui` lint+build, Playwright E2E artifacts, Docker build readiness; trigger PR/push main/develop |
 |  backend | ✅ | template đầy đủ biến cho Vercel+Render+Supabase |
 | LLM interface | 🚧 | chỉ có MockProvider; 🔒 OQ-002 chưa chốt provider |
 | ARQ worker + pipeline | 🚧 | khung xong, các bước TODO |
 | i18n (vi/en) + theme OKLCH | ✅ | |
 | Logging (JSON/request-id) | 🚧 | xem logging-and-observability |
-| Test plan + test cases (QA) | ✅ | docs/06_test_qa/ — test plan, AC mapping, E2E, checklist, bug log template |
+| Test plan + test cases (QA) | ✅ | docs/06_test_qa/ + `test/e2e` JS Playwright MVP integration scripts |
 
 ---
 

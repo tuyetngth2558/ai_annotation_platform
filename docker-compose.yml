@@ -108,15 +108,15 @@ services:
 
   web:
     build:
-      context: ./src/frontend/web
-      dockerfile: ../../../infra/docker/web.Dockerfile
+      context: ./fe_ui
+      dockerfile: ../infra/docker/web.Dockerfile
     environment:
       # FE gọi API qua localhost của host (browser chạy ngoài docker)
       VITE_API_BASE_URL: http://localhost:8000
     ports:
       - "5173:5173"
     volumes:
-      - ./src/frontend/web:/app
+      - ./fe_ui:/app
       - /app/node_modules            # giữ node_modules trong container
     command: npm run dev -- --host 0.0.0.0
 
