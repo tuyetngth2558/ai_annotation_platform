@@ -8,7 +8,7 @@
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
 
-**Cập nhật lần cuối:** 2026-06-17 · **Bởi:** Hưng (Playwright JS E2E + GitHub Actions CI/CD)
+**Cập nhật lần cuối:** 2026-06-18 · **Bởi:** Codex (revert JS API integration tests)
 
 ---
 
