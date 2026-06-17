@@ -52,6 +52,8 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 | Storage interface (local/S3) | ✅ | path-traversal validate ✅; route đọc file chưa nối |
 | DB constraints | ✅ | CHECK score range + trigger immutable (audit/pre-score) |
 | Quality gates (ruff/eslint/CI fail-on-error) | ✅ | ruff 0 lỗi, eslint config, bỏ `||true` |
+| CI pipeline (GitHub Actions) | ✅ | backend lint+test + frontend build+test; trigger PR/push main/develop |
+| `.env.example` backend | ✅ | template đầy đủ biến cho Vercel+Render+Supabase |
 | LLM interface | 🚧 | chỉ có MockProvider; 🔒 OQ-002 chưa chốt provider |
 | ARQ worker + pipeline | 🚧 | khung xong, các bước TODO |
 | i18n (vi/en) + theme OKLCH | ✅ | |
