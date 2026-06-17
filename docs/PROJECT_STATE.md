@@ -48,7 +48,7 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 **Hạ tầng & cross-cutting:**
 | Hạng mục | Trạng thái | Ghi chú |
 |---|:---:|---|
-| docker-compose (6 service) | ✅ | verify chạy thật |
+| docker-compose (6 service) | ✅ | web trỏ đúng `/api/v1`; compose dev bật mock login cho API |
 | 16 models + Alembic | ✅ | migration đầu đã generate |
 | core (config/security/perm/crypto/...) | 🚧 | khung xong, một số logic TODO |
 | Storage interface (local/S3) | ✅ | path-traversal validate ✅; route đọc file chưa nối |
