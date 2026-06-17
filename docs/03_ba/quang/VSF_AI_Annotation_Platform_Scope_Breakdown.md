@@ -33,12 +33,7 @@ Tài liệu này phân loại toàn bộ tính năng của VSF AI Annotation Pla
 Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạy được end-to-end ổn định theo luồng:
 
 ```
-<<<<<<< HEAD
 [Import PDF Bundle] ➔ [PDF Parsing] ➔ [Claim Extraction] ➔ [LLM Pre-scoring] ➔ [Annotator Review] ➔ [QA Review] ➔ [Export CSV]
-=======
-PDF Bundle Upload → PDF Parsing → Normalization → Claim Extraction (LLM #1)
-→ Source Mapping → LLM Pre-scoring (LLM #2) → Annotator Review → QA (100%) → Export CSV
->>>>>>> origin/fe
 ```
 
 ### Tiêu chí nghiệm thu (UAT Success Criteria):
@@ -55,7 +50,6 @@ PDF Bundle Upload → PDF Parsing → Normalization → Claim Extraction (LLM #1
 | Hạng mục tính năng | Must-Have | Design-Only | Postponed |
 | :--- | :---: | :---: | :---: |
 | **Project Setup** (Cấu hình dự án & Gán nhân sự) | ✅ | | |
-<<<<<<< HEAD
 | **Import PDF Bundle** (Answer PDF + Source Reference PDF + Source Content PDF) | ✅ | | |
 | **PDF Parsing & Normalization** (Parse PDF thành dữ liệu nội bộ) | ✅ | | |
 | **Claim Extraction** (Tách claim tự động & Sửa thủ công) | ✅ | | |
@@ -99,7 +93,6 @@ PDF Bundle Upload → PDF Parsing → Normalization → Claim Extraction (LLM #1
   - Cấu hình LLM endpoint, API key và prompt template (provider working: **Gemini 2.5 Flash** qua `LLMProvider`).
   - Gán Annotator và QA vào dự án (**Assignment** — không User Management UI đầy đủ).
   - Xem danh sách và trạng thái tổng quan các project.
-<<<<<<< HEAD
 - **Import PDF Bundle:**
   - Import dữ liệu thủ công bằng PDF bundle gồm đúng 1 `answer_pdf`, đúng 1 `source_ref_pdf`, và ít nhất 1 `source_content_pdf`.
   - Kiểm tra file role, định dạng PDF, file lỗi/corrupt, thiếu/trùng role và giới hạn dung lượng.
@@ -204,11 +197,7 @@ PDF Bundle Upload → PDF Parsing → Normalization → Claim Extraction (LLM #1
 
 ### Tuần 1 — Xây dựng Nền tảng
 - [ ] Thống nhất và chốt biên giới scope MVP với mentor/stakeholder.
-<<<<<<< HEAD
 - [ ] Định nghĩa schema PDF Bundle Upload, PDF parse result và CSV export claim-level.
-=======
-- [ ] Định nghĩa import chuẩn **PDF Bundle** (`file_role`) và export CSV §10.
->>>>>>> origin/fe
 - [ ] Chốt LLM provider và kiểm tra tài khoản/kết nối.
 - [ ] Thiết kế kiến trúc nghiệp vụ tự động tách claim (claim extraction flow).
 - [ ] Xây dựng sơ đồ dữ liệu ERD hỗ trợ cấu trúc mở rộng đa modality.
@@ -217,7 +206,6 @@ PDF Bundle Upload → PDF Parsing → Normalization → Claim Extraction (LLM #1
 - [ ] Triển khai phân hệ Authentication và RBAC phân quyền cơ bản.
 
 ### Tuần 2 — Hiện thực hóa Luồng Gán nhãn (Annotation Flow)
-<<<<<<< HEAD
 - [ ] Phát triển API và giao diện Import PDF Bundle (validate file roles + parse preview).
 - [ ] Hiện thực tính năng tự động tách claim (Claim extraction).
 - [ ] Kết nối API và tích hợp cơ chế LLM pre-scoring lưu baseline.

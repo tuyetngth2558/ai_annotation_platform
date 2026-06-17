@@ -24,7 +24,6 @@ Tài liệu gốc cho Dev viết validation và QA thiết kế test cases.
 
 ---
 
-<<<<<<< HEAD
 ## 2. Import PDF Bundle (Nhập dữ liệu)
 
 ### AC - Tiêu chí nghiệm thu:
@@ -39,24 +38,6 @@ Tài liệu gốc cho Dev viết validation và QA thiết kế test cases.
   - **File Role:** File role chỉ được thuộc `answer_pdf`, `source_ref_pdf`, `source_content_pdf`.
 - **BR-2.2 (Null/Empty Validation):** `answer_text_normalized` sau parse không được rỗng. Nếu không parse được answer text, bundle bị block.
 - **BR-2.3 (Audit Log):** Hệ thống bắt buộc phải ghi log sự kiện `import` bao gồm: `user_id` (Admin), `timestamp`, `action_type: import`, `target_object: BatchID/BundleID`, danh sách file PDF và số claim/task sinh ra nếu có.
-=======
-## 2. Import PDF Bundle
-
-### AC
-1. **AC-2.1:** Upload nhiều file PDF; gán `file_role`: `answer_pdf` (1), `source_ref_pdf` (1), `source_content_pdf` (≥1). `bundle_name` bắt buộc.
-2. **AC-2.2:** Parse preview: metadata answer, source list (`source_order`, `source_title`, `source_tier`), warnings (vd. `SOURCE_URL_MISSING`).
-3. **AC-2.3:** Admin Confirm Import → tạo `batch`, `pdf_bundle`, `parent_task`; trigger worker parse/normalize.
-4. **AC-2.4:** Lỗi validate/PDF hỏng/`ocr_required` → block import, message rõ từng file.
-
-### BR
-- **BR-2.1 (Bundle constraints):** VR-UP-001..008 — đủ file role, PDF hợp lệ, max size, không trùng role bắt buộc.
-- **BR-2.2 (OCR gate):** PDF scan/image → `source_parse_status = ocr_required` → **block import** (OQ-PDF-004). MVP không có OCR pipeline.
-- **BR-2.3 (Text extraction):** Parse answer → `answer_text_raw`, `answer_text_normalized`. Rỗng → VR-PARSE-001/002 fail.
-- **BR-2.4 (Source URL):** `source_url` optional; thiếu → warning, **không block** (VR-SRC-006, OQ-PDF-003).
-- **BR-2.5 (Audit):** `import` — `user_id`, `bundle_id`/`batch_id`, số file, timestamp.
-
-**Không dùng trong MVP:** ZIP là input chính; CSV/JSON user-facing import.
->>>>>>> origin/fe
 
 ---
 
@@ -73,18 +54,6 @@ Tài liệu gốc cho Dev viết validation và QA thiết kế test cases.
 - **BR-3.2 (Source Check on Import):** 
   - Nếu claim không map được source candidate từ citation marker/source order, hệ thống tự động gán trạng thái `Claim Task` là `Source Mapping Required`.
   - Task ở trạng thái này sẽ không được nạp vào hàng đợi công việc của Annotator cho đến khi Admin/BA thực hiện ánh xạ/bổ sung source mapping.
-=======
-### AC
-1. **AC-3.1:** Sau import, worker parse 3 loại PDF; normalize internal representation.
-2. **AC-3.2:** LLM **bước 1** tách claim từ `answer_text_normalized`.
-3. **AC-3.3:** Mỗi claim → `Claim Task` với `claim_order` từ 1; liên kết `bundle_id`, `parent_task_id`.
-4. **AC-3.4:** Annotator sửa `claim_text_final`; giữ `claim_text_original`; audit edit (VR-ANN-005).
-
-### BR
-- **BR-3.1:** `claim_order` liên tiếp trong parent task.
-- **BR-3.2:** Claim không map source → `source_mapping_required` (VR-MAP-003); **không** block vì thiếu URL.
-- **BR-3.3:** Citation `[n]` map `source_order = n` khi có thể (VR-MAP-001 warning).
->>>>>>> origin/fe
 
 ---
 
@@ -102,19 +71,6 @@ Tài liệu gốc cho Dev viết validation và QA thiết kế test cases.
     - Điểm số của chiều đánh giá `SC` (Source Coverage) tự động gán bằng `0.00`.
     - Ô nhập điểm của chiều `SC` trên giao diện sẽ bị khóa (read-only) và không cho phép Annotator sửa đổi thủ công.
   - Nếu tất cả các nguồn của claim đều ở trạng thái khác (`source_text_parsed`, `partially_supported`, `irrelevant`), ô nhập điểm `SC` sẽ được mở khóa để đánh giá bình thường.
-=======
-### AC
-1. **AC-4.1:** Workspace hiển thị per source: `source_order`, `source_title`, `source_tier`, `source_text_extract`, optional `source_url` link.
-2. **AC-4.2:** Annotator chọn `source_access_status`: `source_text_parsed` | `inaccessible` | `unknown`.
-3. **AC-4.3:** `inaccessible` → bắt buộc `source_note` (VR-ANN-004).
-
-### BR
-- **BR-4.1 (SC lock):** Bất kỳ source `inaccessible` → `SC = 0.00` (locked, read-only).
-- **BR-4.2:** Không bắt buộc mở URL ngoài để submit; ưu tiên `source_text_extract` từ PDF.
-- **BR-4.3:** `source_parse_status = unparsed` → warning; annotator ghi note nếu cần.
-
-**Đã bỏ:** 4 trạng thái URL-centric (`Accessible` / `Partially supported` / `Irrelevant`).
->>>>>>> origin/fe
 
 ---
 

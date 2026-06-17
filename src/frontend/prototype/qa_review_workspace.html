@@ -1604,11 +1604,7 @@
           <div class="field full"><label class="required">LLM Endpoint URL</label><input type="url" value="https://llm-provider.example/v1/prescore"></div>
           <div class="field"><label class="required">API Key</label><input type="password" value="vsf-demo-key"></div>
           <div class="field"><label>Provider</label><select><option>Provider chưa chốt - dùng endpoint cấu hình</option></select></div>
-<<<<<<< HEAD
           <div class="field full"><label>Prompt template</label><textarea>Parse Answer PDF, trích xuất claim từ answer_text_normalized và chấm 6 dimension SF, SC, HR, SQ, REL, COMP theo rubric MVP.</textarea></div>
-=======
-          <div class="field full"><label class="required">Prompt template</label><textarea>Trích xuất claim từ Answer Context đã parse từ PDF và chấm 6 dimension SF, SC, NH, SQ, REL, COMP theo rubric MVP.</textarea></div>
->>>>>>> origin/fe
         </div>
         <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Tiếp tục</button></div>`;
       if (state.wizardStep === 3) return `

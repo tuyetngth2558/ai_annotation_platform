@@ -15,7 +15,6 @@
 
 ---
 
-<<<<<<< HEAD
 ## 2. Luồng Import PDF Bundle (Import Flow)
 
 ### US-01: Import PDF Bundle thủ công (Admin)
@@ -121,7 +120,6 @@
 
 ### US-05: My Tasks queue (Annotator)
 
-<<<<<<< HEAD
 ### US-05: Đánh giá và xác nhận trạng thái nguồn (Annotator)
 - **Mô tả:**
   - **As an** Annotator,
