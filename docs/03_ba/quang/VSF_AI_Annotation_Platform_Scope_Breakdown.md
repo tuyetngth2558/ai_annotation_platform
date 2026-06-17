@@ -120,7 +120,7 @@ Mục tiêu duy nhất của MVP 4 tuần là bàn giao một hệ thống chạ
   - Hiển thị thông báo và trạng thái lỗi chi tiết cho Admin nếu kết nối API thất bại.
 =======
 - **PDF Bundle Import:**
-  - Upload nhiều file PDF; **bundle builder** gán `file_role`: `answer_pdf`, `source_ref_pdf`, `source_content_pdf` (≥1).
+  - Upload nhiều file PDF; **bundle builder** gán `file_role`: `answer_pdf` (1), `source_ref_pdf` (1), `source_content_pdf` (0..N, optional).
   - Validate theo `VR-UP-*`; **block import** nếu `ocr_required` (OQ-PDF-004).
   - Parse preview: metadata, source list, warnings (`SOURCE_URL_MISSING` không block).
   - Confirm import → tạo batch, `pdf_bundle`, trigger pipeline nền.

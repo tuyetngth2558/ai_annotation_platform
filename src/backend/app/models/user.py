@@ -23,6 +23,11 @@ class UserAccount(UUIDPkMixin, TimestampMixin, Base):
     # status: active | disabled (dùng cho khóa tài khoản — không thêm cột is_active riêng).
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
 
+    # Role "duy nhất" của user (ANNOTATOR | QA | ADMIN). 1 user = 1 role, áp dụng cho mọi
+    # project user thuộc về. Cho phép tạo user chưa thuộc project nào (default_role giữ role
+    # dự kiến; UserProjectRole sẽ dùng đúng role này khi gán vào project). Nullable cho user cũ.
+    default_role: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     # Mật khẩu hash (bcrypt). Không có trong ERD gốc nhưng cần cho auth tự viết (OQ-006).
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

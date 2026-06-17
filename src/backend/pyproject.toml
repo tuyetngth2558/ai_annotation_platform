@@ -24,15 +24,16 @@ dependencies = [
     "cryptography>=44.0",            # Fernet — encrypt LLM API key at-rest (BR-1.2)
     # --- Storage (S3 / MinIO) ---
     "aioboto3>=13.2",
-    # --- PDF parsing (dùng ở bước sau, để sẵn) ---
-    # "pdfplumber>=0.11",            # TODO(import_bundle): bật khi làm parser
+    # --- PDF parsing ---
+    "pymupdf>=1.24",                  # PyMuPDF (fitz) — parse PDF text + annotations
+    # --- LLM (OpenRouter — OpenAI-compatible HTTP) ---
+    "httpx>=0.28",                   # gọi OpenRouter API (cũng dùng làm async test client)
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
-    "httpx>=0.28",                   # async test client
     "ruff>=0.8",                     # lint + format
     "aiosqlite>=0.20",               # DB in-memory cho unit test nhanh
 ]
@@ -57,6 +58,7 @@ ignore = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 
 [build-system]

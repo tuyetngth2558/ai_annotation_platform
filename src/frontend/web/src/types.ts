@@ -2,14 +2,30 @@ export type UserRole = "ADMIN" | "ANNOTATOR" | "QA";
 
 export type Dimension = "SF" | "SC" | "NH" | "SQ" | "REL" | "COMP";
 
+export type SourceParseStatus = "parsed" | "unparsed" | "ocr_required" | "pending" | "failed";
+
+export type SourceDomainClass =
+  | "gov_vn"
+  | "intl_org"
+  | "academic"
+  | "social_or_blog"
+  | "pdf_only"
+  | "general"
+  | "unknown";
+
 export interface Source {
   order: number;
   title: string;
   tier: string;
   url: string | null;
   file: string;
-  parseStatus: "parsed" | "pending" | "failed";
+  parseStatus: SourceParseStatus;
   text: string;
+  domainClass?: SourceDomainClass;
+  sqPrescore?: number;
+  sqRationale?: string;
+  sqNeedsReview?: boolean;
+  tierNormalized?: string;
 }
 
 export interface ClaimTask {
@@ -52,6 +68,8 @@ export interface ClaimTask {
   sources: Source[];
   urls: string[];
   qaComment: string;
+  sqRationale?: string;
+  sqEngine?: "rule" | "llm";
 }
 
 export interface Project {
@@ -64,7 +82,7 @@ export interface Project {
   answerPdf: string;
   sourceRefPdf: string;
   sourceContentPdfs: string[];
-  status: "Active" | "Completed" | "Pending";
+  status: "Active" | "Completed" | "Pending" | "Draft";
   createdAt: string;
   deadline: string;
   owner: string;
@@ -96,6 +114,7 @@ export interface AuditLog {
 export interface UserAccount {
   name: string;
   email: string;
-  role: UserRole;
+  // "" = role chưa xác định (user cũ chưa set default_role) — hiển "—".
+  role: UserRole | "";
   status: "Đang hoạt động" | "Bị khóa";
 }

@@ -56,6 +56,14 @@ class ChangePasswordRequest(BaseModel):
     new_password: Password  # 8 ký tự tối thiểu + ≤72 byte (validate sớm → 422)
 
 
+class BootstrapAdminRequest(BaseModel):
+    """Tạo Admin đầu tiên — chỉ dùng 1 lần khi DB trống."""
+
+    email: str
+    full_name: str = Field(min_length=1, max_length=200)
+    password: Password
+
+
 class CurrentUser(BaseModel):
     id: str
     email: str

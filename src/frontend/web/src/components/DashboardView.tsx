@@ -1,350 +1,229 @@
 import { ClaimTask, UserRole } from "../types";
 import { TEST_IDS } from "../testability";
-import { FolderGit2, CheckSquare, RefreshCw, Send, ShieldAlert, Award, FileSpreadsheet, PlayCircle } from "lucide-react";
+import type { AdminStats } from "../api/adapters";
+import {
+  CheckCircle, Clock, AlertCircle, FileText, ArrowRight,
+  Users, FolderKanban, ListChecks, History,
+} from "lucide-react";
 
 interface DashboardViewProps {
   userRole: UserRole;
   tasks: ClaimTask[];
-  exportJobsCount: number;
+  stats: AdminStats | null; // chỉ ADMIN dùng
   onNavigate: (view: string) => void;
   onOpenTaskAnnotation: (id: string) => void;
   onOpenTaskQa: (id: string) => void;
 }
 
+interface MetricProps {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: "red" | "green" | "amber" | "blue" | "gray";
+  testId?: string;
+}
+
+function MetricCard({ label, value, icon, color, testId }: MetricProps) {
+  const colorMap = {
+    red: "text-brand-600",
+    green: "text-emerald-600",
+    amber: "text-amber-600",
+    blue: "text-blue-600",
+    gray: "text-gray-600",
+  };
+
+  return (
+    <div data-testid={testId} className="metric-card">
+      <div className="flex items-center justify-between">
+        <span className="section-title">{label}</span>
+        <span className={`${colorMap[color]} opacity-60`}>{icon}</span>
+      </div>
+      <strong className="metric-value">{value}</strong>
+    </div>
+  );
+}
+
 export default function DashboardView({
   userRole,
   tasks,
-  exportJobsCount,
+  stats,
   onNavigate,
   onOpenTaskAnnotation,
   onOpenTaskQa
 }: DashboardViewProps) {
-  // Compute counts
-  const totalProjects = 1;
-  const totalBatches = 1;
-  const myTasks = tasks.filter((t) => t.annotator === "Annotator Mai");
+  // ADMIN: dashboard tổng quan riêng (thống kê hệ thống + workload), không bảng claim.
+  if (userRole === "ADMIN") return <AdminDashboard stats={stats} onNavigate={onNavigate} />;
 
+  // ANNOTATOR: `tasks` đã là task của chính mình (fetchMyTasks) → dùng thẳng, không lọc theo tên.
   const counts = {
-    assigned: myTasks.filter((t) => ["Ready for Annotation", "In Annotation", "Returned"].includes(t.status)).length,
-    inWork: myTasks.filter((t) => t.status === "In Annotation").length,
-    returned: myTasks.filter((t) => t.status === "Returned").length,
-    submitted: myTasks.filter((t) => t.status === "Submitted").length,
+    assigned: tasks.filter((t) => ["Ready for Annotation", "In Annotation", "Returned"].includes(t.status)).length,
+    inWork: tasks.filter((t) => t.status === "In Annotation").length,
+    returned: tasks.filter((t) => t.status === "Returned").length,
+    submitted: tasks.filter((t) => t.status === "Submitted").length,
     submittedGlobal: tasks.filter((t) => t.status === "Submitted").length,
     approvedGlobal: tasks.filter((t) => t.status === "Approved").length,
     returnedGlobal: tasks.filter((t) => t.status === "Returned").length,
-    readyGlobal: tasks.filter((t) => t.status === "Ready for Annotation").length,
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusClass = (status: string) => {
     switch (status) {
-      case "Uploaded":
-      case "Imported":
-        return "bg-slate-50 text-slate-700 border-slate-200";
-      case "Parsing":
-      case "Claim Extracted":
-      case "Pre-scoring Running":
-        return "bg-amber-50 text-amber-700 border-amber-200 animate-pulse";
-      case "Parse Failed":
-      case "Pre-scoring Failed":
-        return "bg-red-50 text-red-700 border-red-200";
-      case "Ready for Annotation":
-      case "Parsed":
-        return "bg-emerald-50 text-emerald-700 border-emerald-250";
-      case "In Annotation":
-      case "Source Mapping Required":
-        return "bg-amber-100 text-amber-800 border-amber-300";
-      case "Submitted":
-        return "bg-blue-50 text-blue-700 border-blue-200";
-      case "Returned":
-        return "bg-red-100 text-red-800 border-red-300";
-      case "Approved":
-        return "bg-emerald-100 text-emerald-800 border-emerald-300";
-      case "Exported":
-        return "bg-teal-50 text-teal-700 border-teal-200";
-      default:
-        return "bg-slate-55 text-slate-600 border-slate-22";
+      case "Ready for Annotation": return "bg-blue-50 text-blue-700 border-blue-200";
+      case "In Annotation": return "bg-amber-50 text-amber-700 border-amber-200";
+      case "Submitted": return "bg-violet-50 text-violet-700 border-violet-200";
+      case "Returned": return "bg-red-50 text-red-700 border-red-200";
+      case "Approved": return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      default: return "bg-gray-50 text-gray-600 border-gray-200";
     }
   };
 
-  const getCompositeScoreClass = (score: number) => {
-    if (score >= 0.8) return "bg-emerald-50 text-emerald-700 border border-emerald-100";
-    if (score >= 0.6) return "bg-amber-50 text-amber-700 border border-amber-100";
-    return "bg-red-50 text-red-700 border border-red-100";
+  const compositeAverage = (task: ClaimTask) => {
+    return (task.ann.SF + task.ann.SC + task.ann.NH + task.ann.SQ + task.ann.REL + task.ann.COMP) / 6;
   };
 
-  const compositeAverage = (task: ClaimTask) => {
-    const total = task.ann.SF + task.ann.SC + task.ann.NH + task.ann.SQ + task.ann.REL + task.ann.COMP;
-    return total / 6;
+  const scoreBarColor = (score: number) => {
+    if (score >= 0.8) return "bg-emerald-500";
+    if (score >= 0.6) return "bg-amber-500";
+    return "bg-red-500";
   };
+
+  const isReviewable = (status: ClaimTask["status"]) => status === "Submitted";
 
   return (
     <div className="space-y-6">
-      {/* Dynamic metric widgets adapted to Role */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {userRole === "ADMIN" && (
-          <>
-            <div data-testid={TEST_IDS.dashboardMetricProjects} className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-blue-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Dự án Đang Chạy</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{totalProjects}</strong>
-              <div className="text-[11px] text-blue-600 font-semibold flex items-center gap-1">
-                <FolderGit2 size={13} /> Vivipedia active
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-indigo-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Số Lượng Batch</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{totalBatches}</strong>
-              <div className="text-[11px] text-indigo-500 font-semibold flex items-center gap-1">
-                <CheckSquare size={13} /> Evaluation BAT-001
-              </div>
-            </div>
-            <div data-testid={TEST_IDS.dashboardMetricApproved} className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-emerald-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Đã Duyệt (Approved)</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{counts.approvedGlobal}</strong>
-              <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                <Award size={13} /> Đủ điều kiện export
-              </div>
-            </div>
-            <div data-testid={TEST_IDS.dashboardMetricSubmitted} className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-amber-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Đang Chờ QA duyệt</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{counts.submittedGlobal}</strong>
-              <div className="text-[11px] text-amber-500 font-semibold flex items-center gap-1">
-                <RefreshCw size={13} /> Đang đợi đánh giá
-              </div>
-            </div>
-          </>
-        )}
-
+      {/* Metrics row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {userRole === "ANNOTATOR" && (
           <>
-            <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-blue-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Task Được Giao</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{counts.assigned}</strong>
-              <div className="text-[11px] text-blue-600 font-semibold flex items-center gap-1">
-                <FolderGit2 size={13} /> Chỉ định cho bạn
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-amber-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Đang Làm</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{counts.inWork}</strong>
-              <div className="text-[11px] text-amber-500 font-semibold flex items-center gap-1">
-                <PlayCircle size={13} /> Auto-save mỗi 30 giây
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-red-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Bị Trả Lại (Returned)</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{counts.returned}</strong>
-              <div className="text-[11px] text-red-500 font-semibold flex items-center gap-1">
-                <ShieldAlert size={13} /> Cần sửa và resubmit
-              </div>
-            </div>
-            <div data-testid={TEST_IDS.dashboardMetricSubmitted} className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-emerald-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Đã Gửi Đi (Submitted)</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{counts.submitted}</strong>
-              <div className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
-                <Send size={13} /> Đã chuyển sang QA
-              </div>
-            </div>
+            <MetricCard label="Được giao" value={counts.assigned} icon={<FileText size={18} />} color="blue" />
+            <MetricCard label="Đang làm" value={counts.inWork} icon={<Clock size={18} />} color="amber" />
+            <MetricCard label="Bị trả lại" value={counts.returned} icon={<AlertCircle size={18} />} color="red" />
+            <MetricCard testId={TEST_IDS.dashboardMetricSubmitted} label="Đã nộp" value={counts.submitted} icon={<CheckCircle size={18} />} color="green" />
           </>
         )}
-
         {userRole === "QA" && (
           <>
-            <div data-testid={TEST_IDS.dashboardMetricSubmitted} className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-amber-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Yêu Cầu Review</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{counts.submittedGlobal}</strong>
-              <div className="text-[11px] text-amber-500 font-semibold flex items-center gap-1">
-                <RefreshCw size={13} /> Task vừa được Annotator nộp
-              </div>
-            </div>
-            <div data-testid={TEST_IDS.dashboardMetricApproved} className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-emerald-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Được Chấp Thuận</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{counts.approvedGlobal}</strong>
-              <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                <Award size={13} /> Hoàn tất thẩm định
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-red-650 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Số Task Returned</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{counts.returnedGlobal}</strong>
-              <div className="text-[11px] text-red-500 font-semibold flex items-center gap-1">
-                <ShieldAlert size={13} /> Đang đợi annotator nộp lại
-              </div>
-            </div>
-            <div data-testid={TEST_IDS.dashboardMetricExports} className="bg-white p-5 rounded-xl border border-slate-100 shadow-md border-l-4 border-l-teal-600 space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Yêu Cầu Xuất (Jobs)</span>
-              <strong className="text-3xl font-extrabold text-slate-800 block">{exportJobsCount}</strong>
-              <div className="text-[11px] text-teal-600 font-semibold flex items-center gap-1">
-                <FileSpreadsheet size={13} /> File CSV claim-level
-              </div>
-            </div>
+            <MetricCard testId={TEST_IDS.dashboardMetricSubmitted} label="Chờ review" value={counts.submittedGlobal} icon={<Clock size={18} />} color="amber" />
+            <MetricCard testId={TEST_IDS.dashboardMetricApproved} label="Đã duyệt" value={counts.approvedGlobal} icon={<CheckCircle size={18} />} color="green" />
+            <MetricCard label="Đã trả lại" value={counts.returnedGlobal} icon={<AlertCircle size={18} />} color="red" />
+            <MetricCard label="Tổng trong hàng đợi" value={tasks.length} icon={<FileText size={18} />} color="blue" />
           </>
         )}
       </div>
 
-      {/* Quick shortcuts adapted to Role */}
-      <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl space-y-3">
-        <h3 className="text-xs font-bold text-slate-400 tracking-wider uppercase">Lối tắt thao tác nhanh</h3>
-        <div className="flex flex-wrap gap-2.5">
-          {userRole === "ADMIN" && (
-            <>
-              <button
-                onClick={() => onNavigate("projects")}
-                data-testid={TEST_IDS.dashboardOpenProjects}
-                className="py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs tracking-tight shadow transition-all"
-              >
-                Tạo Project / Import PDF
-              </button>
-              <button
-                onClick={() => onNavigate("export")}
-                data-testid={TEST_IDS.dashboardOpenExport}
-                className="py-1.5 px-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs tracking-tight shadow transition-all"
-              >
-                Export CSV Kết Quả
-              </button>
-              <button
-                onClick={() => onNavigate("audit")}
-                data-testid={TEST_IDS.dashboardOpenAudit}
-                className="py-1.5 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-lg text-xs tracking-tight transition-all"
-              >
-                Xem Nhật Ký Hệ Thống (Audit Log)
-              </button>
-            </>
-          )}
-
+      {/* Quick actions */}
+      <div className="app-card p-4">
+        <div className="flex flex-wrap items-center gap-2">
           {userRole === "ANNOTATOR" && (
             <>
-              <button
-                onClick={() => onNavigate("tasks")}
-                data-testid={TEST_IDS.dashboardOpenTasks}
-                className="py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs tracking-tight shadow transition-all"
-              >
-                Danh Sách Task Của Tôi
+              <button onClick={() => onNavigate("tasks")} data-testid={TEST_IDS.dashboardOpenTasks} className="btn-primary !text-xs !py-2 !px-4">
+                Xem danh sách task <ArrowRight size={14} />
               </button>
               <button
                 onClick={() => {
-                  const firstReady = tasks.find((t) => t.annotator === "Annotator Mai");
-                  if (firstReady) {
-                    onOpenTaskAnnotation(firstReady.id);
-                  } else {
-                    onNavigate("tasks");
-                  }
+                  const first = tasks[0];
+                  if (first) onOpenTaskAnnotation(first.id);
+                  else onNavigate("tasks");
                 }}
                 data-testid={TEST_IDS.dashboardOpenAnnotation}
-                className="py-1.5 px-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs tracking-tight shadow transition-all"
+                className="btn-secondary !text-xs !py-2 !px-4"
               >
-                Claim Hoạt Động (Claim Task)
+                Mở workspace
               </button>
             </>
           )}
-
           {userRole === "QA" && (
             <>
-              <button
-                onClick={() => onNavigate("qa")}
-                data-testid={TEST_IDS.dashboardOpenQa}
-                className="py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs tracking-tight shadow transition-all"
-              >
-                Kiểm Duyệt QA Queue
-              </button>
-              <button
-                onClick={() => onNavigate("export")}
-                data-testid={TEST_IDS.dashboardOpenExport}
-                className="py-1.5 px-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs tracking-tight shadow transition-all"
-              >
-                Truy Cập Export CSV
+              <button onClick={() => onNavigate("qa")} data-testid={TEST_IDS.dashboardOpenQa} className="btn-primary !text-xs !py-2 !px-4">
+                Kiểm duyệt <ArrowRight size={14} />
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Main Snap Table of all tasks */}
-      <section className="bg-white rounded-xl border border-slate-100 shadow-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 bg-gradient-to-r from-slate-50 to-white">
-          <h2 className="text-base font-bold text-slate-800">Cập nhật Trạng Thái (Task Status Snapshot)</h2>
-          <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-150 text-[10px] font-bold">
-            Dữ liệu Vivipedia Mock
-          </span>
+      {/* Task table */}
+      <section className="app-card overflow-hidden">
+        <div className="app-card-header">
+          <h3 className="text-sm font-semibold text-gray-800">Danh sách claim task</h3>
+          <span className="text-[11px] text-gray-400 font-medium">{tasks.length} task</span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs" data-testid={TEST_IDS.dashboardTaskTable}>
+          <table className="data-table" data-testid={TEST_IDS.dashboardTaskTable}>
             <thead>
-              <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4">Claim Task</th>
-                <th className="py-3 px-4">Parent Task</th>
-                <th className="py-3 px-4">Mã Bài Viết</th>
-                <th className="py-3 px-4">Nguồn Map</th>
-                <th className="py-3 px-4">Người Điều Phối</th>
-                <th className="py-3 px-4">Trạng Thái</th>
-                <th className="py-3 px-4">Composite Score</th>
-                <th className="py-3 px-4 text-center">Thao Tác</th>
+              <tr>
+                <th>Claim</th>
+                <th>Mã bài</th>
+                <th>Nguồn</th>
+                <th>Annotator</th>
+                <th>Trạng thái</th>
+                <th>Điểm</th>
+                <th className="text-center w-24"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody>
               {tasks.map((t) => {
-                const isAssignedToMe = (userRole === "ANNOTATOR" && t.annotator === "Annotator Mai");
+                const isMyTask = userRole === "ANNOTATOR";
+                const composite = compositeAverage(t);
 
                 return (
-                  <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3.5 px-4 font-medium max-w-xs">
-                      <strong className="block text-slate-800 text-sm font-semibold">{t.id}</strong>
-                      <span className="block text-slate-400 mt-0.5 truncate" title={t.question}>
-                        {t.question}
+                  <tr key={t.id}>
+                    <td className="max-w-xs">
+                      <span className="block text-sm font-semibold text-gray-900">{t.id}</span>
+                      <span className="block text-[12px] text-gray-400 truncate mt-0.5" title={t.claimFinal}>
+                        {t.claimFinal}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">{t.answerId}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[10px] uppercase font-mono tracking-wider">
+                    <td>
+                      <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-mono text-[11px] font-medium">
                         {t.articleCode}
                       </span>
-                      <span className="block text-slate-400 mt-0.5 text-[11px]">{t.sectionName}</span>
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap space-x-1">
-                      {t.mappedSourceOrders.length ? (
-                        t.mappedSourceOrders.map((order) => (
-                          <span
-                            key={order}
-                            className="inline-block px-1 rounded bg-slate-100 border border-slate-200 text-slate-600 font-bold text-[10px]"
-                          >
-                            [{order}]
+                    <td className="whitespace-nowrap">
+                      {t.mappedSourceOrders.length > 0 ? (
+                        t.mappedSourceOrders.map((o) => (
+                          <span key={o} className="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-mono text-[10px] font-medium mr-1">
+                            [{o}]
                           </span>
                         ))
                       ) : (
-                        <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-semibold">
-                          Mapping required
-                        </span>
+                        <span className="text-[11px] text-amber-600 font-medium">Chưa map</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-slate-600 font-medium">{t.annotator}</td>
-                    <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-bold ${getStatusColor(t.status)}`}>
+                    <td className="text-gray-600 text-[13px]">{t.annotator}</td>
+                    <td>
+                      <span className={`status-pill ${getStatusClass(t.status)}`}>
                         {t.status}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`inline-block px-2.5 py-1 rounded-full font-bold text-[11px] ${getCompositeScoreClass(compositeAverage(t))}`}>
-                        {compositeAverage(t).toFixed(2)}
-                      </span>
+                    <td>
+                      <div className="flex items-center gap-2 min-w-[80px]">
+                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${scoreBarColor(composite)}`} style={{ width: `${composite * 100}%` }} />
+                        </div>
+                        <span className="text-[11px] font-mono font-semibold text-gray-600 tabular-nums">{composite.toFixed(2)}</span>
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="text-center">
                       {userRole === "ANNOTATOR" && (
                         <button
                           onClick={() => onOpenTaskAnnotation(t.id)}
-                          disabled={!isAssignedToMe}
+                          disabled={!isMyTask}
                           data-testid={TEST_IDS.dashboardOpenAnnotationTask(t.id)}
-                          className="px-2.5 py-1 bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-bold rounded-lg text-[11px] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          className="btn-ghost !text-[11px] !py-1 !px-2 disabled:opacity-30"
                         >
-                          {t.status === "Returned" ? "Sửa" : "Xem/Làm"}
+                          {t.status === "Returned" ? "Sửa" : "Mở"}
                         </button>
                       )}
-                      {(userRole === "QA" || userRole === "ADMIN") && (
+                      {userRole === "QA" && (
                         <button
                           onClick={() => onOpenTaskQa(t.id)}
                           data-testid={TEST_IDS.dashboardOpenQaTask(t.id)}
-                          className="px-2.5 py-1 bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-bold rounded-lg text-[11px] transition-all"
+                          className={`${
+                            isReviewable(t.status) ? "btn-ghost" : "btn-secondary"
+                          } !text-[11px] !py-1 !px-2`}
                         >
-                          Review
+                          {isReviewable(t.status) ? "Review" : "Xem"}
                         </button>
                       )}
                     </td>
@@ -355,6 +234,78 @@ export default function DashboardView({
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** Dashboard ADMIN — tổng quan hệ thống: thống kê + workload "ai đang làm đến đâu". */
+function AdminDashboard({ stats, onNavigate }: { stats: AdminStats | null; onNavigate: (v: string) => void }) {
+  const s = stats;
+  const claimTotal = s?.claims.total ?? 0;
+  const approvedPct = claimTotal ? Math.round((s!.claims.approved / claimTotal) * 100) : 0;
+
+  return (
+    <div className="space-y-6">
+      {/* 4 nhóm metric tổng quan */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <MetricCard testId={TEST_IDS.dashboardMetricProjects} label="Dự án" value={s?.projects.total ?? 0} icon={<FolderKanban size={18} />} color="blue" />
+        <MetricCard label="Người dùng" value={s?.users.total ?? 0} icon={<Users size={18} />} color="gray" />
+        <MetricCard label="Tổng claim" value={claimTotal} icon={<ListChecks size={18} />} color="amber" />
+        <MetricCard label="Hành động (log)" value={s?.auditCount ?? 0} icon={<History size={18} />} color="green" />
+      </div>
+
+      {/* Chi tiết: người dùng theo vai trò + dự án + claim theo trạng thái */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <section className="app-card p-5">
+          <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5"><Users size={15} className="text-vsf-600" /> Người dùng</h3>
+          <ul className="space-y-2 text-sm">
+            <li className="flex justify-between"><span className="text-slate-500">Admin</span><strong>{s?.users.admin ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Annotator</span><strong>{s?.users.annotator ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">QA</span><strong>{s?.users.qa ?? 0}</strong></li>
+          </ul>
+        </section>
+
+        <section className="app-card p-5">
+          <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5"><FolderKanban size={15} className="text-vsf-600" /> Dự án</h3>
+          <ul className="space-y-2 text-sm">
+            <li className="flex justify-between"><span className="text-slate-500">Đang chạy (active)</span><strong className="text-emerald-600">{s?.projects.active ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Nháp (drafting)</span><strong className="text-amber-600">{s?.projects.draft ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Tổng</span><strong>{s?.projects.total ?? 0}</strong></li>
+          </ul>
+        </section>
+
+        <section className="app-card p-5">
+          <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5"><ListChecks size={15} className="text-vsf-600" /> Claim theo trạng thái</h3>
+          <ul className="space-y-1.5 text-[13px]">
+            <li className="flex justify-between"><span className="text-slate-500">Chưa làm</span><strong>{s?.claims.ready ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Đang làm</span><strong>{s?.claims.in_annotation ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Đã nộp (chờ QA)</span><strong className="text-violet-600">{s?.claims.submitted ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Bị trả</span><strong className="text-red-600">{s?.claims.returned ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Đã duyệt</span><strong className="text-emerald-600">{s?.claims.approved ?? 0}</strong></li>
+          </ul>
+        </section>
+      </div>
+
+      {/* Tiến độ duyệt tổng */}
+      <section className="app-card p-5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold text-slate-800">Tiến độ duyệt toàn hệ thống</h3>
+          <span className="text-sm font-bold text-emerald-600">{approvedPct}%</span>
+        </div>
+        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${approvedPct}%` }} />
+        </div>
+        <p className="text-[12px] text-slate-400 mt-2">{s?.claims.approved ?? 0}/{claimTotal} claim đã được QA duyệt.</p>
+      </section>
+
+      {/* Quick actions */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={() => onNavigate("import")} data-testid={TEST_IDS.dashboardOpenProjects} className="btn-primary !text-xs !py-2 !px-4">
+          Tạo & Import <ArrowRight size={14} />
+        </button>
+        <button onClick={() => onNavigate("projects")} className="btn-secondary !text-xs !py-2 !px-4">Dự án</button>
+        <button onClick={() => onNavigate("audit")} data-testid={TEST_IDS.dashboardOpenAudit} className="btn-ghost !text-xs">Nhật ký hệ thống</button>
+      </div>
     </div>
   );
 }

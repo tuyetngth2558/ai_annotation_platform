@@ -24,4 +24,4 @@ _EPS = 1e-9
 
 def needs_justification(annotator: float, pre_score: float) -> bool:
     """True nếu chênh lệch ≥ ngưỡng → bắt buộc nhập lý do (BR-7.3)."""
-    return abs(annotator - pre_score) >= JUSTIFICATION_THRESHOLD - _EPS
+    return abs(float(annotator) - float(pre_score)) >= JUSTIFICATION_THRESHOLD - _EPS

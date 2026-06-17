@@ -11,5 +11,7 @@ chứ không chỉ *cái gì*.
 | [0004](0004-worker-arq.md) | Worker dùng ARQ (thay Celery/RQ) | Accepted |
 | [0005](0005-feature-based-structure.md) | Cấu trúc feature-based co-locate | Accepted |
 | [0006](0006-auth-token-storage.md) | Auth token: localStorage + Bearer (MVP nội bộ) | Accepted |
+| [0007](0007-llm-provider-openrouter.md) | LLM provider qua OpenRouter; claim extraction + pre-scoring 2 bước (OQ-002/003) | Accepted |
+| [0008](0008-pre-scoring-domain-prompts.md) | Pre-scoring prompt theo domain (registry) + claim extraction parser-first + SQ rule engine (LLM 5 chiều) | Accepted |
 
 Mẫu: Context → Decision → Consequences. Quyết định mới thêm file `NNNN-tieu-de.md`.

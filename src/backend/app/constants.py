@@ -45,6 +45,51 @@ DIMENSION_ORDER: list[Dimension] = [
 JUSTIFICATION_THRESHOLD = 0.20
 
 
+class FactCheckStatus(StrEnum):
+    """Kết quả đối chiếu 1 claim với source_context (port nghiệp vụ tool cũ, ADR 0008).
+
+    KHÔNG có web search — LLM chỉ đối chiếu claim với text nguồn ĐƯỢC CUNG CẤP trong prompt
+    (source_content_pdf đã parse). KHÔNG phải cột DB — lưu trong rationale_json["_meta"].
+    Annotator/QA tham khảo, không ảnh hưởng 6 chiều điểm.
+    """
+
+    XAC_NHAN = "XAC NHAN"  # source_context xác nhận rõ claim
+    LECH = "LECH"  # source_context có đề cập nhưng claim diễn giải lệch
+    MAU_THUAN = "MAU THUAN"  # source_context nói ngược claim
+    OUTDATED = "OUTDATED"  # xác nhận nhưng thông tin có dấu hiệu đã cũ
+    KHONG_TIM_THAY = "KHONG TIM THAY"  # source_context không có thông tin xác nhận/bác bỏ
+    BO_QUA = "BO QUA"  # claim chủ quan/nhận định — không thể đối chiếu
+    ERROR = "ERROR"  # backend set khi source_context rỗng (LLM không trả giá trị này)
+
+
+# Chuẩn hóa biến thể fact_check_status LLM trả về (underscore/typo → giá trị chuẩn).
+FACT_CHECK_STATUS_NORMALIZE: dict[str, str] = {
+    "XAC_NHAN": "XAC NHAN",
+    "XAC NHAN": "XAC NHAN",
+    "LECH": "LECH",
+    "MAU_THUAN": "MAU THUAN",
+    "MAU THUAN": "MAU THUAN",
+    "OUTDATED": "OUTDATED",
+    "KHONG_TIM_THAY": "KHONG TIM THAY",
+    "KHONG TIM THAY": "KHONG TIM THAY",
+    "KHONG_XAC_NHAN": "KHONG TIM THAY",
+    "KHONG XAC NHAN": "KHONG TIM THAY",
+    "CHUA_XAC_NHAN": "KHONG TIM THAY",
+    "CHUA XAC NHAN": "KHONG TIM THAY",
+    "BO_QUA": "BO QUA",
+    "BO QUA": "BO QUA",
+    "ERROR": "ERROR",
+}
+
+
+def normalize_fact_check_status(raw: str | None) -> str | None:
+    """Chuẩn hóa giá trị fact_check_status; trả None nếu rỗng/không nhận diện được."""
+    if not raw:
+        return None
+    key = str(raw).strip().upper()
+    return FACT_CHECK_STATUS_NORMALIZE.get(key, key)
+
+
 class PdfFileRole(StrEnum):
     """Vai trò file trong 1 PDF bundle (Import schema §2.2)."""
 

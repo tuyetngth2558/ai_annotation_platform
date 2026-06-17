@@ -17,8 +17,10 @@ from app.db.base import Base, TimestampMixin, UUIDPkMixin
 class PdfFile(UUIDPkMixin, TimestampMixin, Base):
     __tablename__ = "pdf_file"
 
-    bundle_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("pdf_bundle.id", ondelete="CASCADE"), index=True, nullable=False
+    # nullable=True: file duoc upload truoc khi PdfBundle duoc tao (staging).
+    # Set ve bundle.id sau khi confirm_import thanh cong.
+    bundle_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("pdf_bundle.id", ondelete="CASCADE"), index=True, nullable=True
     )
     file_role: Mapped[str] = mapped_column(String(32), nullable=False)  # PdfFileRole enum
     original_filename: Mapped[str] = mapped_column(String(500), nullable=False)

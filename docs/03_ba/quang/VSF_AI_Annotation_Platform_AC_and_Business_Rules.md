@@ -26,11 +26,18 @@ Tài liệu gốc cho Dev viết validation và QA thiết kế test cases.
 
 ## 2. Import PDF Bundle (Nhập dữ liệu)
 
-### AC - Tiêu chí nghiệm thu:
-1. **AC-2.1:** Giao diện cho phép Admin đăng tải nhiều file PDF và gán file role cho từng file trong một PDF bundle.
-2. **AC-2.2:** Hệ thống hiển thị parse preview gồm metadata bài, source list, source content mapping và parse warnings để Admin đối chiếu trước khi import.
-3. **AC-2.3:** Nếu bundle hợp lệ, khi Admin bấm xác nhận, hệ thống sẽ xử lý ngầm (background job), tạo Batch ID/PDF Bundle/Parent Task và hiển thị trạng thái import.
-4. **AC-2.4:** Nếu PDF bundle bị lỗi validation/parse blocking, hệ thống phải dừng tiến trình và hiển thị chi tiết file/bundle bị lỗi cùng lý do (ví dụ: *"Thiếu source_ref_pdf"* hoặc *"Cannot extract answer text"*).
+### AC
+1. **AC-2.1:** Upload nhiều file PDF; gán `file_role`: `answer_pdf` (1), `source_ref_pdf` (1), `source_content_pdf` (0..N, optional). `bundle_name` bắt buộc.
+2. **AC-2.2:** Parse preview: metadata answer, source list (`source_order`, `source_title`, `source_tier`), warnings (vd. `SOURCE_URL_MISSING`).
+3. **AC-2.3:** Admin Confirm Import → tạo `batch`, `pdf_bundle`, `parent_task`; trigger worker parse/normalize.
+4. **AC-2.4:** Lỗi validate/PDF hỏng/`ocr_required` → block import, message rõ từng file.
+
+### BR
+- **BR-2.1 (Bundle constraints):** VR-UP-001..008 — đủ file role, PDF hợp lệ, max size, không trùng role bắt buộc.
+- **BR-2.2 (OCR gate):** PDF scan/image → `source_parse_status = ocr_required` → **block import** (OQ-PDF-004). MVP không có OCR pipeline.
+- **BR-2.3 (Text extraction):** Parse answer → `answer_text_raw`, `answer_text_normalized`. Rỗng → VR-PARSE-001/002 fail.
+- **BR-2.4 (Source URL):** `source_url` optional; thiếu → warning, **không block** (VR-SRC-006, OQ-PDF-003).
+- **BR-2.5 (Audit):** `import` — `user_id`, `bundle_id`/`batch_id`, số file, timestamp.
 
 ### BR - Quy tắc nghiệp vụ:
 - **BR-2.1 (Schema Constraints):**

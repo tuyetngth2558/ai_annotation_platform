@@ -27,6 +27,8 @@ class AuditLog(UUIDPkMixin, Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("user_account.id"), index=True, nullable=True
     )
+    # user_role: vai trò lúc thực hiện (BR-10.2) — ADMIN | ANNOTATOR | QA.
+    user_role: Mapped[str | None] = mapped_column(String(32), nullable=True)
     entity_type: Mapped[str] = mapped_column(String(64), nullable=False)
     entity_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     # action_type: import | claim_edit | submit | approve | return | export (AC-10).
@@ -34,8 +36,10 @@ class AuditLog(UUIDPkMixin, Base):
     before_value: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     after_value: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # description: mô tả tóm tắt hành động nghiệp vụ (BR-10.2).
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # client_ip: địa chỉ IP của client gửi request (BR-10.2) — IPv6 dài nhất 45 ký tự.
+    client_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
     )
-
-    # TODO(audit): user_role, client_ip, description (BR-10.2 yêu cầu đủ field).

@@ -1,923 +1,673 @@
-import { useState } from "react";
-import { Project, ClaimTask } from "../types";
-import { TEST_IDS, toTestSlug } from "../testability";
+import { useEffect, useRef, useState } from "react";
+import { TEST_IDS } from "../testability";
 import {
   ArrowLeft,
   ArrowRight,
   Upload,
   CheckCircle,
   AlertTriangle,
-  FolderPlus,
-  Sliders
+  Loader2,
+  XCircle,
+  FileText,
+  Check,
+  ListChecks,
+  Link2,
 } from "lucide-react";
+import {
+  createProject,
+  assignMembers,
+  fetchUserOptions,
+  uploadBundleFile,
+  validateBundle,
+  previewBundle,
+  confirmImport,
+  getBundleStatus,
+  FileRole,
+  UploadedFile,
+  ValidateResult,
+  PreviewResult,
+  BundleStatus,
+  type UserOption,
+} from "../api/adapters";
+import { usePageHeader } from "@/app/providers/PageHeaderProvider";
+import { DatePicker } from "@/shared/DatePicker";
 
 interface ProjectSetupViewProps {
-  project: Project;
-  tasks: ClaimTask[];
-  onBackToDashboard: () => void;
   showToast: (msg: string) => void;
-  onValidateBundle?: () => Promise<void>;
-  onPreviewParse?: () => Promise<void>;
-  onConfirmImport?: () => Promise<void>;
+  /** Tiếp tục import cho project nháp đã tạo → bỏ qua bước 1, vào thẳng bước chọn file. */
+  existingProjectId?: string;
+  /** Gọi ngay khi bước 1 tạo xong project (để ghi projectId vào URL, tránh tạo lại). */
+  onProjectCreated?: (projectId: string) => void;
+  onImported?: (projectId: string) => void; // gọi khi import xong (kèm id project)
+}
+
+type StagedFile = { file: File; role: FileRole };
+
+const STEPS = [
+  { num: 1, label: "Thông tin dự án" },
+  { num: 2, label: "Chọn file + Upload & Validate" },
+  { num: 3, label: "Preview parse" },
+  { num: 4, label: "Confirm + Theo dõi" },
+];
+
+// Giới hạn dung lượng 1 file PDF (khớp BE VR-UP-004: 50 MB).
+const MAX_FILE_MB = 50;
+
+// Số dòng section cố định mỗi trang (bảng preview luôn cao đúng 8 dòng).
+const SECTION_PAGE = 8;
+
+// Ô thả file cố định (1 file/ô). Kéo-thả hoặc click chọn. Chiều cao cố định, không tràn.
+function DropSlot(props: {
+  label: string;
+  hint: string;
+  accent: "vsf" | "amber";
+  file: File | null;
+  dragging: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onPick: (file: File) => void;
+  onClear: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const ring = props.accent === "vsf" ? "border-vsf-400 bg-vsf-50/60" : "border-amber-400 bg-amber-50/60";
+  const chip = props.accent === "vsf" ? "text-vsf-700" : "text-amber-700";
+
+  return (
+    <div
+      onDragOver={props.onDragOver}
+      onDragLeave={props.onDragLeave}
+      onDrop={props.onDrop}
+      className={`group h-44 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center px-4 transition-colors ${
+        props.dragging ? ring : props.file ? "border-emerald-300 bg-emerald-50/40" : "border-slate-300 bg-slate-50/50"
+      }`}
+    >
+      <input
+        ref={inputRef} type="file" accept="application/pdf" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) props.onPick(f); e.target.value = ""; }}
+      />
+      <span className={`text-[11px] font-bold uppercase tracking-wide ${chip}`}>{props.label}</span>
+
+      {props.file ? (
+        <>
+          <FileText size={22} className="text-emerald-600 my-2" />
+          <span className="text-xs font-semibold text-slate-700 truncate max-w-full">{props.file.name}</span>
+          {/* Nút thao tác: chỉ rõ khi hover vào ô (di chuột vào mới hiện). */}
+          <div className="flex gap-3 mt-2 opacity-60 group-hover:opacity-100 transition-opacity">
+            <button onClick={() => inputRef.current?.click()} className="text-[11px] font-bold text-slate-500 hover:text-slate-700 cursor-pointer">Đổi file</button>
+            <button onClick={props.onClear} className="text-[11px] font-bold text-red-500 hover:text-red-700 cursor-pointer">Xóa</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <Upload size={22} className="text-slate-400 my-2" />
+          <span className="text-[11px] text-slate-500">{props.hint}</span>
+          <button onClick={() => inputRef.current?.click()} className="mt-2 py-1 px-3 bg-vsf-600 text-white rounded-lg text-[11px] font-bold cursor-pointer">Kéo-thả hoặc chọn file</button>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function ProjectSetupView({
-  project,
-  tasks,
-  onBackToDashboard,
   showToast,
-  onValidateBundle,
-  onPreviewParse,
-  onConfirmImport
+  existingProjectId = "",
+  onProjectCreated,
+  onImported,
 }: ProjectSetupViewProps) {
-  const [projectMode, setProjectMode] = useState<"list" | "wizard">("list");
-  const [wizardStep, setWizardStep] = useState(1);
-  const [projectName, setProjectName] = useState(project.name);
-  const [description, setDescription] = useState("Review claim-level cho câu trả lời Vivipedia, text-only trong MVP.");
-  const [deadline, setDeadline] = useState(project.deadline);
-  const [llmUrl, setLlmUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [promptTemplate, setPromptTemplate] = useState(
-    "Trích xuất claim từ Answer Context đã parse từ PDF và chấm 6 dimension SF, SC, NH, SQ, REL, COMP theo rubric MVP."
+  // Có project nháp sẵn → vào thẳng bước 2 (chọn file); ngược lại bắt đầu bước 1.
+  const [step, setStep] = useState(existingProjectId ? 2 : 1);
+  const [busy, setBusy] = useState(false);
+
+  // Stepper đẩy lên thanh header app (sticky) → scroll không mất.
+  const stepper = (
+    <div className="flex items-center" data-testid={TEST_IDS.projectWizardStepper}>
+      {STEPS.map((s, i) => {
+        const done = step > s.num;
+        const active = step === s.num;
+        return (
+          <div key={s.num} className="flex items-center">
+            <div
+              data-testid={TEST_IDS.projectWizardStep(s.num)}
+              title={s.label}
+              className={`relative flex items-center justify-center rounded-full font-bold transition-all duration-300 ${
+                active
+                  ? "w-11 h-11 bg-red-600 text-white text-base shadow-lg shadow-red-200 ring-4 ring-red-100 scale-105"
+                  : done
+                  ? "w-9 h-9 bg-emerald-500 text-white text-sm hover:bg-emerald-600 cursor-default"
+                  : "w-9 h-9 bg-white border-2 border-slate-200 text-slate-400 text-sm hover:border-slate-300"
+              }`}
+            >
+              {active && <span className="absolute inset-0 rounded-full bg-red-400 opacity-40 animate-ping" />}
+              <span className="relative">{done ? <Check size={17} strokeWidth={3} /> : s.num}</span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className={`w-8 h-0.5 transition-colors duration-300 ${step > s.num ? "bg-emerald-500" : "bg-slate-200"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
-  
-  // Validation indicator
-  const [bundleValidated, setBundleValidated] = useState(false);
-  
-  // Assign selectors
-  const [selectedAnnotators, setSelectedAnnotators] = useState<string[]>(["Annotator Mai", "Annotator Nam"]);
-  const [selectedQa, setSelectedQa] = useState("QA Specialist Linh");
+  usePageHeader(
+    { title: "Tạo Project & Import Bundle", action: stepper, actionCenter: true },
+    [step],
+  );
 
-  const steps = [
-    { num: 1, label: "Thông tin project" },
-    { num: 2, label: "Cấu hình LLM" },
-    { num: 3, label: "Upload PDF" },
-    { num: 4, label: "Gán role / Validate" },
-    { num: 5, label: "Preview parse" },
-    { num: 6, label: "Confirm import" },
-    { num: 7, label: "Assignment" },
-    { num: 8, label: "Project Detail" }
-  ];
+  // Step 1 — project (mã tự sinh phía BE)
+  const [projectName, setProjectName] = useState("Vivipedia MVP");
+  const [description, setDescription] = useState("Review claim-level cho câu trả lời Vivipedia (text-only MVP).");
+  const [startDate, setStartDate] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [projectId, setProjectId] = useState<string>(existingProjectId);
+  // Thành viên chọn lúc tạo (gán sau khi tạo project xong).
+  const [userOpts, setUserOpts] = useState<UserOption[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<{ userId: string; role: "ANNOTATOR" | "QA" }[]>([]);
+  useEffect(() => { fetchUserOptions().then(setUserOpts).catch(() => {}); }, []);
+  const toggleMember = (userId: string, role: "ANNOTATOR" | "QA") =>
+    setSelectedMembers((prev) => {
+      const exists = prev.find((m) => m.userId === userId);
+      if (exists) return prev.filter((m) => m.userId !== userId);
+      return [...prev, { userId, role }];
+    });
 
-  const handleCreateNewProject = () => {
-    setProjectMode("wizard");
-    setWizardStep(1);
-    setBundleValidated(false);
-  };
+  // Step 2 — file staging (2 slot cố định: answer + source_ref) + upload + validate.
+  // Tên bundle/batch BE tự sinh → gửi rỗng.
+  const [staged, setStaged] = useState<StagedFile[]>([]);
+  const [uploaded, setUploaded] = useState<UploadedFile[]>([]);
+  const [validation, setValidation] = useState<ValidateResult | null>(null);
 
-  const handleValidateBundle = async () => {
-    if (!onValidateBundle) return;
+  // Step 4 — preview
+  const [preview, setPreview] = useState<PreviewResult | null>(null);
+  const [sectionPage, setSectionPage] = useState(0); // phân trang bảng section (8/trang)
+
+  // Step 5 — confirm + poll
+  const [bundleId, setBundleId] = useState<string>("");
+  const [bundleStatus, setBundleStatus] = useState<BundleStatus | null>(null);
+
+  const uploadTokens = uploaded.map((u) => u.uploadToken);
+
+  // Poll bundle status mỗi 2.5s khi đang ở step 5 và chưa done/failed.
+  useEffect(() => {
+    if (step !== 4 || !bundleId) return;
+    if (bundleStatus && ["done", "failed"].includes(bundleStatus.bundleStatus)) return;
+    const timer = setInterval(async () => {
+      try {
+        const st = await getBundleStatus(bundleId);
+        setBundleStatus(st);
+        if (["done", "failed"].includes(st.bundleStatus)) {
+          clearInterval(timer);
+          if (st.bundleStatus === "done") {
+            showToast("Pipeline xử lý bundle hoàn tất!");
+            onImported?.(projectId);
+          } else {
+            showToast(`Pipeline lỗi: ${st.errorDetail || "không rõ"}`);
+          }
+        }
+      } catch {
+        // im lặng, lần poll sau thử lại
+      }
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [step, bundleId, bundleStatus, showToast, onImported]);
+
+  // ---- Step 1: tạo project mới ----
+  const handleCreateProject = async () => {
+    if (startDate && deadline && startDate > deadline) {
+      showToast("Ngày bắt đầu phải trước hoặc bằng hạn chót.");
+      return;
+    }
+    setBusy(true);
     try {
-      await onValidateBundle();
-      setBundleValidated(true);
-    } catch {
-      setBundleValidated(false);
+      const created = await createProject({
+        projectName,
+        description,
+        startDate,
+        deadline,
+      });
+      setProjectId(created.id);
+      onProjectCreated?.(created.id); // ghi ?projectId vào URL → back/reload không tạo lại
+      // Gán thành viên đã chọn (nếu có) vào project vừa tạo.
+      if (selectedMembers.length > 0) {
+        try {
+          await assignMembers(created.id, selectedMembers);
+          showToast(`Đã tạo project + gán ${selectedMembers.length} thành viên.`);
+        } catch {
+          showToast(`Đã tạo project "${created.name}" (gán thành viên lỗi — gán lại ở trang chi tiết).`);
+        }
+      } else {
+        showToast(`Đã tạo project "${created.name}".`);
+      }
+      setStep(2);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Không tạo được project.");
+    } finally {
+      setBusy(false);
     }
   };
 
-  const currentCompositeAverage = (task: ClaimTask) => {
-    const total = task.ann.SF + task.ann.SC + task.ann.NH + task.ann.SQ + task.ann.REL + task.ann.COMP;
-    return total / 6;
+  // ---- Step 2: 2 ô cố định (answer + source_ref), mỗi ô đúng 1 file (kéo-thả hoặc click) ----
+  const answerFile = staged.find((s) => s.role === "answer_pdf")?.file ?? null;
+  const sourceRefFile = staged.find((s) => s.role === "source_ref_pdf")?.file ?? null;
+  const [dragOver, setDragOver] = useState<FileRole | null>(null);
+
+  // Validate FE sớm 1 file (đuôi .pdf + size). Trả message lỗi hoặc null nếu OK.
+  const validateFileEarly = (file: File): string | null => {
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) return "Chỉ nhận file PDF.";
+    if (file.size === 0) return "File rỗng.";
+    if (file.size > MAX_FILE_MB * 1024 * 1024) return `File vượt ${MAX_FILE_MB} MB.`;
+    return null;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return "bg-emerald-100 text-emerald-800 border-emerald-250";
-      case "Submitted":
-        return "bg-blue-100 text-blue-800 border-blue-250";
-      case "Returned":
-        return "bg-red-100 text-red-800 border-red-250";
-      default:
-        return "bg-amber-100 text-amber-800 border-amber-250";
+  // Đặt file vào 1 slot role (thay thế file cũ của role đó nếu có). Reset validate cũ
+  // vì file đổi → kết quả validate trước không còn đúng.
+  const setSlotFile = (role: FileRole, file: File | null) => {
+    if (file) {
+      const err = validateFileEarly(file);
+      if (err) { showToast(err); return; }
+    }
+    setValidation(null);
+    setUploaded([]);
+    setStaged((prev) => {
+      const others = prev.filter((s) => s.role !== role);
+      return file ? [...others, { file, role }] : others;
+    });
+  };
+
+  const onDropToSlot = (role: FileRole, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(null);
+    const file = e.dataTransfer.files?.[0];
+    if (file) setSlotFile(role, file); // validate trong setSlotFile
+  };
+
+  // Đủ role bắt buộc khi có cả 2 file.
+  const bundleRolesOk = !!answerFile && !!sourceRefFile;
+
+  // ---- Step 2 (gộp): upload thật + validate ----
+  const handleUploadAndValidate = async () => {
+    if (staged.length === 0) {
+      showToast("Chưa chọn file nào.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const results: UploadedFile[] = [];
+      for (const s of staged) {
+        results.push(await uploadBundleFile(s.file, s.role, projectId));
+      }
+      setUploaded(results);
+      const val = await validateBundle(projectId, results.map((r) => r.uploadToken));
+      setValidation(val);
+      if (val.isValid) showToast("Upload + validate OK.");
+      else showToast("Bundle không hợp lệ — xem chi tiết lỗi.");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Lỗi upload/validate.");
+    } finally {
+      setBusy(false);
     }
   };
+
+  // ---- Step 3: preview parse ----
+  const handlePreview = async () => {
+    setBusy(true);
+    try {
+      const pv = await previewBundle(projectId, uploadTokens);
+      setPreview(pv);
+      setSectionPage(0);
+      setStep(3);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Lỗi preview parse.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ---- Step 4: confirm ----
+  const handleConfirm = async () => {
+    setBusy(true);
+    try {
+      const res = await confirmImport(projectId, uploadTokens);
+      setBundleId(res.bundleId);
+      setStep(4);
+      showToast(res.message || "Đã enqueue xử lý bundle.");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Lỗi confirm import.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inputCls = "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm";
 
   return (
     <div className="space-y-6">
-      
-      {/* Top Title & Header Navigation */}
-      <div className="bg-white px-5 py-4 rounded-xl border border-slate-100 shadow-md flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-900">Project Setup & PDF Import Bundle</h2>
-          <p className="text-xs text-slate-400 mt-1">Cơ chế tự động hóa phân luồng đánh giá độ tin cậy từ tài liệu thô PDF.</p>
-        </div>
-        <div className="flex gap-2">
-          {projectMode === "wizard" && (
-            <button
-              onClick={() => setProjectMode("list")}
-              data-testid={TEST_IDS.projectBackList}
-              className="py-1.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-bold transition-all"
-            >
-              Quay lại danh sách Project
-            </button>
-          )}
-          <button
-            onClick={onBackToDashboard}
-            data-testid={TEST_IDS.projectBackDashboard}
-            className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition-all"
-          >
-            Quay lại Dashboard
-          </button>
-        </div>
-      </div>
-
-      {projectMode === "list" ? (
-        <div data-testid={TEST_IDS.projectListPanel}>
-          {/* Project List Mode */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-xl border border-slate-100 shadow space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Tổng số Project</span>
-              <strong className="text-2xl font-extrabold text-slate-800 block">1</strong>
-              <span className="text-[11px] text-blue-600 font-semibold uppercase">{project.name} (Active)</span>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-100 shadow space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">ID BUNDLE</span>
-              <strong className="text-2xl font-extrabold text-slate-800 block">{project.bundleId}</strong>
-              <span className="text-[11px] text-indigo-500 font-semibold uppercase">{project.bundleName}</span>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-slate-100 shadow space-y-2">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Loại hình Import</span>
-              <strong className="text-2xl font-extrabold text-slate-800 block">PDF Bundle</strong>
-              <span className="text-[11px] text-emerald-500 font-semibold uppercase">Hỗ trợ trích xuất text</span>
-            </div>
-            <button
-              onClick={handleCreateNewProject}
-              data-testid={TEST_IDS.projectCreateNew}
-              className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-xl border border-blue-500 p-5 shadow flex flex-col justify-center items-center text-center space-y-1.5 group hover:from-blue-700 hover:to-indigo-700 transition-all font-bold"
-            >
-              <FolderPlus size={24} className="group-hover:scale-110 transition-transform text-teal-300" />
-              <span>Tạo Dự Án Mới & Gán File</span>
-            </button>
-          </div>
-
+      <div data-testid={TEST_IDS.projectWizardPanel}>
           <section className="bg-white rounded-xl border border-slate-100 shadow-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 bg-gradient-to-r from-slate-50 to-white">
-              <div>
-                <h3 className="text-base font-bold text-slate-800">Danh Sách Dự Án Đang Chạy</h3>
-                <p className="text-xs text-slate-400 mt-0.5">ADMIN giám sát các dự án đánh giá và điều phối thông tin.</p>
-              </div>
-              <p className="text-xs text-slate-500 font-semibold">Cập nhật: Mới nhất</p>
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
+              <h3 className="text-base font-extrabold text-slate-800">{step}. {STEPS[step - 1].label}</h3>
             </div>
+            <div className="p-6 space-y-6">
 
-            <div className="p-5 overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs" data-testid={TEST_IDS.projectListTable}>
-                <thead>
-                  <tr className="bg-slate-50/70 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                    <th className="py-2.5 px-3">Project & ID</th>
-                    <th className="py-2.5 px-3">Use case</th>
-                    <th className="py-2.5 px-3">Hồ Sơ PDF (Batch)</th>
-                    <th className="py-2.5 px-3">Thống kê Task Status</th>
-                    <th className="py-2.5 px-3">Thành viên tham gia</th>
-                    <th className="py-2.5 px-3">Hạn chót</th>
-                    <th className="py-2.5 px-3 text-center">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <tr className="hover:bg-slate-50/50" data-testid={TEST_IDS.projectRow(project.id)}>
-                    <td className="py-4 px-3">
-                      <strong className="block text-slate-800 text-sm font-bold">{project.name}</strong>
-                      <span className="text-[11px] text-slate-400 block mt-0.5">{project.id}</span>
-                    </td>
-                    <td className="py-4 px-3 whitespace-nowrap">
-                      <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold tracking-wide uppercase text-[10px]">
-                        Vivipedia
+              {/* STEP 1 */}
+              {step === 1 && (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Tên dự án</label>
+                        <input value={projectName} onChange={(e) => setProjectName(e.target.value)} data-testid={TEST_IDS.projectNameInput} className={inputCls} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Ngày bắt đầu</label>
+                        <DatePicker value={startDate} onChange={setStartDate} max={deadline || undefined} placeholder="Chọn ngày bắt đầu" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Hạn chót</label>
+                        <DatePicker value={deadline} onChange={setDeadline} min={startDate || undefined} placeholder="Chọn hạn chót" testId={TEST_IDS.projectDeadlineInput} />
+                      </div>
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Mô tả</label>
+                        <textarea value={description} onChange={(e) => setDescription(e.target.value)} data-testid={TEST_IDS.projectDescriptionTextarea} className={inputCls} rows={2} />
+                      </div>
+                  </div>
+
+                  {/* Chọn thành viên gán vào project (tùy chọn — có thể gán sau ở trang chi tiết).
+                      Tạm hiển thị tối đa 15 (TODO: tìm kiếm/recommend sau). */}
+                  {(() => {
+                    const eligible = userOpts.filter((u) => u.role === "ANNOTATOR" || u.role === "QA");
+                    const MAX_SHOW = 15;
+                    const shown = eligible.slice(0, MAX_SHOW);
+                    return (
+                      <div className="space-y-2 pt-2">
+                        <label className="text-xs font-bold text-slate-700">Gán thành viên</label>
+                        <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+                          {eligible.length === 0 && (
+                            <span className="text-xs text-slate-400">Chưa có annotator/QA nào — tạo ở trang Thành viên.</span>
+                          )}
+                          {shown.map((u) => {
+                            const sel = selectedMembers.find((m) => m.userId === u.id);
+                            const role: "ANNOTATOR" | "QA" = u.role === "QA" ? "QA" : "ANNOTATOR";
+                            return (
+                              <button key={u.id} type="button" onClick={() => toggleMember(u.id, role)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                                  sel ? "bg-vsf-600 text-white border-vsf-500" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}>
+                                {u.email} · {role}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {eligible.length > MAX_SHOW && (
+                          <p className="text-[11px] text-slate-400">
+                            Hiển thị {MAX_SHOW}/{eligible.length} thành viên — gán thêm ở trang chi tiết project (tìm kiếm sẽ bổ sung sau).
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  <div className="pt-4 border-t border-slate-100 flex justify-end">
+                    <button onClick={handleCreateProject} disabled={busy} data-testid={TEST_IDS.projectWizardNext}
+                      className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow disabled:opacity-50">
+                      {busy && <Loader2 size={14} className="animate-spin" />}
+                      <span>Tạo project</span> <ArrowRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2 (gộp) — chọn 2 file + Upload & Validate ngay tại chỗ */}
+              {step === 2 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4" data-testid={TEST_IDS.projectUploadZone}>
+                    {/* Slot 1: Answer PDF */}
+                    <DropSlot
+                      label="Answer PDF" hint="File câu trả lời"
+                      accent="vsf" file={answerFile} dragging={dragOver === "answer_pdf"}
+                      onDragOver={(e) => { e.preventDefault(); setDragOver("answer_pdf"); }}
+                      onDragLeave={() => setDragOver(null)}
+                      onDrop={(e) => onDropToSlot("answer_pdf", e)}
+                      onPick={(f) => setSlotFile("answer_pdf", f)}
+                      onClear={() => setSlotFile("answer_pdf", null)}
+                    />
+                    {/* Slot 2: Source Ref PDF */}
+                    <DropSlot
+                      label="Source Ref PDF" hint="File liệt kê nguồn tham chiếu"
+                      accent="amber" file={sourceRefFile} dragging={dragOver === "source_ref_pdf"}
+                      onDragOver={(e) => { e.preventDefault(); setDragOver("source_ref_pdf"); }}
+                      onDragLeave={() => setDragOver(null)}
+                      onDrop={(e) => onDropToSlot("source_ref_pdf", e)}
+                      onPick={(f) => setSlotFile("source_ref_pdf", f)}
+                      onClear={() => setSlotFile("source_ref_pdf", null)}
+                    />
+                  </div>
+
+                  {/* Nút upload + validate (cùng 1 bước). Chỉ bật khi đủ 2 file. */}
+                  <button onClick={handleUploadAndValidate} disabled={busy || !bundleRolesOk} data-testid={TEST_IDS.projectValidateBundle}
+                    className="w-full py-2.5 bg-gradient-to-tr from-vsf-600 to-vsf-700 text-white font-extrabold rounded-lg text-xs flex items-center justify-center gap-2 disabled:opacity-40">
+                    {busy && <Loader2 size={14} className="animate-spin" />} Upload & Validate Bundle
+                  </button>
+
+                  {/* Chỉ hiện panel khi LỖI (hợp lệ đã có toast). */}
+                  {validation && !validation.isValid && (
+                    <div data-testid={TEST_IDS.projectValidationPanel} className="p-4 rounded-xl border text-xs space-y-2 bg-red-50 border-red-200 text-red-800">
+                      <h4 className="font-extrabold flex items-center gap-1.5">
+                        <XCircle size={15} /> Bundle KHÔNG hợp lệ
+                      </h4>
+                      {validation.files.filter((f) => !f.isValid).map((f, i) => (
+                        <div key={i} className="font-mono text-[11px]">✗ {f.filename} · {f.fileRole}{f.errors.length > 0 && ` — ${f.errors.join(", ")}`}</div>
+                      ))}
+                      {validation.errors.map((e, i) => <div key={`e${i}`} className="text-red-700">⛔ {e}</div>)}
+                      {validation.warnings.map((w, i) => <div key={`w${i}`} className="text-amber-700">⚠ {w}</div>)}
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+                    {/* Resume (project nháp đã tạo) → không quay về bước 1 (project đã tồn tại). */}
+                    {existingProjectId ? <span /> : (
+                      <button onClick={() => setStep(1)} data-testid={TEST_IDS.projectWizardPrev} className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer"><ArrowLeft size={14} /> Quay lại</button>
+                    )}
+                    <button onClick={handlePreview} disabled={busy || !validation?.isValid} data-testid={TEST_IDS.projectPreviewParse}
+                      className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow disabled:opacity-40">
+                      <span>Tiếp tục (Preview)</span> <ArrowRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3 — Preview parse */}
+              {step === 3 && preview && (
+                <div className="space-y-4">
+                  {/* Hàng trên: [tiêu đề trái] · [3 thông số giữa] · [domain phải] */}
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Tài liệu</p>
+                      <h4 className="text-base font-bold text-slate-800 truncate">{preview.title || "Chưa rõ tiêu đề"}</h4>
+                    </div>
+
+                    {/* 3 thông số ở giữa — icon trên + label dưới (trái), giá trị bên phải */}
+                    <div className="flex items-center gap-3 mx-auto">
+                      {[
+                        { icon: <FileText size={15} />, label: "Claim", value: preview.totalClaimCandidates, accent: "text-vsf-600 bg-vsf-50" },
+                        { icon: <ListChecks size={15} />, label: "Sections", value: preview.totalSections, accent: "text-indigo-600 bg-indigo-50" },
+                        { icon: <Link2 size={15} />, label: "Nguồn", value: preview.sourceRefCount, accent: "text-amber-600 bg-amber-50" },
+                      ].map((c) => (
+                        <div key={c.label} className="rounded-lg border border-slate-200 bg-white pl-3 pr-4 py-2.5 flex items-center gap-3 min-w-[124px]">
+                          <div className="flex flex-col items-start gap-1">
+                            <span className={`w-7 h-7 rounded-md flex items-center justify-center ${c.accent}`}>{c.icon}</span>
+                            <span className="text-[11px] text-slate-400 font-medium">{c.label}</span>
+                          </div>
+                          <div className="ml-auto text-2xl font-extrabold text-slate-900 leading-none">{c.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Domain bên phải */}
+                    {(preview.domainName || preview.domainKey) && (
+                      <span className="px-2.5 py-1 rounded-full bg-vsf-50 text-vsf-700 text-[11px] font-bold shrink-0">
+                        {preview.domainName || preview.domainKey}
                       </span>
-                      <span className="block text-slate-400 mt-1 text-[11px]">Text modality</span>
-                    </td>
-                    <td className="py-4 px-3">
-                      <div className="font-semibold text-slate-700">{project.batch}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5 font-mono">{project.bundleId} · pdf_bundle</div>
-                    </td>
-                    <td className="py-4 px-3">
-                      <div className="flex flex-wrap gap-1">
-                        <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 font-semibold text-[10px]">
-                          Ready: {tasks.filter(t => t.status === "Ready for Annotation").length}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full bg-blue-50 border border-blue-150 font-semibold text-[10px]">
-                          Sub: {tasks.filter(t => t.status === "Submitted").length}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full bg-red-50 border border-red-150 font-semibold text-[10px]">
-                          Ret: {tasks.filter(t => t.status === "Returned").length}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-150 font-semibold text-[10px]">
-                          Appr: {tasks.filter(t => t.status === "Approved").length}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-3 text-slate-600 font-medium">
-                      <div className="text-slate-700 font-semibold">{project.annotators.join(", ")}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{project.qa}</div>
-                    </td>
-                    <td className="py-4 px-3 font-semibold text-slate-700 font-mono tracking-tight">{project.deadline}</td>
-                    <td className="py-4 px-3 text-center space-x-1.5 whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          setProjectMode("wizard");
-                          setWizardStep(8);
-                        }}
-                        data-testid={TEST_IDS.projectDetailButton(project.id)}
-                        className="py-1 px-2.5 bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-slate-800 hover:text-blue-700 font-bold rounded text-[11px] transition-all"
-                      >
-                        Chi Tiết
-                      </button>
-                      <button
-                        onClick={() => {
-                          setProjectMode("wizard");
-                          setWizardStep(3);
-                        }}
-                        data-testid={TEST_IDS.projectImportButton(project.id)}
-                        className="py-1 px-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-[11px] shadow transition-all"
-                      >
-                        Import Lại
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      ) : (
-        <div data-testid={TEST_IDS.projectWizardPanel}>
-          {/* Stepper indicators */}
-          <div className="grid grid-cols-2 md:grid-cols-8 gap-2 bg-slate-50/80 p-3 rounded-xl border border-slate-200/60 overflow-hidden" data-testid={TEST_IDS.projectWizardStepper}>
-            {steps.map((s) => (
-              <button
-                key={s.num}
-                onClick={() => setWizardStep(s.num)}
-                data-testid={TEST_IDS.projectWizardStep(s.num)}
-                className={`p-2 rounded-lg text-left transition-all border ${
-                  wizardStep === s.num
-                    ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-100"
-                    : wizardStep > s.num
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                    : "bg-white border-slate-150 text-slate-500 hover:bg-slate-100"
-                }`}
-              >
-                <span className="block text-[10px] font-bold uppercase tracking-wide opacity-80">Bước {s.num}</span>
-                <strong className="block text-[11.5px] font-extrabold truncate mt-0.5">{s.label}</strong>
-              </button>
-            ))}
-          </div>
-
-          {/* Stepper content frame */}
-          <section className="bg-white rounded-xl border border-slate-100 shadow-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 bg-slate-50">
-              <h3 className="text-base font-extrabold text-slate-800">
-                {steps[wizardStep - 1] ? `${wizardStep}. ${steps[wizardStep - 1].label}` : ""}
-              </h3>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-                Text enabled
-              </span>
-            </div>
-
-            <div className="p-6">
-              {/* STAGE 1: PROJECT BASIC INFO */}
-              {wizardStep === 1 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 required">Tên dự án</label>
-                      <input
-                        type="text"
-                        value={projectName}
-                        onChange={(e) => setProjectName(e.target.value)}
-                        data-testid={TEST_IDS.projectNameInput}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                        placeholder="e.g. Vivipedia ODA Evaluations"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Hạn chót thẩm định</label>
-                      <input
-                        type="date"
-                        value={deadline}
-                        onChange={(e) => setDeadline(e.target.value)}
-                        data-testid={TEST_IDS.projectDeadlineInput}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700"
-                        required
-                      />
-                    </div>
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Mô tả mục tiêu dự án</label>
-                      <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        data-testid={TEST_IDS.projectDescriptionTextarea}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                        placeholder="Nêu rõ yêu cầu chỉ định đặc thù..."
-                        rows={3}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 required">Modality Type</label>
-                      <select data-testid={TEST_IDS.projectModalitySelect} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 bg-white">
-                        <option>Text (Văn bản)</option>
-                        <option disabled>Audio (Âm thanh - Giai đoạn 2)</option>
-                        <option disabled>Image (Hình ảnh - Giai đoạn 2)</option>
-                      </select>
-                    </div>
+                    )}
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
-                    <button
-                      onClick={() => setWizardStep(2)}
-                      data-testid={TEST_IDS.projectWizardNext}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
-                    >
-                      <span>Cấu hình LLM</span> <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STAGE 2: LLM PRESCORE CONFIGURATION */}
-              {wizardStep === 2 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 required">LLM Pre-score Endpoint URL</label>
-                      <input
-                        type="url"
-                        value={llmUrl}
-                        onChange={(e) => setLlmUrl(e.target.value)}
-                        data-testid={TEST_IDS.projectLlmUrlInput}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700"
-                        placeholder="https://..."
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 required">API Key bảo mật</label>
-                      <input
-                        type="password"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        data-testid={TEST_IDS.projectLlmApiKeyInput}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Mô hình tích hợp (Provider)</label>
-                      <select data-testid={TEST_IDS.projectLlmProviderSelect} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 bg-white">
-                        <option>Gemini 1.5 Flash (Preset hỗ trợ 6 dimensions)</option>
-                        <option>Gemini 1.5 Pro</option>
-                        <option>Custom LLM Endpoint</option>
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 required">Prompt template phân tích (Rubric-driven)</label>
-                      <textarea
-                        value={promptTemplate}
-                        onChange={(e) => setPromptTemplate(e.target.value)}
-                        data-testid={TEST_IDS.projectPromptTemplateTextarea}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                        rows={4}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
-                    <button
-                      onClick={() => setWizardStep(1)}
-                      data-testid={TEST_IDS.projectWizardPrev}
-                      className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2"
-                    >
-                      <ArrowLeft size={14} /> Quay lại
-                    </button>
-                    <button
-                      onClick={() => setWizardStep(3)}
-                      data-testid={TEST_IDS.projectWizardNext}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
-                    >
-                      <span>Tiếp tục (Upload PDF)</span> <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STAGE 3: UPLOAD PDF BUNDLE */}
-              {wizardStep === 3 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <div className="border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-xl p-8 hover:bg-slate-50 hover:border-blue-450 transition-all text-center space-y-3 relative" data-testid={TEST_IDS.projectUploadZone}>
-                        <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-                          <Upload size={20} />
-                        </div>
-                        <div>
-                          <strong className="block text-sm text-slate-800">Thả files PDF Bundle tại đây</strong>
-                          <p className="text-xs text-slate-400 mt-1">Hoặc click để duyệt nhiều tài liệu cùng một lúc.</p>
-                        </div>
-                        <input
-                          type="file"
-                          multiple
-                          data-testid={TEST_IDS.projectPdfFilesInput}
-                          onChange={() => {
-                            showToast("Đã mô phỏng nạp các file PDF thành công.");
-                          }}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5">
-                        <span data-testid={TEST_IDS.projectAnswerPdfChip} className="px-2.5 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold">
-                          {project.answerPdf}
-                        </span>
-                        <span data-testid={TEST_IDS.projectSourceRefPdfChip} className="px-2.5 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold">
-                          {project.sourceRefPdf}
-                        </span>
-                        {project.sourceContentPdfs.map((sc, i) => (
-                          <span key={i} data-testid={i === 0 ? TEST_IDS.projectSourceCountChip : undefined} className="px-2.5 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-semibold">
-                            {sc}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-emerald-800 text-xs md:text-sm leading-relaxed space-y-2.5">
-                      <h4 className="font-extrabold text-sm flex items-center gap-1.5">
-                        <CheckCircle size={15} className="text-emerald-700" /> Files staged in browser memory
-                      </h4>
-                      <p>
-                        Các file tạm đã được ghi nhận trong bộ nhớ đệm giả lập trình duyệt. Khi tiếp tục sang bước validate, ADMIN sẽ gán các <strong>file_role</strong> tương ứng để hệ thống phân loại chính xác.
-                      </p>
-                      <div className="text-xs text-teal-800 bg-emerald-100/50 p-2 rounded border border-emerald-250">
-                        Chế độ import: <strong>pdf_bundle (Answer PDF + Source Reference list + Source Contents)</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
-                    <button
-                      onClick={() => setWizardStep(2)}
-                      data-testid={TEST_IDS.projectWizardPrev}
-                      className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-650 rounded-lg text-xs font-semibold flex items-center gap-2"
-                    >
-                      <ArrowLeft size={14} /> Quay lại
-                    </button>
-                    <button
-                      onClick={() => setWizardStep(4)}
-                      data-testid={TEST_IDS.projectUploadContinue}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
-                    >
-                      <span>Tiếp tục (Gán Role)</span> <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STAGE 4: ROLE ASSIGNMENT & BUNDLE VALIDATION */}
-              {wizardStep === 4 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    
-                    {/* Left Builder Pane */}
-                    <div className="md:col-span-7 bg-slate-50/50 p-4 rounded-xl border border-slate-150 space-y-4">
-                      <h4 className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">
-                        <Sliders size={15} className="text-indigo-600" /> Bundle Builder & Role Mapper
-                      </h4>
-
-                      <div className="overflow-x-auto text-[11.5px]">
-                        <table className="w-full border-collapse" data-testid={TEST_IDS.projectBundleBuilderTable}>
+                  {/* Bảng section — cố định 8 dòng/trang, đủ thì phân trang, thiếu thì đệm dòng trống. */}
+                  {(() => {
+                    const totalSec = preview.sections.length;
+                    const pageCount = Math.max(1, Math.ceil(totalSec / SECTION_PAGE));
+                    const cur = Math.min(sectionPage, pageCount - 1);
+                    const rows = preview.sections.slice(cur * SECTION_PAGE, cur * SECTION_PAGE + SECTION_PAGE);
+                    const emptyRows = SECTION_PAGE - rows.length;
+                    return (
+                      <div className="rounded-lg border border-slate-200 overflow-hidden">
+                        <table data-testid={TEST_IDS.projectParsePreviewTable} className="w-full text-left text-[12px] table-fixed">
                           <thead>
-                            <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
-                              <th className="py-2 pb-1.5 text-left">Tên File</th>
-                              <th className="py-2 pb-1.5 text-left">Gán file_role</th>
-                              <th className="py-2 pb-1.5 text-right">Điều kiện</th>
+                            <tr className="text-slate-400 text-[10px] font-bold uppercase border-b border-slate-100">
+                              <th className="py-2 px-4 w-48">Section</th>
+                              <th className="py-2 px-3 w-16 text-center">Claims</th>
+                              <th className="py-2 px-4">Câu mẫu</th>
                             </tr>
                           </thead>
+                          {/* Chiều cao cứng: 8 dòng × 44px (h-11). Rỗng → thông báo + đệm cho đủ 8. */}
                           <tbody className="divide-y divide-slate-100">
-                            <tr>
-                              <td className="py-2.5 font-semibold text-slate-700">{project.answerPdf}</td>
-                              <td className="py-2.5 text-left">
-                                <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-extrabold uppercase text-[10px]">
-                                  answer_pdf
-                                </span>
-                              </td>
-                              <td className="py-2.5 text-right text-slate-400">Required, unique</td>
-                            </tr>
-                            <tr>
-                              <td className="py-2.5 font-semibold text-slate-700">{project.sourceRefPdf}</td>
-                              <td className="py-2.5 text-left">
-                                <span className="inline-block px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-extrabold uppercase text-[10px]">
-                                  source_ref_pdf
-                                </span>
-                              </td>
-                              <td className="py-2.5 text-right text-slate-400">Required, unique</td>
-                            </tr>
-                            {project.sourceContentPdfs.map((sc, i) => (
-                              <tr key={i}>
-                                <td className="py-2.5 font-semibold text-slate-700">{sc}</td>
-                                <td className="py-2.5 text-left">
-                                  <span className="inline-block px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold uppercase text-[10px]">
-                                    source_content_pdf
-                                  </span>
-                                </td>
-                                <td className="py-2.5 text-right text-slate-400">At least 1 req.</td>
-                              </tr>
-                            ))}
+                            {totalSec === 0 ? (
+                              <>
+                                <tr className="h-11">
+                                  <td colSpan={3} className="px-4 text-center text-[12px] text-amber-700">
+                                    Không trích xuất được claim nào có citation. Claim extraction sẽ dùng toàn bộ text.
+                                  </td>
+                                </tr>
+                                {Array.from({ length: SECTION_PAGE - 1 }).map((_, i) => (
+                                  <tr key={`empty-${i}`} className="h-11"><td className="px-4">&nbsp;</td><td /><td /></tr>
+                                ))}
+                              </>
+                            ) : (
+                              <>
+                                {rows.map((s, i) => (
+                                  <tr key={i} className="hover:bg-slate-50/50 align-top h-11">
+                                    <td className="py-2.5 px-4 font-semibold text-slate-700 truncate">{s.heading || `Section ${cur * SECTION_PAGE + i + 1}`}</td>
+                                    <td className="py-2.5 px-3 text-center">
+                                      <span className="inline-block px-2 py-0.5 rounded-full bg-vsf-50 text-vsf-700 font-bold text-[11px]">{s.claimCount}</span>
+                                    </td>
+                                    <td className="py-2.5 px-4 text-slate-500 truncate">{s.sampleClaims.join(" · ") || "—"}</td>
+                                  </tr>
+                                ))}
+                                {/* Đệm dòng trống cho đủ 8 → chiều cao bảng cố định, không co. */}
+                                {Array.from({ length: emptyRows }).map((_, i) => (
+                                  <tr key={`empty-${i}`} className="h-11"><td className="px-4">&nbsp;</td><td /><td /></tr>
+                                ))}
+                              </>
+                            )}
                           </tbody>
                         </table>
-                      </div>
-
-                      <div className="pt-2">
-                        <button
-                          onClick={handleValidateBundle}
-                          data-testid={TEST_IDS.projectValidateBundle}
-                          className="w-full py-2 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white font-extrabold rounded-lg text-xs hover:indigo-800 shadow"
-                        >
-                          Chạy Xác Thực PDF Bundle (Validate)
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Right feedback state */}
-                    <div className="md:col-span-5" data-testid={TEST_IDS.projectValidationPanel}>
-                      {!bundleValidated ? (
-                        <div className="bg-amber-50 border border-amber-250 p-4 rounded-xl text-amber-800 text-xs space-y-3">
-                          <h4 className="font-bold text-sm flex items-center gap-1.5">
-                            <AlertTriangle size={15} className="text-amber-700" /> Bundle validation criteria:
-                          </h4>
-                          <ul className="space-y-1.5 list-disc pl-4 text-slate-700">
-                            <li>Thiếu <strong>answer_pdf</strong> hoặc <strong>source_ref_pdf</strong> sẽ chặn import (Block).</li>
-                            <li>Nếu không phát hiện bất kỳ file nào có vai trò <strong>source_content_pdf</strong>: block.</li>
-                            <li>Tập tin corrupt hoặc định dạng không phải PDF: block.</li>
-                            <li>Thiếu liên kết Web URL: Warning (Cảnh báo, không chặn tải).</li>
-                            <li>Nội dung PDF scan / ảnh thô: Gắn cờ cảnh báo <strong>ocr_required</strong>.</li>
-                          </ul>
-                        </div>
-                      ) : (
-                        <div className="bg-emerald-50 border border-emerald-250 p-4 rounded-xl text-emerald-800 text-xs md:text-sm space-y-2.5">
-                          <h4 className="font-extrabold text-slate-900 flex items-center gap-1.5">
-                            <CheckCircle size={15} className="text-emerald-700" /> Xác thực hoàn tất (Validation Checked)
-                          </h4>
-                          <p className="text-slate-700 text-xs">
-                            Cấu trúc file hợp lệ. Phát hiện 1 Warning ở tài liệu <strong>source_002_oecd.pdf</strong>: Thiếu liên kết URL bên ngoài (source_url is null). Bạn có thể tiếp tục import.
-                          </p>
-                          <div className="text-xs text-amber-900 bg-amber-50 p-2 rounded border border-amber-100 flex items-center gap-1.5">
-                            <AlertTriangle size={14} className="text-amber-600 flex-shrink-0" />
-                            <span>Warning: SOURCE_URL_MISSING ở source [2] (cho phép qua).</span>
+                        {pageCount > 1 && (
+                          <div className="flex items-center justify-between px-4 py-2 border-t border-slate-100 bg-slate-50/50 text-[11px]">
+                            <span className="text-slate-400">Trang {cur + 1}/{pageCount}</span>
+                            <div className="flex gap-1">
+                              <button onClick={() => setSectionPage(Math.max(0, cur - 1))} disabled={cur === 0}
+                                className="px-2 py-1 rounded border border-slate-200 hover:bg-white disabled:opacity-40 cursor-pointer">‹ Trước</button>
+                              <button onClick={() => setSectionPage(Math.min(pageCount - 1, cur + 1))} disabled={cur >= pageCount - 1}
+                                className="px-2 py-1 rounded border border-slate-200 hover:bg-white disabled:opacity-40 cursor-pointer">Sau ›</button>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
-                  </div>
+                  {/* Cảnh báo khác (đã bỏ cảnh báo 'no citation' vì hiện ngay trong bảng). */}
+                  {(() => {
+                    const others = preview.warnings.filter((w) => !/citation/i.test(w.message));
+                    if (others.length === 0) return null;
+                    return (
+                      <div data-testid={TEST_IDS.projectParseWarningBanner} className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-xs text-amber-800 space-y-1">
+                        {others.map((w, i) => <div key={i} className="flex items-center gap-1.5"><AlertTriangle size={13} /> {w.message}</div>)}
+                      </div>
+                    );
+                  })()}
 
-                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
-                    <button
-                      onClick={() => setWizardStep(3)}
-                      data-testid={TEST_IDS.projectWizardPrev}
-                      className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2"
-                    >
-                      <ArrowLeft size={14} /> Quay lại
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!onPreviewParse) return;
-                        try {
-                          await onPreviewParse();
-                          setWizardStep(5);
-                        } catch {
-                          return;
-                        }
-                      }}
-                      disabled={!bundleValidated}
-                      data-testid={TEST_IDS.projectPreviewParse}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <span>Tiếp tục (Preview parse)</span> <ArrowRight size={14} />
+                  <div className="pt-4 border-t border-slate-100 flex justify-between">
+                    <button onClick={() => setStep(2)} data-testid={TEST_IDS.projectWizardPrev} className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer"><ArrowLeft size={14} /> Quay lại</button>
+                    <button onClick={handleConfirm} disabled={busy} data-testid={TEST_IDS.projectConfirmImport}
+                      className="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow disabled:opacity-50 cursor-pointer">
+                      {busy && <Loader2 size={14} className="animate-spin" />}<span>Xác nhận Import</span> <ArrowRight size={14} />
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* STAGE 5: PARSER PREVIEW METADATA SCREEN */}
-              {wizardStep === 5 && (
-                <div className="space-y-6">
-                  <div className="bg-slate-50 p-4 rounded-xl text-xs space-y-2 mb-4" data-testid={TEST_IDS.projectParseWarningBanner}>
-                    <h4 className="font-extrabold text-slate-800 text-sm">Parse Preview Details</h4>
-                    <p className="text-slate-500">
-                      Hiển thị trích xuất dữ liệu thô bao gồm: article_code, title, danh sách nguồn hỗ trợ và trạng thái metadata của Bundle trước khi Admin bấm Confirm.
-                    </p>
-                  </div>
-
-                  <div className="overflow-x-auto text-xs">
-                    <table className="w-full border border-slate-150" data-testid={TEST_IDS.projectParsePreviewTable}>
-                      <thead>
-                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
-                          <th className="py-2 px-3 text-left">Thuộc tính</th>
-                          <th className="py-2 px-3 text-left">Giá trị thu thập</th>
-                          <th className="py-2 px-3 text-left">Nguồn gốc trích xuất</th>
-                          <th className="py-2 px-3 text-left">Trạng thái file</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-150">
-                        <tr>
-                          <td className="py-2 px-3 font-semibold text-slate-800">article_code</td>
-                          <td className="py-2 px-3 text-slate-600">ODA-001</td>
-                          <td className="py-2 px-3">Answer PDF</td>
-                          <td className="py-2 px-3 text-emerald-600 font-bold">{project.answerPdf}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2 px-3 font-semibold text-slate-800">title</td>
-                          <td className="py-2 px-3 text-slate-600">Tổng quan vốn ODA cho hạ tầng</td>
-                          <td className="py-2 px-3">Source Reference PDF</td>
-                          <td className="py-2 px-3 text-emerald-600 font-bold">{project.sourceRefPdf}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2 px-3 font-semibold text-slate-800">source [1]</td>
-                          <td className="py-2 px-3 text-slate-600">World Bank Vietnam Urban Upgrading Program</td>
-                          <td className="py-2 px-3">Tier 1 · source_001_worldbank.pdf</td>
-                          <td className="py-2 px-3 text-slate-500 font-semibold">parsed</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2 px-3 font-semibold text-slate-800">source [2]</td>
-                          <td className="py-2 px-3 text-slate-600">OECD Development Co-operation Profile</td>
-                          <td className="py-2 px-3">Tier 1 · source_002_oecd.pdf</td>
-                          <td className="py-2 px-3 text-slate-500 font-semibold">parsed</td>
-                        </tr>
-                        <tr className="bg-amber-50/50">
-                          <td className="py-2 px-3 font-semibold text-amber-900">warning</td>
-                          <td className="py-2 px-3 text-amber-700 font-medium">SOURCE_URL_MISSING (Không chặn)</td>
-                          <td className="py-2 px-3">source_url</td>
-                          <td className="py-2 px-3 text-amber-600 font-bold">null</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
-                    <button
-                      onClick={() => setWizardStep(4)}
-                      data-testid={TEST_IDS.projectWizardPrev}
-                      className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2"
-                    >
-                      <ArrowLeft size={14} /> Quay lại
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!onConfirmImport) return;
-                        try {
-                          await onConfirmImport();
-                          setWizardStep(6);
-                        } catch {
-                          return;
-                        }
-                      }}
-                      data-testid={TEST_IDS.projectConfirmImport}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
-                    >
-                      <span>Xác nhận Import</span> <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STAGE 6: BACKGROUND PIPELINE SIMULATION PROGRESS */}
-              {wizardStep === 6 && (
-                <div className="space-y-6">
-                  <div className="bg-blue-50 border border-blue-150 p-4 rounded-xl text-blue-800 text-xs md:text-sm">
-                     Sau khi ADMIN bấm xác nhận import, một hệ thống pipeline chạy nền sẽ xử lý PDF: Tạo <strong>Batch</strong>, nạp <strong>PDF Bundle</strong>, bóc tách <strong>Parent Task</strong> tạo <strong>Claim Tasks</strong>, map logic citations và gọi API pre-scoring LLM.
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3" data-testid={TEST_IDS.projectPipelinePanel}>
-                      <strong className="block text-slate-800 font-bold uppercase tracking-wide border-b pb-2">Background Processing Pipeline</strong>
-                      
-                      <div className="space-y-2.5">
-                        <div className="flex justify-between items-center text-emerald-700">
-                          <span className="font-semibold">1. Uploaded Bundle successfully</span>
-                          <span className="text-[10px] font-extrabold uppercase bg-emerald-100 px-1.5 py-0.5 rounded">Done</span>
-                        </div>
-                        <div className="flex justify-between items-center text-emerald-700">
-                          <span className="font-semibold">2. Parsing PDF content text</span>
-                          <span className="text-[10px] font-extrabold uppercase bg-emerald-100 px-1.5 py-0.5 rounded">Done</span>
-                        </div>
-                        <div className="flex justify-between items-center text-emerald-700">
-                          <span className="font-semibold">3. Claim Extraction (Split & Refine)</span>
-                          <span className="text-[10px] font-extrabold uppercase bg-emerald-100 px-1.5 py-0.5 rounded">Done</span>
-                        </div>
-                        <div className="flex justify-between items-center text-amber-700">
-                          <span className="font-semibold">4. Source Mapping & Citations alignment</span>
-                          <span className="text-[10px] font-extrabold uppercase bg-amber-100 px-1.5 py-0.5 rounded">Reviewed</span>
-                        </div>
-                        <div className="flex justify-between items-center text-emerald-700">
-                          <span className="font-semibold">5. Pre-scoring Running (Gemini Evaluator)</span>
-                          <span className="text-[10px] font-extrabold uppercase bg-emerald-100 px-1.5 py-0.5 rounded">Completed</span>
-                        </div>
+              {/* STEP 4 — theo dõi pipeline (không hiện UUID; mô tả 4 giai đoạn) */}
+              {step === 4 && (() => {
+                const st = bundleStatus?.bundleStatus || "queued";
+                const isDone = st === "done";
+                const isFailed = st === "failed";
+                // 4 giai đoạn pipeline + thứ tự để tô màu theo tiến độ.
+                const STAGES = [
+                  { key: "parsing", label: "Đọc & tách nội dung PDF" },
+                  { key: "extracting", label: "Trích xuất claim" },
+                  { key: "mapping", label: "Đối chiếu nguồn tham chiếu" },
+                  { key: "pre_scoring", label: "LLM chấm điểm sơ bộ" },
+                ];
+                // Suy ra giai đoạn hiện tại (đơn giản theo status BE; done = xong hết).
+                const curIdx = isDone ? STAGES.length
+                  : st === "pre_scoring" ? 3
+                  : st === "parsing" ? 1
+                  : 0;
+                return (
+                  <div className="space-y-5" data-testid={TEST_IDS.projectPipelinePanel}>
+                    {/* Banner trạng thái tổng */}
+                    <div className={`p-4 rounded-xl border flex items-center gap-3 ${
+                      isDone ? "bg-emerald-50 border-emerald-200" : isFailed ? "bg-red-50 border-red-200" : "bg-vsf-50 border-vsf-100"
+                    }`}>
+                      {isDone ? <CheckCircle size={20} className="text-emerald-600 shrink-0" />
+                        : isFailed ? <XCircle size={20} className="text-red-600 shrink-0" />
+                        : <Loader2 size={20} className="text-vsf-600 animate-spin shrink-0" />}
+                      <div className="min-w-0">
+                        <p className={`text-sm font-bold ${isDone ? "text-emerald-700" : isFailed ? "text-red-700" : "text-vsf-700"}`}>
+                          {isDone ? "Import hoàn tất!" : isFailed ? "Pipeline gặp lỗi" : "Đang xử lý dữ liệu…"}
+                        </p>
+                        <p className="text-[12px] text-slate-500 mt-0.5">
+                          {isDone ? "Dữ liệu đã sẵn sàng — mở project để gán nhân sự."
+                            : isFailed ? (bundleStatus?.errorDetail || "Vui lòng thử import lại.")
+                            : "Hệ thống đang chạy nền, quá trình này có thể mất vài chục giây."}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3" data-testid={TEST_IDS.projectPipelineErrorPanel}>
-                      <strong className="block text-slate-800 font-bold uppercase tracking-wide border-b pb-2">Trạng thái lỗi backend dự kiến</strong>
-                      <p className="text-slate-500">Mô phỏng xử lý lỗi hệ thống trong tương lai:</p>
-                      
-                      <div className="space-y-2.5">
-                        <div className="flex justify-between items-center text-red-650">
-                          <span className="font-medium text-[11px]">Trường hợp: Parse Failed (Lỗi cấu trúc)</span>
-                          <span className="text-[10px] font-bold bg-red-150 px-1.5 py-0.5 rounded">Reject file</span>
-                        </div>
-                        <div className="flex justify-between items-center text-red-650">
-                          <span className="font-medium text-[11px]">Trường hợp: LLM Pre-scoring endpoint dead</span>
-                          <span className="text-[10px] font-bold bg-red-150 px-1.5 py-0.5 rounded">Show error box</span>
-                        </div>
-                        <div className="flex justify-between items-center text-slate-600">
-                          <span className="font-medium text-[11px]">Trường hợp: ocr_required (PDF Scanned)</span>
-                          <span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded">Flag for OCR</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
-                    <button
-                      onClick={() => setWizardStep(5)}
-                      data-testid={TEST_IDS.projectWizardPrev}
-                      className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2"
-                    >
-                      <ArrowLeft size={14} /> Quay lại
-                    </button>
-                    <button
-                      onClick={() => setWizardStep(7)}
-                      data-testid={TEST_IDS.projectAssignmentNext}
-                      className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
-                    >
-                      <span>Tiếp tục (Assignment)</span> <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STAGE 7: TEAM TASK ASSIGNMENT */}
-              {wizardStep === 7 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-700 block">Chọn điều phối viên (Annotators)</label>
-                      <div className="space-y-2">
-                        {["Annotator Mai", "Annotator Nam"].map((ann) => (
-                          <label key={ann} className="flex items-center gap-2.5 p-3.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={selectedAnnotators.includes(ann)}
-                              data-testid={TEST_IDS.projectAnnotator(toTestSlug(ann))}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedAnnotators([...selectedAnnotators, ann]);
-                                } else {
-                                  setSelectedAnnotators(selectedAnnotators.filter(item => item !== ann));
-                                }
-                              }}
-                              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-100"
-                            />
-                            <div>
-                              <strong className="block text-sm text-slate-800">{ann}</strong>
-                              <span className="text-xs text-slate-400 font-mono block mt-0.5">Active scope</span>
+                    {/* Các giai đoạn */}
+                    {!isFailed && (
+                      <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+                        {STAGES.map((s, i) => {
+                          const done = i < curIdx;
+                          const active = i === curIdx && !isDone;
+                          return (
+                            <div key={s.key} className="flex items-center gap-3 px-4 py-3">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                                done ? "bg-emerald-500 text-white"
+                                : active ? "bg-vsf-600 text-white"
+                                : "bg-slate-100 text-slate-400"
+                              }`}>
+                                {done ? <Check size={13} strokeWidth={3} /> : active ? <Loader2 size={13} className="animate-spin" /> : i + 1}
+                              </span>
+                              <span className={`text-[13px] ${done || active ? "text-slate-700 font-semibold" : "text-slate-400"}`}>{s.label}</span>
                             </div>
-                          </label>
-                        ))}
+                          );
+                        })}
                       </div>
-                    </div>
+                    )}
 
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-700 block">Chọn kiểm duyệt viên (QA Specialist)</label>
-                      <div className="space-y-2">
-                        {["QA Specialist Linh", "QA Specialist Hương"].map((qaName) => (
-                          <label key={qaName} className="flex items-center gap-2.5 p-3.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
-                            <input
-                              type="radio"
-                              name="qa_assign"
-                              checked={selectedQa === qaName}
-                              data-testid={TEST_IDS.projectQa(toTestSlug(qaName))}
-                              onChange={() => setSelectedQa(qaName)}
-                              className="w-4 h-4 text-blue-600 focus:ring-blue-100"
-                            />
-                            <div>
-                              <strong className="block text-sm text-slate-800">{qaName}</strong>
-                              <span className="text-xs text-slate-400 block mt-0.5">QA Queue master</span>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
+                    <div className="pt-4 border-t border-slate-100 flex justify-end">
+                      <button onClick={() => onImported?.(projectId)}
+                        className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold cursor-pointer">
+                        {isDone ? "Mở chi tiết project →" : "Vào project (xử lý tiếp ở nền) →"}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-3 font-bold">
-                    <button
-                      onClick={() => setWizardStep(6)}
-                      data-testid={TEST_IDS.projectWizardPrev}
-                      className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2"
-                    >
-                      <ArrowLeft size={14} /> Quay lại
-                    </button>
-                    <button
-                      onClick={() => {
-                        setWizardStep(8);
-                        showToast(`Cấu hình dự án mới và phân công cho ${selectedAnnotators.join(", ")} thành công!`);
-                      }}
-                      data-testid={TEST_IDS.projectAssignmentComplete}
-                      className="py-2 px-5 bg-gradient-to-tr from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow shadow-emerald-100"
-                    >
-                      <span>Hoàn tất & Mở Project Detail</span> <CheckCircle size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STAGE 8: PROJECT DETAIL - FINALIZED VIEWS */}
-              {wizardStep === 8 && (
-                <div className="space-y-6" data-testid={TEST_IDS.projectDetailPanel}>
-                  <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-emerald-800 text-xs md:text-sm">
-                    <strong>Thông báo:</strong> PDF Bundle đã nạp thành công. Dự án <strong>{project.name}</strong> hiện đang được vận hành bởi: {selectedAnnotators.join(", ")} và {selectedQa}.
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-medium">
-                    <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 space-y-1">
-                      <span className="text-slate-400 block pb-1">Mã dự án</span>
-                      <strong className="text-slate-800 text-sm font-bold block">{project.id}</strong>
-                      <span className="text-slate-400 text-[11px] block">Vivipedia-modality text</span>
-                    </div>
-                    <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 space-y-1">
-                      <span className="text-slate-400 block pb-1">Hồ sơ trích xuất (Bundle)</span>
-                      <strong className="text-slate-800 text-sm font-bold block">{project.bundleId}</strong>
-                      <span className="text-slate-400 text-[11px] block">{project.bundleName}</span>
-                    </div>
-                    <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 space-y-1">
-                      <span className="text-slate-400 block pb-1">Claim Tasks</span>
-                      <strong className="text-slate-800 text-sm font-bold block">{tasks.length} Claims</strong>
-                      <span className="text-slate-400 text-[11px] block">Hỗ trợ đối chiếu rubric</span>
-                    </div>
-                  </div>
-
-                  <section className="border border-slate-100 rounded-xl overflow-hidden shadow mt-4">
-                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                      <h4 className="font-bold text-slate-800 text-sm">Danh Sách Câu Đánh Giá Cận Cảnh</h4>
-                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">BAT-001 list</span>
-                    </div>
-
-                    <div className="overflow-x-auto text-[11.5px]">
-                      <table className="w-full text-left" data-testid={TEST_IDS.projectDetailTaskTable}>
-                        <thead>
-                          <tr className="bg-slate-100/50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
-                            <th className="py-2 px-3">ID Task</th>
-                            <th className="py-2 px-3">Nội dung Câu Hỏi trích xuất</th>
-                            <th className="py-2 px-3">Phân công</th>
-                            <th className="py-2 px-3">Trạng Thái</th>
-                            <th className="py-2 px-3">Composite Score</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-150">
-                          {tasks.map((t) => (
-                            <tr key={t.id} className="hover:bg-slate-50/50" data-testid={TEST_IDS.projectDetailTaskRow(t.id)}>
-                              <td className="py-2.5 px-3 font-semibold text-slate-800">{t.id}</td>
-                              <td className="py-2.5 px-3 max-w-sm font-medium text-slate-700 truncate" title={t.question}>
-                                {t.question}
-                              </td>
-                              <td className="py-2.5 px-3 font-semibold text-slate-600">{t.annotator}</td>
-                              <td className="py-2.5 px-3">
-                                <span className={`px-2 py-0.5 rounded-full border text-[10.5px] font-bold ${getStatusColor(t.status)}`}>
-                                  {t.status}
-                                </span>
-                              </td>
-                              <td className="py-2.5 px-3">
-                                <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-800 font-bold">
-                                  {currentCompositeAverage(t).toFixed(2)}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-end gap-3 font-bold">
-                    <button
-                      onClick={() => setProjectMode("list")}
-                      className="py-1.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs"
-                    >
-                      Về danh sách
-                    </button>
-                    <button
-                      onClick={onBackToDashboard}
-                      className="py-1.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs shadow-md shadow-blue-100"
-                    >
-                      Mở Dashboard
-                    </button>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
             </div>
           </section>
-        </div>
-      )}
-
+      </div>
     </div>
   );
 }

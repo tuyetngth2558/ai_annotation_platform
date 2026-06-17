@@ -1075,7 +1075,6 @@
         "admin-import-dataset.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 3 },
         "admin-team-assignment.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 7 },
         "admin-project-detail.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 8, bundleValidated: true },
-        "admin-qa-queue.html": { role: "ADMIN", view: "qa" },
         "admin-export.html": { role: "ADMIN", view: "export" },
         "admin-users.html": { role: "ADMIN", view: "users" },
         "admin-audit-log.html": { role: "ADMIN", view: "audit" },
@@ -1289,7 +1288,6 @@
       ADMIN: [
         ["dashboard", "Dashboard", "dashboard"],
         ["projects", "Projects / PDF Import", "project"],
-        ["qa", "QA Queue", "qa"],
         ["export", "Export", "export"],
         ["users", "Users", "user"],
         ["audit", "Audit Log", "audit"]
@@ -1633,7 +1631,8 @@
               <tbody>
                 <tr><td>${project.answerPdf}</td><td><span class="badge ready">answer_pdf</span></td><td>Required, unique</td></tr>
                 <tr><td>${project.sourceRefPdf}</td><td><span class="badge ready">source_ref_pdf</span></td><td>Required, unique</td></tr>
-                ${project.sourceContentPdfs.map(file => `<tr><td>${file}</td><td><span class="badge ready">source_content_pdf</span></td><td>At least 1 required</td></tr>`).join("")}
+                ${(project.sourceContentPdfs && project.sourceContentPdfs.length ? project.sourceContentPdfs : []).map(file => `<tr><td>${file}</td><td><span class="badge ready">source_content_pdf</span></td><td>Optional (0..N) — evidence chính nếu có</td></tr>`).join("")}
+                ${(!project.sourceContentPdfs || project.sourceContentPdfs.length === 0) ? `<tr><td class="muted">(none)</td><td><span class="badge warn">source_content_pdf</span></td><td>Optional — không block import</td></tr>` : ""}
               </tbody>
             </table></div>
             <div class="quick-actions"><button class="btn primary" id="validateBundle">Validate bundle</button></div>
@@ -1670,12 +1669,12 @@
     function validationBox() {
       if (!state.bundleValidated) {
         return `<div class="error-panel">
-          <strong>Validation mock cases</strong>
-          <div>File sai định dạng: chặn import.</div>
-          <div>Thiếu file bắt buộc: answer_pdf, source_ref_pdf hoặc source_content_pdf.</div>
-          <div>answer_text_normalized rỗng sau parse: block bundle.</div>
-          <div>source_url không parse được: warning nếu source text vẫn có.</div>
-          <div>File > 10MB hoặc duplicate required file role: chặn import.</div>
+          <strong>Bundle validation</strong>
+          <div>Thiếu answer_pdf hoặc source_ref_pdf: block import.</div>
+          <div>Không có source_content_pdf: vẫn cho import (optional); annotator sẽ dùng source_ref_pdf + URL.</div>
+          <div>PDF corrupt hoặc không phải PDF: block import.</div>
+          <div>source_url không parse được: warning, vẫn cho import.</div>
+          <div>PDF scan/image: flag ocr_required.</div>
         </div>`;
       }
       return `<div class="success-panel"><strong>Validation Passed.</strong> PDF bundle hợp lệ, có 1 cảnh báo source_url missing nhưng vẫn cho preview theo PDF-native rule.</div>`;
