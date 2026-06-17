@@ -37,10 +37,12 @@ from app.features.annotation.schemas import (
 from app.features.annotation.scoring import composite_score, needs_justification
 from app.features.audit.service import write_audit_log
 from app.models.annotation_submission import AnnotationSubmission
+from app.models.batch import Batch
 from app.models.claim_source_map import ClaimSourceMap
 from app.models.claim_task import ClaimTask
 from app.models.llm_pre_score import LlmPreScore
 from app.models.parent_task import ParentTask
+from app.models.project import Project
 from app.models.user import UserAccount
 
 logger = get_logger(__name__)
@@ -160,8 +162,12 @@ async def list_my_tasks(
     """Danh sách claim task được giao cho annotator (OQ-008)."""
     annotator = await _resolve_annotator(annotator_id, db)
 
+    # JOIN ParentTask → Batch → Project để trả kèm project_id/name (FE hiện + lọc theo project).
     stmt = (
-        select(ClaimTask)
+        select(ClaimTask, Project.id, Project.project_name)
+        .join(ParentTask, ParentTask.id == ClaimTask.parent_task_id)
+        .join(Batch, Batch.id == ParentTask.batch_id)
+        .join(Project, Project.id == Batch.project_id)
         .where(ClaimTask.assigned_annotator_id == annotator.id)
         .options(selectinload(ClaimTask.parent_task))
         .order_by(ClaimTask.created_at.desc())
@@ -170,7 +176,7 @@ async def list_my_tasks(
         stmt = stmt.where(ClaimTask.status == status_filter)
 
     result = await db.execute(stmt)
-    claims = result.scalars().all()
+    rows = result.all()
 
     items = [
         TaskListItem(
@@ -183,8 +189,10 @@ async def list_my_tasks(
             parent_task_id=c.parent_task_id,
             article_code=c.parent_task.article_code if c.parent_task else None,
             title=c.parent_task.title if c.parent_task else None,
+            project_id=project_id,
+            project_name=project_name,
         )
-        for c in claims
+        for c, project_id, project_name in rows
     ]
     return TaskListOut(items=items, total=len(items))
 
@@ -203,6 +211,13 @@ async def get_task(
     claim = await _load_claim(claim_id, annotator.id, db)
     pre = _latest_pre_score(claim)
     draft_sub = _latest_submission(claim, annotator.id)
+
+    # Tên dự án (qua ParentTask→Batch→Project) để hiện trên header workspace.
+    project_name = await db.scalar(
+        select(Project.project_name)
+        .join(Batch, Batch.project_id == Project.id)
+        .where(Batch.id == claim.parent_task.batch_id)
+    ) if claim.parent_task else None
 
     # Sources liên quan đến claim này qua ClaimSourceMap
     sources = [
@@ -242,10 +257,12 @@ async def get_task(
         section_name=claim.section_name,
         claim_text=claim.claim_text_original,
         status=claim.status,
+        submitted_at=claim.submitted_at,
         citation_markers=claim.citation_markers,
         parent_task_id=claim.parent_task_id,
         article_code=claim.parent_task.article_code if claim.parent_task else None,
         title=claim.parent_task.title if claim.parent_task else None,
+        project_name=project_name,
         answer_context=_build_answer_context(claim),
         pre_score=PreScoreOut(
             pre_score_id=pre.id,

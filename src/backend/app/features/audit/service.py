@@ -89,12 +89,19 @@ async def list_audit_logs(
     total = await db.scalar(
         select(func.count()).select_from(AuditLog).where(*filters)
     )
+    # LEFT JOIN UserAccount để hiện rõ người thực hiện (email + tên) thay vì chỉ UUID.
     result = await db.execute(
-        select(AuditLog)
+        select(AuditLog, UserAccount.email, UserAccount.full_name)
+        .outerjoin(UserAccount, UserAccount.id == AuditLog.user_id)
         .where(*filters)
         .order_by(AuditLog.timestamp.desc())
         .limit(page.limit)
         .offset(page.offset)
     )
-    items = [AuditLogOut.model_validate(row) for row in result.scalars().all()]
+    items = []
+    for row, email, full_name in result.all():
+        out = AuditLogOut.model_validate(row)
+        out.user_email = email
+        out.user_name = full_name
+        items.append(out)
     return AuditLogPage(items=items, total=total or 0, limit=page.limit, offset=page.offset)

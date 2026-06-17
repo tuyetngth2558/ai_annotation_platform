@@ -174,14 +174,15 @@ export function AppLayout() {
         <header className="app-topbar">
           <div className="app-topbar-inner">
             {/* Tiêu đề + mô tả trang hiện tại (do mỗi trang đăng ký qua usePageHeader). */}
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 flex items-center gap-3">
+              {header?.leading}
               {header ? (
-                <>
+                <div className="min-w-0">
                   <h1 className="text-xl font-bold text-gray-900 truncate leading-tight">{header.title}</h1>
                   {header.description && (
                     <p className="text-[13px] text-gray-400 truncate mt-1">{header.description}</p>
                   )}
-                </>
+                </div>
               ) : (
                 <span className="text-lg font-bold text-gray-900">VSF Annotation</span>
               )}

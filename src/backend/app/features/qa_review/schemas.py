@@ -27,6 +27,11 @@ class QueueItem(BaseModel):
     title: str | None
     submitted_at: datetime | None
     annotator_id: uuid.UUID | None
+    annotator_email: str | None = None
+    annotator_name: str | None = None
+    project_id: uuid.UUID | None = None
+    project_name: str | None = None
+    composite_annotator: float | None = None
 
 
 class QueueOut(BaseModel):
@@ -54,6 +59,9 @@ class ReviewDetailOut(BaseModel):
     citation_markers: str | None
     article_code: str | None
     title: str | None
+    project_name: str | None = None
+    submitted_at: datetime | None = None
+    annotator_email: str | None = None
     answer_context: str | None
     # Scores
     score_diff: list[ScoreDiffItem]

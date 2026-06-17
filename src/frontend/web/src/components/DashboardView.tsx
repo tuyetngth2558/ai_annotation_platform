@@ -54,186 +54,184 @@ export default function DashboardView({
   // ADMIN: dashboard tổng quan riêng (thống kê hệ thống + workload), không bảng claim.
   if (userRole === "ADMIN") return <AdminDashboard stats={stats} onNavigate={onNavigate} />;
 
-  // ANNOTATOR: `tasks` đã là task của chính mình (fetchMyTasks) → dùng thẳng, không lọc theo tên.
-  const counts = {
-    assigned: tasks.filter((t) => ["Ready for Annotation", "In Annotation", "Returned"].includes(t.status)).length,
+  if (userRole === "ANNOTATOR") return <AnnotatorDashboard tasks={tasks} onNavigate={onNavigate} onOpenTaskAnnotation={onOpenTaskAnnotation} />;
+  return <QaDashboard tasks={tasks} onNavigate={onNavigate} onOpenTaskQa={onOpenTaskQa} />;
+}
+
+/** Hàng phân bố theo trạng thái — 1 dòng nhãn + số. */
+function StatusRow({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <li className="flex items-center justify-between">
+      <span className="text-slate-500">{label}</span>
+      <strong className={color}>{value}</strong>
+    </li>
+  );
+}
+
+/** Dashboard ANNOTATOR — thẻ số liệu + tiến độ + việc cần làm tiếp (không bảng). */
+function AnnotatorDashboard({
+  tasks, onNavigate, onOpenTaskAnnotation,
+}: {
+  tasks: ClaimTask[];
+  onNavigate: (v: string) => void;
+  onOpenTaskAnnotation: (id: string) => void;
+}) {
+  const c = {
+    ready: tasks.filter((t) => t.status === "Ready for Annotation").length,
     inWork: tasks.filter((t) => t.status === "In Annotation").length,
     returned: tasks.filter((t) => t.status === "Returned").length,
     submitted: tasks.filter((t) => t.status === "Submitted").length,
-    submittedGlobal: tasks.filter((t) => t.status === "Submitted").length,
-    approvedGlobal: tasks.filter((t) => t.status === "Approved").length,
-    returnedGlobal: tasks.filter((t) => t.status === "Returned").length,
+    approved: tasks.filter((t) => t.status === "Approved").length,
   };
+  const total = tasks.length;
+  const done = c.submitted + c.approved;
+  const pct = total ? Math.round((done / total) * 100) : 0;
 
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case "Ready for Annotation": return "bg-blue-50 text-blue-700 border-blue-200";
-      case "In Annotation": return "bg-amber-50 text-amber-700 border-amber-200";
-      case "Submitted": return "bg-violet-50 text-violet-700 border-violet-200";
-      case "Returned": return "bg-red-50 text-red-700 border-red-200";
-      case "Approved": return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      default: return "bg-gray-50 text-gray-600 border-gray-200";
-    }
-  };
-
-  const compositeAverage = (task: ClaimTask) => {
-    return (task.ann.SF + task.ann.SC + task.ann.NH + task.ann.SQ + task.ann.REL + task.ann.COMP) / 6;
-  };
-
-  const scoreBarColor = (score: number) => {
-    if (score >= 0.8) return "bg-emerald-500";
-    if (score >= 0.6) return "bg-amber-500";
-    return "bg-red-500";
-  };
-
-  const isReviewable = (status: ClaimTask["status"]) => status === "Submitted";
+  // Việc cần làm tiếp: ưu tiên claim bị trả → đang làm → chưa làm.
+  const next =
+    tasks.find((t) => t.status === "Returned") ??
+    tasks.find((t) => t.status === "In Annotation") ??
+    tasks.find((t) => t.status === "Ready for Annotation") ??
+    null;
 
   return (
-    <div className="space-y-6">
-      {/* Metrics row */}
+    <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {userRole === "ANNOTATOR" && (
-          <>
-            <MetricCard label="Được giao" value={counts.assigned} icon={<FileText size={18} />} color="blue" />
-            <MetricCard label="Đang làm" value={counts.inWork} icon={<Clock size={18} />} color="amber" />
-            <MetricCard label="Bị trả lại" value={counts.returned} icon={<AlertCircle size={18} />} color="red" />
-            <MetricCard testId={TEST_IDS.dashboardMetricSubmitted} label="Đã nộp" value={counts.submitted} icon={<CheckCircle size={18} />} color="green" />
-          </>
-        )}
-        {userRole === "QA" && (
-          <>
-            <MetricCard testId={TEST_IDS.dashboardMetricSubmitted} label="Chờ review" value={counts.submittedGlobal} icon={<Clock size={18} />} color="amber" />
-            <MetricCard testId={TEST_IDS.dashboardMetricApproved} label="Đã duyệt" value={counts.approvedGlobal} icon={<CheckCircle size={18} />} color="green" />
-            <MetricCard label="Đã trả lại" value={counts.returnedGlobal} icon={<AlertCircle size={18} />} color="red" />
-            <MetricCard label="Tổng trong hàng đợi" value={tasks.length} icon={<FileText size={18} />} color="blue" />
-          </>
-        )}
+        <MetricCard label="Chưa làm" value={c.ready} icon={<FileText size={18} />} color="blue" />
+        <MetricCard label="Đang làm" value={c.inWork} icon={<Clock size={18} />} color="amber" />
+        <MetricCard label="Bị trả lại" value={c.returned} icon={<AlertCircle size={18} />} color="red" />
+        <MetricCard testId={TEST_IDS.dashboardMetricSubmitted} label="Đã nộp" value={c.submitted} icon={<CheckCircle size={18} />} color="green" />
       </div>
 
-      {/* Quick actions */}
-      <div className="app-card p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {userRole === "ANNOTATOR" && (
-            <>
-              <button onClick={() => onNavigate("tasks")} data-testid={TEST_IDS.dashboardOpenTasks} className="btn-primary !text-xs !py-2 !px-4">
-                Xem danh sách task <ArrowRight size={14} />
-              </button>
-              <button
-                onClick={() => {
-                  const first = tasks[0];
-                  if (first) onOpenTaskAnnotation(first.id);
-                  else onNavigate("tasks");
-                }}
-                data-testid={TEST_IDS.dashboardOpenAnnotation}
-                className="btn-secondary !text-xs !py-2 !px-4"
-              >
-                Mở workspace
-              </button>
-            </>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Việc cần làm tiếp */}
+        <section className="app-card p-5 lg:col-span-2 flex flex-col">
+          <h3 className="text-sm font-bold text-slate-800 mb-3">Việc cần làm tiếp</h3>
+          {next ? (
+            <div className="flex-1 flex flex-col">
+              <span className={`self-start status-pill ${
+                next.status === "Returned" ? "bg-red-50 text-red-700 border-red-200"
+                : next.status === "In Annotation" ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+                {next.status === "Returned" ? "Bị trả lại — cần sửa" : next.status === "In Annotation" ? "Đang làm dở" : "Chưa bắt đầu"}
+              </span>
+              <p className="mt-2 text-[13px] text-slate-400">{next.projectName || "—"}</p>
+              <p className="mt-1 text-sm font-medium text-slate-800 line-clamp-2" title={next.claimFinal}>{next.claimFinal || next.question}</p>
+              <div className="mt-auto pt-4">
+                <button onClick={() => onOpenTaskAnnotation(next.id)} data-testid={TEST_IDS.dashboardOpenAnnotation} className="btn-primary !text-xs !py-2 !px-4">
+                  {next.status === "Returned" ? "Sửa ngay" : "Tiếp tục"} <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
+              <CheckCircle size={28} className="text-emerald-500 mb-2" />
+              <p className="text-sm font-semibold text-slate-700">Bạn đã làm hết phần được giao 🎉</p>
+              <p className="text-[13px] text-slate-400 mt-1">Chưa có claim nào chờ xử lý.</p>
+            </div>
           )}
-          {userRole === "QA" && (
-            <>
-              <button onClick={() => onNavigate("qa")} data-testid={TEST_IDS.dashboardOpenQa} className="btn-primary !text-xs !py-2 !px-4">
-                Kiểm duyệt <ArrowRight size={14} />
-              </button>
-            </>
-          )}
-        </div>
+        </section>
+
+        {/* Tiến độ + phân bố */}
+        <section className="app-card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-bold text-slate-800">Tiến độ của bạn</h3>
+            <span className="text-sm font-bold text-emerald-600">{pct}%</span>
+          </div>
+          <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="text-[12px] text-slate-400 mt-2">{done}/{total} claim đã nộp/duyệt.</p>
+          <ul className="space-y-1.5 text-[13px] mt-4 pt-4 border-t border-slate-100">
+            <StatusRow label="Chưa làm" value={c.ready} color="text-slate-700" />
+            <StatusRow label="Đang làm" value={c.inWork} color="text-amber-600" />
+            <StatusRow label="Bị trả" value={c.returned} color="text-red-600" />
+            <StatusRow label="Đã nộp" value={c.submitted} color="text-violet-600" />
+            <StatusRow label="Đã duyệt" value={c.approved} color="text-emerald-600" />
+          </ul>
+        </section>
       </div>
 
-      {/* Task table */}
-      <section className="app-card overflow-hidden">
-        <div className="app-card-header">
-          <h3 className="text-sm font-semibold text-gray-800">Danh sách claim task</h3>
-          <span className="text-[11px] text-gray-400 font-medium">{tasks.length} task</span>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={() => onNavigate("tasks")} data-testid={TEST_IDS.dashboardOpenTasks} className="btn-secondary !text-xs !py-2 !px-4">
+          Xem tất cả nhiệm vụ <ArrowRight size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
-        <div className="overflow-x-auto">
-          <table className="data-table" data-testid={TEST_IDS.dashboardTaskTable}>
-            <thead>
-              <tr>
-                <th>Claim</th>
-                <th>Mã bài</th>
-                <th>Nguồn</th>
-                <th>Annotator</th>
-                <th>Trạng thái</th>
-                <th>Điểm</th>
-                <th className="text-center w-24"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((t) => {
-                const isMyTask = userRole === "ANNOTATOR";
-                const composite = compositeAverage(t);
+/** Dashboard QA — thẻ số liệu hàng đợi + claim chờ lâu nhất + lối tắt (không bảng). */
+function QaDashboard({
+  tasks, onNavigate, onOpenTaskQa,
+}: {
+  tasks: ClaimTask[];
+  onNavigate: (v: string) => void;
+  onOpenTaskQa: (id: string) => void;
+}) {
+  // Queue chỉ trả claim "Submitted" (chờ duyệt) → tasks = hàng đợi hiện tại.
+  const pending = tasks.length;
+  // Số dự án khác nhau đang có claim chờ.
+  const projects = new Set(tasks.map((t) => t.projectId).filter(Boolean)).size;
+  // Claim chờ lâu nhất (queue đã sort submitted_at tăng dần → phần tử đầu).
+  const oldest = tasks[0] ?? null;
 
-                return (
-                  <tr key={t.id}>
-                    <td className="max-w-xs">
-                      <span className="block text-sm font-semibold text-gray-900">{t.id}</span>
-                      <span className="block text-[12px] text-gray-400 truncate mt-0.5" title={t.claimFinal}>
-                        {t.claimFinal}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-mono text-[11px] font-medium">
-                        {t.articleCode}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap">
-                      {t.mappedSourceOrders.length > 0 ? (
-                        t.mappedSourceOrders.map((o) => (
-                          <span key={o} className="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-mono text-[10px] font-medium mr-1">
-                            [{o}]
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-[11px] text-amber-600 font-medium">Chưa map</span>
-                      )}
-                    </td>
-                    <td className="text-gray-600 text-[13px]">{t.annotator}</td>
-                    <td>
-                      <span className={`status-pill ${getStatusClass(t.status)}`}>
-                        {t.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2 min-w-[80px]">
-                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${scoreBarColor(composite)}`} style={{ width: `${composite * 100}%` }} />
-                        </div>
-                        <span className="text-[11px] font-mono font-semibold text-gray-600 tabular-nums">{composite.toFixed(2)}</span>
-                      </div>
-                    </td>
-                    <td className="text-center">
-                      {userRole === "ANNOTATOR" && (
-                        <button
-                          onClick={() => onOpenTaskAnnotation(t.id)}
-                          disabled={!isMyTask}
-                          data-testid={TEST_IDS.dashboardOpenAnnotationTask(t.id)}
-                          className="btn-ghost !text-[11px] !py-1 !px-2 disabled:opacity-30"
-                        >
-                          {t.status === "Returned" ? "Sửa" : "Mở"}
-                        </button>
-                      )}
-                      {userRole === "QA" && (
-                        <button
-                          onClick={() => onOpenTaskQa(t.id)}
-                          data-testid={TEST_IDS.dashboardOpenQaTask(t.id)}
-                          className={`${
-                            isReviewable(t.status) ? "btn-ghost" : "btn-secondary"
-                          } !text-[11px] !py-1 !px-2`}
-                        >
-                          {isReviewable(t.status) ? "Review" : "Xem"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+  const fmt = (iso: string) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <MetricCard testId={TEST_IDS.dashboardMetricSubmitted} label="Chờ bạn duyệt" value={pending} icon={<Clock size={18} />} color="amber" />
+        <MetricCard label="Số dự án liên quan" value={projects} icon={<FolderKanban size={18} />} color="blue" />
+        <MetricCard label="Tổng trong hàng đợi" value={pending} icon={<FileText size={18} />} color="gray" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Claim chờ lâu nhất */}
+        <section className="app-card p-5 lg:col-span-2 flex flex-col">
+          <h3 className="text-sm font-bold text-slate-800 mb-3">Claim chờ lâu nhất</h3>
+          {oldest ? (
+            <div className="flex-1 flex flex-col">
+              <p className="text-[13px] text-slate-400">{oldest.projectName || "—"} · nộp {fmt(oldest.submittedAt)}</p>
+              <p className="mt-1 text-sm font-medium text-slate-800 line-clamp-2" title={oldest.claimFinal}>{oldest.claimFinal || oldest.question}</p>
+              <p className="mt-1 text-[13px] text-slate-500">Annotator: <span className="font-semibold text-slate-700">{oldest.annotator || "—"}</span></p>
+              <div className="mt-auto pt-4">
+                <button onClick={() => onOpenTaskQa(oldest.id)} data-testid={TEST_IDS.dashboardOpenQa} className="btn-primary !text-xs !py-2 !px-4">
+                  Duyệt ngay <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
+              <CheckCircle size={28} className="text-emerald-500 mb-2" />
+              <p className="text-sm font-semibold text-slate-700">Hàng đợi trống 🎉</p>
+              <p className="text-[13px] text-slate-400 mt-1">Không có claim nào chờ duyệt.</p>
+            </div>
+          )}
+        </section>
+
+        {/* Tóm tắt hàng đợi */}
+        <section className="app-card p-5">
+          <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5"><ListChecks size={15} className="text-vsf-600" /> Hàng đợi</h3>
+          <ul className="space-y-2 text-sm">
+            <StatusRow label="Claim chờ duyệt" value={pending} color="text-violet-600" />
+            <StatusRow label="Dự án liên quan" value={projects} color="text-slate-700" />
+          </ul>
+          <p className="text-[12px] text-slate-400 mt-4 pt-4 border-t border-slate-100">
+            Duyệt theo thứ tự nộp sớm nhất để tránh tồn đọng.
+          </p>
+        </section>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={() => onNavigate("qa")} data-testid={TEST_IDS.dashboardOpenTasks} className="btn-secondary !text-xs !py-2 !px-4">
+          Mở hàng đợi QA <ArrowRight size={14} />
+        </button>
+      </div>
     </div>
   );
 }

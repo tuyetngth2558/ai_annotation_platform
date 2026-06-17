@@ -80,6 +80,8 @@ interface TaskListItemBE {
   parent_task_id: string;
   article_code: string | null;
   title: string | null;
+  project_id: string | null;
+  project_name: string | null;
 }
 
 interface TaskDetailOutBE extends TaskListItemBE {
@@ -104,6 +106,9 @@ interface ReviewDetailOutBE {
   citation_markers: string | null;
   article_code: string | null;
   title: string | null;
+  project_name: string | null;
+  submitted_at: string | null;
+  annotator_email: string | null;
   answer_context: string | null;
   score_diff: {
     dimension: string;
@@ -123,6 +128,8 @@ interface AuditLogOutBE {
   id: string;
   project_id: string | null;
   user_id: string | null;
+  user_email: string | null;
+  user_name: string | null;
   user_role: string | null;
   entity_type: string;
   entity_id: string | null;
@@ -263,6 +270,8 @@ function emptyClaimTask(id: string): ClaimTask {
     id,
     answerId: "",
     bundleId: "",
+    projectId: "",
+    projectName: "",
     articleCode: "",
     title: "",
     category: "",
@@ -327,6 +336,8 @@ export async function fetchMyTasks(): Promise<ClaimTask[]> {
     const task = emptyClaimTask(item.claim_id);
     task.articleCode = item.article_code || "";
     task.title = item.title || "";
+    task.projectId = item.project_id || "";
+    task.projectName = item.project_name || "";
     task.sectionName = item.section_name || "";
     task.question = item.claim_text;
     task.claimOriginal = item.claim_text;
@@ -344,6 +355,7 @@ export async function fetchTaskDetail(claimId: string): Promise<ClaimTask> {
   const task = emptyClaimTask(d.claim_id);
   task.articleCode = d.article_code || "";
   task.title = d.title || "";
+  task.projectName = d.project_name || "";
   task.sectionName = d.section_name || "";
   task.question = d.claim_text;
   task.claimOriginal = d.claim_text;
@@ -363,15 +375,22 @@ export async function fetchTaskDetail(claimId: string): Promise<ClaimTask> {
   return task;
 }
 
+interface QaQueueItemBE extends TaskListItemBE {
+  annotator_id: string | null;
+  annotator_email: string | null;
+  annotator_name: string | null;
+  composite_annotator: number | null;
+}
+
 /** GET /qa-reviews/queue — hàng đợi QA (đã map). */
 export async function fetchQaQueue(): Promise<ClaimTask[]> {
-  const res = await apiClient.get<ListEnvelope<TaskListItemBE & { annotator_id: string | null }>>(
-    "/qa-reviews/queue"
-  );
+  const res = await apiClient.get<ListEnvelope<QaQueueItemBE>>("/qa-reviews/queue");
   return res.items.map((item) => {
     const task = emptyClaimTask(item.claim_id);
     task.articleCode = item.article_code || "";
     task.title = item.title || "";
+    task.projectId = item.project_id || "";
+    task.projectName = item.project_name || "";
     task.sectionName = item.section_name || "";
     task.question = item.claim_text;
     task.claimOriginal = item.claim_text;
@@ -379,7 +398,9 @@ export async function fetchQaQueue(): Promise<ClaimTask[]> {
     task.status = "Submitted";
     task.submittedAt = item.submitted_at || "";
     task.answerId = item.parent_task_id;
-    task.annotator = item.annotator_id || "";
+    // Ưu tiên email (rõ) → tên → UUID.
+    task.annotator = item.annotator_email || item.annotator_name || item.annotator_id || "";
+    task.compositeAnnotator = item.composite_annotator ?? null;
     return task;
   });
 }
@@ -390,6 +411,9 @@ export async function fetchQaReviewDetail(claimId: string): Promise<ClaimTask> {
   const task = emptyClaimTask(d.claim_id);
   task.articleCode = d.article_code || "";
   task.title = d.title || "";
+  task.projectName = d.project_name || "";
+  task.submittedAt = d.submitted_at || "";
+  task.annotator = d.annotator_email || "";
   task.sectionName = d.section_name || "";
   task.question = d.claim_text;
   task.claimOriginal = d.claim_text;
@@ -480,7 +504,9 @@ export async function fetchProjects(): Promise<Project[]> {
 function mapAudit(a: AuditLogOutBE): AuditLog {
   return {
     id: a.id,
-    user: a.user_id || "system",
+    // Ưu tiên email (rõ), rồi tên, cuối cùng "Hệ thống" cho hành động tự động.
+    user: a.user_email || a.user_name || "Hệ thống",
+    userRole: a.user_role || "",
     action: a.action_type,
     entity: a.entity_id ? `${a.entity_type}:${a.entity_id}` : a.entity_type,
     time: a.timestamp,

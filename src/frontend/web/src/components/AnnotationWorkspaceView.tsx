@@ -10,6 +10,9 @@ import {
   RotateCcw,
   ExternalLink,
   ShieldCheck,
+  ListChecks,
+  Lightbulb,
+  X,
 } from "lucide-react";
 import {
   SOURCE_ACCESS_OPTIONS,
@@ -31,6 +34,15 @@ interface AnnotationWorkspaceViewProps {
   showToast: (msg: string) => void;
 }
 
+/** ISO → "dd/MM/yyyy HH:mm" (giờ địa phương); chuỗi gốc nếu parse lỗi. */
+function formatSubmittedAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("vi-VN", {
+    day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
 export default function AnnotationWorkspaceView({
   task: rawTask,
   onSubmit,
@@ -43,7 +55,8 @@ export default function AnnotationWorkspaceView({
   const [sourceNote, setSourceNote] = useState(task.sourceNote);
   const [reason, setReason] = useState(task.reason);
   const [notes, setNotes] = useState(task.notes);
-  const [activeRefTab, setActiveRefTab] = useState<"rubric" | "guideline" | "examples">("rubric");
+  // Popup tham chiếu (rubric/hướng dẫn/bài mẫu) — null = đóng.
+  const [refPopup, setRefPopup] = useState<"rubric" | "guideline" | "examples" | null>(null);
   const [claimEdited, setClaimEdited] = useState(task.edited);
 
   // Sync state whenever active task changes
@@ -62,6 +75,14 @@ export default function AnnotationWorkspaceView({
       setScores((prev) => ({ ...prev, SC: 0 }));
     }
   }, [sourceStatus]);
+
+  // Esc đóng popup tham chiếu.
+  useEffect(() => {
+    if (!refPopup) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setRefPopup(null); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [refPopup]);
 
   const dimensions: Dimension[] = ["SF", "SC", "NH", "SQ", "REL", "COMP"];
   const showSqUnknownWarning = hasUnknownMappedTier(task) && (scores.SQ ?? 0) >= 0.75;
@@ -184,36 +205,53 @@ export default function AnnotationWorkspaceView({
       )}
 
       <div className="workspace-toolbar" data-testid={TEST_IDS.annotationBreadcrumb}>
-        <div className="text-sm text-gray-600 flex flex-wrap items-center gap-2">
-          <span className="font-mono text-gray-900 font-semibold">{task.id}</span>
-          <span className="text-gray-300">·</span>
-          <span>{task.articleCode}</span>
-          <span className="text-gray-300">·</span>
-          <span className="truncate max-w-md">{task.bundleId}</span>
+        <div className="min-w-0">
+          <h2 className="text-base font-bold text-slate-800 truncate">{task.projectName || "Dự án"}</h2>
+          {task.submittedAt && (
+            <span className="text-xs text-gray-400 flex items-center gap-1 whitespace-nowrap">
+              <Clock size={12} /> Nộp lúc {formatSubmittedAt(task.submittedAt)}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <span data-testid={TEST_IDS.annotationStatusBadge} className="status-pill bg-vsf-50 text-vsf-700 border-vsf-200">
-            {task.status}
-          </span>
-          <span data-testid={TEST_IDS.annotationTimer} className="text-xs text-gray-400 flex items-center gap-1">
-            <Clock size={12} /> 12:34
-          </span>
-        </div>
-      </div>
 
-      <div className="workspace-steps">
-        <span className="workspace-step workspace-step-active">① Context</span>
-        <span className="workspace-step workspace-step-active">② Scoring</span>
-        <span className="workspace-step workspace-step-active">③ Sources</span>
-      </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Icon mở popup tham chiếu */}
+          <button onClick={() => setRefPopup("rubric")} title="Tiêu chí Rubric" className="grid place-items-center w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+            <ListChecks size={17} />
+          </button>
+          <button onClick={() => setRefPopup("guideline")} title="Hướng dẫn" className="grid place-items-center w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+            <BookOpen size={17} />
+          </button>
+          <button onClick={() => setRefPopup("examples")} title="Bài mẫu ví dụ" className="grid place-items-center w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+            <Lightbulb size={17} />
+          </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch w-full">
-        <section className="workspace-pane lg:col-span-4" data-testid={TEST_IDS.annotationAnswerPanel}>
-          <div className="workspace-pane-header">
-            <h3 className="workspace-pane-title">Document context</h3>
-            <span className="text-xs font-mono text-gray-500">{task.articleCode}</span>
+          <div className="w-px h-7 bg-slate-200 mx-1" />
+
+          {/* Composite */}
+          <div className="text-right">
+            <span className="text-[10px] text-gray-400 uppercase font-bold block leading-none">Composite</span>
+            <strong
+              data-testid={TEST_IDS.annotationCompositeScore}
+              className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-sm font-bold ${getCompositeBadgeClass(currentComposite())}`}
+            >
+              {currentComposite().toFixed(2)}
+            </strong>
           </div>
 
+          <button
+            onClick={handleCustomSubmit}
+            data-testid={TEST_IDS.annotationSubmit}
+            className="btn-primary !py-2 !px-4"
+          >
+            Submit to QA
+          </button>
+        </div>
+      </div>
+
+      {/* 2 cột: TRÁI = Document context (trên) + Sources (dưới); PHẢI = Claim & scores. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch w-full">
+        <section className="workspace-pane lg:!min-h-0 lg:h-full lg:col-start-1 lg:row-start-1" data-testid={TEST_IDS.annotationAnswerPanel}>
           <div className="workspace-pane-body">
             <div className="flex flex-wrap gap-1">
               <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-700 text-[10.5px] font-bold font-mono">
@@ -242,12 +280,7 @@ export default function AnnotationWorkspaceView({
           </div>
         </section>
 
-        <section className="workspace-pane lg:col-span-4" data-testid={TEST_IDS.annotationScoringPanel}>
-          <div className="workspace-pane-header">
-            <h3 className="workspace-pane-title">Claim &amp; scores</h3>
-            <span className="text-xs font-semibold text-vsf-700 bg-vsf-50 px-2 py-0.5 rounded-full">AI draft</span>
-          </div>
-
+        <section className="workspace-pane lg:!min-h-0 lg:h-full lg:col-start-2 lg:row-start-1 lg:row-span-2" data-testid={TEST_IDS.annotationScoringPanel}>
           <div className="workspace-pane-body">
             {/* The editable claim wrapper card */}
             <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
@@ -352,13 +385,6 @@ export default function AnnotationWorkspaceView({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 pt-1">
-              <div className="bg-slate-50 p-3 rounded-lg border border-gray-200 text-xs text-gray-600">
-                <span className="font-semibold text-gray-800">Quy tắc delta</span>
-                <span className="block text-[11px] mt-0.5 leading-relaxed">Lệch &gt; ±0,20 so với pre-score → bắt buộc nhập lý do.</span>
-              </div>
-            </div>
-
             {/* Justification text */}
             <div className="space-y-1 bg-amber-50/30 p-3 rounded-xl border border-amber-200">
               <label className="text-xs font-bold text-slate-700 block text-amber-900">
@@ -389,27 +415,18 @@ export default function AnnotationWorkspaceView({
           </div>
         </section>
 
-        <section className="workspace-pane lg:col-span-4" data-testid={TEST_IDS.annotationSourcePanel}>
-          <div className="workspace-pane-header">
-            <h3 className="workspace-pane-title">Sources &amp; rubric</h3>
-            <span className="text-xs text-gray-500">PDF-native</span>
-          </div>
-
+        <section className="workspace-pane lg:!min-h-0 lg:h-full lg:col-start-1 lg:row-start-2" data-testid={TEST_IDS.annotationSourcePanel}>
           <div className="workspace-pane-body">
-            <div className="bg-vsf-50/70 border border-vsf-100 rounded-xl p-3 space-y-1.5" data-testid={TEST_IDS.annotationSqPanel}>
-              <div className="flex items-center gap-1.5 text-vsf-900 font-bold text-xs">
-                <ShieldCheck size={14} /> Chất lượng nguồn (SQ)
-              </div>
-              <p className="text-[11px] text-vsf-800 leading-relaxed" data-testid={TEST_IDS.annotationSqHint}>
-                Dựa trên <strong>tier</strong> và <strong>loại domain</strong> từ PDF — không cần tìm kiếm web để nộp bài.
-                Xác nhận hoặc sửa điểm SQ draft từ rule engine.
-              </p>
-              {task.sqRationale && (
-                <p className="text-[10px] text-gray-600 font-mono bg-white/70 rounded p-2 border border-vsf-100">
+            {task.sqRationale && (
+              <div className="bg-vsf-50/70 border border-vsf-100 rounded-xl p-3 space-y-1.5" data-testid={TEST_IDS.annotationSqPanel}>
+                <div className="flex items-center gap-1.5 text-vsf-900 font-bold text-xs">
+                  <ShieldCheck size={14} /> Chất lượng nguồn (SQ)
+                </div>
+                <p className="text-[10px] text-gray-600 font-mono bg-white/70 rounded p-2 border border-vsf-100" data-testid={TEST_IDS.annotationSqHint}>
                   {task.sqRationale}
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             {showSqUnknownWarning && (
               <div
@@ -501,7 +518,7 @@ export default function AnnotationWorkspaceView({
                 <div className="p-4 bg-amber-50 border border-amber-200 text-center rounded-xl">
                   <AlertTriangle size={20} className="text-amber-500 mx-auto mb-1" />
                   <strong className="text-xs text-amber-900 block">Mapping Required</strong>
-                  <p className="text-[11px] text-slate-500 mt-1">Claim chưa map được citation marker sang source_order.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Claim chưa map được nguồn tham chiếu.</p>
                 </div>
               )}
             </div>
@@ -509,7 +526,7 @@ export default function AnnotationWorkspaceView({
             <div className="space-y-3.5 pt-3 border-t border-slate-100/60 font-semibold text-xs text-slate-700">
               <div className="space-y-1">
                 <label htmlFor="annotation-source-status" className="text-xs font-bold text-slate-700 required">
-                  Trạng thái nguồn (source_access_status)
+                  Trạng thái nguồn
                 </label>
                 <select
                   id="annotation-source-status"
@@ -524,15 +541,11 @@ export default function AnnotationWorkspaceView({
                     </option>
                   ))}
                 </select>
-                <p className="text-[10px] text-slate-500">
-                  PDF-native: chọn <code className="font-mono">source_text_parsed</code> khi đối chiếu được text từ PDF.
-                  Chọn <code className="font-mono">inaccessible</code> sẽ khóa SC = 0.
-                </p>
               </div>
 
               <div className="space-y-1.5">
                 <label htmlFor="annotation-source-note" className="text-xs font-bold text-slate-700">
-                  Ghi chú nguồn (source note){" "}
+                  Ghi chú nguồn{" "}
                   {(sourceStatus === "inaccessible" || showSqUnknownWarning) && (
                     <span className="text-red-600 ml-1 font-bold">*Bắt buộc</span>
                   )}
@@ -549,112 +562,81 @@ export default function AnnotationWorkspaceView({
               </div>
             </div>
 
-            {/* Rubrics and tabs */}
-            <div className="pt-3 border-t border-gray-200 space-y-2">
-              <div className="flex border-b">
-                <button
-                  onClick={() => setActiveRefTab("rubric")}
-                  data-testid={TEST_IDS.annotationReferenceTab("rubric")}
-                  className={`flex-1 py-1.5 text-center text-xs font-bold tracking-tight border-b-2 ${
-                    activeRefTab === "rubric" ? "border-vsf-600 text-vsf-700" : "border-transparent text-slate-400 hover:text-slate-600"
-                  }`}
-                >
-                  Tiêu chí Rubric
-                </button>
-                <button
-                  onClick={() => setActiveRefTab("guideline")}
-                  data-testid={TEST_IDS.annotationReferenceTab("guideline")}
-                  className={`flex-1 py-1.5 text-center text-xs font-bold tracking-tight border-b-2 ${
-                    activeRefTab === "guideline" ? "border-vsf-600 text-vsf-700" : "border-transparent text-slate-400 hover:text-slate-600"
-                  }`}
-                >
-                  Hướng Dẫn
-                </button>
-                <button
-                  onClick={() => setActiveRefTab("examples")}
-                  data-testid={TEST_IDS.annotationReferenceTab("examples")}
-                  className={`flex-1 py-1.5 text-center text-xs font-bold tracking-tight border-b-2 ${
-                    activeRefTab === "examples" ? "border-vsf-600 text-vsf-700" : "border-transparent text-slate-400 hover:text-slate-600"
-                  }`}
-                >
-                  Bài Mẫu Ví Dụ
-                </button>
-              </div>
-
-              <div className="p-3 bg-slate-50 border border-gray-200 rounded-xl leading-relaxed text-slate-600 text-[11px] md:text-[11.5px] max-h-[150px] overflow-y-auto space-y-2" data-testid={TEST_IDS.annotationReferenceContent}>
-                {activeRefTab === "rubric" && (
-                  <>
-                    <p><strong>SF:</strong> Độ trung thành với nguồn (đối chiếu source text extract).</p>
-                    <p><strong>SC:</strong> Nguồn có cover trực tiếp claim (khóa = 0 nếu inaccessible).</p>
-                    <p><strong>NH:</strong> Mức độ không hallucination.</p>
-                    <p className="font-bold text-vsf-800 mt-2">SQ (PDF-native — rule engine):</p>
-                    <ul className="list-disc pl-4 space-y-1">
-                      {SQ_RUBRIC_PDF_NATIVE.map((row) => (
-                        <li key={row.band}>
-                          <strong>{row.band}:</strong> {row.desc}
-                        </li>
-                      ))}
-                    </ul>
-                    <p><strong>REL:</strong> Liên kết với câu hỏi gốc.</p>
-                    <p><strong>COMP:</strong> Độ đầy đủ của claim.</p>
-                  </>
-                )}
-                {activeRefTab === "guideline" && (
-                  <>
-                    <p className="font-semibold text-slate-700 flex items-center gap-1">
-                      <BookOpen size={11} className="text-vsf-500" /> Chấm SQ trên platform:
-                    </p>
-                    <p>Đọc <strong>tier badge</strong> + <strong>domain class</strong> + excerpt PDF. Không bắt buộc web search.</p>
-                    <p>Xác nhận SQ draft từ rule engine; sửa nếu disagree và ghi chú khi tier unknown.</p>
-                    <p className="font-semibold text-slate-700 flex items-center gap-1.5 mt-2">
-                      <Info size={11} className="text-amber-500" /> URL / tier unknown:
-                    </p>
-                    <p>Dùng nút &quot;Mở URL gốc (tùy chọn)&quot; nếu cần verify thủ công — không lưu kết quả search vào export.</p>
-                  </>
-                )}
-                {activeRefTab === "examples" && (
-                  <>
-                    <p className="text-emerald-700 font-bold">✓ VÍ DỤ CHUẨN (High SC Score):</p>
-                    <p className="p-1.5 bg-emerald-100/50 border border-emerald-200 rounded text-gray-700">
-                      "World Bank Urban Upgrading hỗ trợ nâng cấp đường đô thị [1]." {"->"} Source 1 có từ khóa direct support.
-                    </p>
-                    <p className="text-red-750 font-bold mt-2">✗ VÍ DỤ SAI (Low SC - Sắp bị Return):</p>
-                    <p className="p-1.5 bg-red-100/50 border border-red-200 rounded text-gray-700">
-                      "TẤT CẢ các khoản tài trợ ODA đều là viện trợ không hoàn lại." {"->"} Nguồn 3 ghi rõ: ODA có cả cho vay ưu đãi phải hoàn trả.
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-
           </div>
         </section>
 
       </div>
 
-      <div className="workspace-footer">
-        <div className="flex items-center gap-4">
-          <div>
-            <span className="text-xs text-gray-500 block">Composite</span>
-            <strong
-              data-testid={TEST_IDS.annotationCompositeScore}
-              className={`inline-block mt-1 px-3 py-1 rounded-full text-sm font-bold ${getCompositeBadgeClass(currentComposite())}`}
-            >
-              {currentComposite().toFixed(2)}
-            </strong>
+      {/* Popup tham chiếu — mở từ icon trên header. */}
+      {refPopup && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] animate-fade-in" onClick={() => setRefPopup(null)} />
+          <div
+            className="relative w-full max-w-lg bg-white rounded-2xl animate-scale-in max-h-[85vh] overflow-y-auto"
+            style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}
+            role="dialog"
+            aria-modal="true"
+            data-testid={TEST_IDS.annotationReferenceContent}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white">
+              <h3 className="text-[15px] font-bold text-slate-900 flex items-center gap-2">
+                {refPopup === "rubric" && <><ListChecks size={17} className="text-vsf-600" /> Tiêu chí Rubric</>}
+                {refPopup === "guideline" && <><BookOpen size={17} className="text-vsf-600" /> Hướng dẫn</>}
+                {refPopup === "examples" && <><Lightbulb size={17} className="text-vsf-600" /> Bài mẫu ví dụ</>}
+              </h3>
+              <button onClick={() => setRefPopup(null)} aria-label="Đóng" className="text-slate-300 hover:text-slate-500 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 text-[13px] leading-relaxed text-slate-600 space-y-2">
+              {refPopup === "rubric" && (
+                <>
+                  <p><strong>SF:</strong> Độ trung thành với nguồn (đối chiếu source text extract).</p>
+                  <p><strong>SC:</strong> Nguồn có cover trực tiếp claim (khóa = 0 nếu inaccessible).</p>
+                  <p><strong>NH:</strong> Mức độ không hallucination.</p>
+                  <p className="font-bold text-vsf-800 mt-2">SQ (PDF-native — rule engine):</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    {SQ_RUBRIC_PDF_NATIVE.map((row) => (
+                      <li key={row.band}><strong>{row.band}:</strong> {row.desc}</li>
+                    ))}
+                  </ul>
+                  <p><strong>REL:</strong> Liên kết với câu hỏi gốc.</p>
+                  <p><strong>COMP:</strong> Độ đầy đủ của claim.</p>
+                </>
+              )}
+              {refPopup === "guideline" && (
+                <>
+                  <p className="font-semibold text-slate-700 flex items-center gap-1">
+                    <BookOpen size={13} className="text-vsf-500" /> Chấm SQ trên platform:
+                  </p>
+                  <p>Đọc <strong>tier badge</strong> + <strong>domain class</strong> + excerpt PDF. Không bắt buộc web search.</p>
+                  <p>Xác nhận SQ draft từ rule engine; sửa nếu disagree và ghi chú khi tier unknown.</p>
+                  <p className="font-semibold text-slate-700 flex items-center gap-1.5 mt-2">
+                    <Info size={13} className="text-amber-500" /> URL / tier unknown:
+                  </p>
+                  <p>Dùng nút &quot;Mở URL gốc (tùy chọn)&quot; nếu cần verify thủ công — không lưu kết quả search vào export.</p>
+                  <p className="font-semibold text-slate-700 flex items-center gap-1.5 mt-2">
+                    <Info size={13} className="text-vsf-500" /> Quy tắc delta:
+                  </p>
+                  <p>Lệch &gt; ±0,20 so với pre-score → bắt buộc nhập lý do. Chọn <strong>inaccessible</strong> sẽ khóa SC = 0.</p>
+                </>
+              )}
+              {refPopup === "examples" && (
+                <>
+                  <p className="text-emerald-700 font-bold">✓ VÍ DỤ CHUẨN (High SC Score):</p>
+                  <p className="p-2 bg-emerald-100/50 border border-emerald-200 rounded text-gray-700">
+                    "World Bank Urban Upgrading hỗ trợ nâng cấp đường đô thị [1]." {"->"} Source 1 có từ khóa direct support.
+                  </p>
+                  <p className="text-red-750 font-bold mt-2">✗ VÍ DỤ SAI (Low SC - Sắp bị Return):</p>
+                  <p className="p-2 bg-red-100/50 border border-red-200 rounded text-gray-700">
+                    "TẤT CẢ các khoản tài trợ ODA đều là viện trợ không hoàn lại." {"->"} Nguồn 3 ghi rõ: ODA có cả cho vay ưu đãi phải hoàn trả.
+                  </p>
+                </>
+              )}
+            </div>
           </div>
-          <p className="text-xs text-gray-500 max-w-sm hidden sm:block">
-            Delta &gt; ±0,20 cần lý do · inaccessible khóa SC = 0
-          </p>
         </div>
-        <button
-          onClick={handleCustomSubmit}
-          data-testid={TEST_IDS.annotationSubmit}
-          className="btn-primary min-w-[200px]"
-        >
-          Submit to QA
-        </button>
-      </div>
+      )}
     </div>
   );
 }

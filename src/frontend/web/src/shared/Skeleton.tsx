@@ -31,6 +31,36 @@ export function TableSkeleton({ rows = 6, cols = 4 }: { rows?: number; cols?: nu
   );
 }
 
+/** Skeleton cho workspace chấm điểm / QA review (toolbar + 2 khung). */
+export function WorkspaceSkeleton() {
+  return (
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="app-card p-4 flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-9 rounded-lg" />
+          <Skeleton className="h-9 w-9 rounded-lg" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+        </div>
+      </div>
+      {/* 2 khung */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="app-card p-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className={`h-4 ${i % 2 ? "w-2/3" : "w-full"}`} />)}
+          <Skeleton className="h-24 w-full rounded-lg" />
+        </div>
+        <div className="app-card p-4 space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className={`h-4 ${i % 3 ? "w-3/4" : "w-full"}`} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Skeleton dạng lưới card — cho danh sách project. */
 export function CardGridSkeleton({ count = 6 }: { count?: number }) {
   return (

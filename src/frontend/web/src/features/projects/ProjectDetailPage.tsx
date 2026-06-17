@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, UserCheck, UserPlus, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, UserCheck, Loader2 } from "lucide-react";
 import {
   fetchProjectDetail, fetchProjectClaims, assignClaims, assignMembers, removeMember, fetchUserOptions,
   type ProjectInfo, type ProjectClaimsPage, type UserOption,
@@ -13,8 +13,12 @@ import { useToast } from "@/app/providers/ToastProvider";
 import { usePageHeader } from "@/app/providers/PageHeaderProvider";
 import { setIfChanged } from "@/shared/setIfChanged";
 import { TableSkeleton } from "@/shared/Skeleton";
+import { MemberPicker } from "./MemberPicker";
 
 const PAGE = 10;
+const ROW_H = 49; // chiều cao 1 hàng claim (px)
+const HEAD_H = 41; // chiều cao header bảng (px) — cộng vào maxHeight
+const VISIBLE_ROWS = 9; // bảng fix cứng = 9 hàng; vượt thì cuộn dọc
 const POLL_MS = 30000; // auto-refresh ngầm 30s
 const STATUS_FILTERS = [
   { v: "", label: "Tất cả" },
@@ -40,12 +44,13 @@ export function ProjectDetailPage() {
     {
       title: info?.name ?? "Chi tiết dự án",
       description: "Thông tin, thành viên & gán claim cho annotator.",
-      action: (
+      leading: (
         <button
           onClick={() => navigate("/admin/projects")}
-          className="btn-secondary inline-flex items-center gap-2"
+          title="Về danh sách dự án"
+          className="flex-shrink-0 grid place-items-center w-9 h-9 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
         >
-          <ArrowLeft size={16} /> Danh sách
+          <ArrowLeft size={16} />
         </button>
       ),
     },
@@ -61,9 +66,6 @@ export function ProjectDetailPage() {
   const [annotatorId, setAnnotatorId] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  // add member
-  const [newMemberId, setNewMemberId] = useState("");
-  const [newMemberRole, setNewMemberRole] = useState<"ANNOTATOR" | "QA">("ANNOTATOR");
 
   // Info/members chỉ tải 1 lần + sau khi tự thao tác (không polling — ít đổi).
   const loadInfo = useCallback(() => {
@@ -111,12 +113,28 @@ export function ProjectDetailPage() {
   const annotators = info?.members.filter((m) => m.role === "ANNOTATOR" && m.isActive) ?? [];
 
   const toggle = (id: string) =>
-    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
 
-  const doAssign = async (all: boolean) => {
+  // Tích/bỏ tích tất cả claim trên trang hiện tại.
+  const pageIds = page?.items.map((c) => c.claimId) ?? [];
+  const allChecked = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const someChecked = pageIds.some((id) => selected.has(id));
+  const toggleAll = () =>
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (allChecked) pageIds.forEach((id) => n.delete(id));
+      else pageIds.forEach((id) => n.add(id));
+      return n;
+    });
+
+  const doAssign = async () => {
     if (!annotatorId) { showToast("Chọn annotator."); return; }
-    const ids = all ? [] : [...selected];
-    if (!all && ids.length === 0) { showToast("Chọn claim hoặc dùng 'Gán tất cả'."); return; }
+    const ids = [...selected];
+    if (ids.length === 0) { showToast("Tích chọn claim cần gán."); return; }
     setBusy(true);
     try {
       const n = await assignClaims(projectId, annotatorId, ids);
@@ -127,13 +145,11 @@ export function ProjectDetailPage() {
     finally { setBusy(false); }
   };
 
-  const doAddMember = async () => {
-    if (!newMemberId) { showToast("Chọn user để thêm."); return; }
+  const doAddMember = async (userId: string, role: "ANNOTATOR" | "QA") => {
     setBusy(true);
     try {
-      await assignMembers(projectId, [{ userId: newMemberId, role: newMemberRole }]);
+      await assignMembers(projectId, [{ userId, role }]);
       showToast("Đã thêm thành viên.");
-      setNewMemberId("");
       loadInfo();
     } catch (e) { showToast(e instanceof Error ? e.message : "Không thêm được."); }
     finally { setBusy(false); }
@@ -146,78 +162,59 @@ export function ProjectDetailPage() {
     finally { setBusy(false); }
   };
 
-  const stats = page?.stats;
+  // User theo role + tập id thành viên active (cho 2 dropdown Annotator/QA).
+  const annotatorUsers = userOpts.filter((u) => u.role === "ANNOTATOR");
+  const qaUsers = userOpts.filter((u) => u.role === "QA");
+  const activeAnnotatorIds = new Set(
+    (info?.members ?? []).filter((m) => m.isActive && m.role === "ANNOTATOR").map((m) => m.userId),
+  );
+  const activeQaIds = new Set(
+    (info?.members ?? []).filter((m) => m.isActive && m.role === "QA").map((m) => m.userId),
+  );
+
   const totalPages = page ? Math.max(1, Math.ceil(page.total / PAGE)) : 1;
   const curPage = Math.floor(offset / PAGE) + 1;
 
   return (
-    <div className="space-y-5">
-      {/* Thông tin tóm tắt project (tên + nút back đã ở thanh header app). */}
-      <div className="app-card p-5">
-        <p className="text-sm text-gray-500">
-          <span className="font-mono">{info?.code}</span> · {info?.status} ·
-          {info?.deadline ? ` deadline ${info.deadline}` : " không deadline"} ·
-          LLM {info?.llmConfigured ? info?.llmModel : "chưa cấu hình"}
-        </p>
-        {/* Thống kê tiến độ */}
-        {stats && (
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-4">
-            {[
-              { l: "Tổng", v: stats.total }, { l: "Chưa gán", v: stats.unassigned },
-              { l: "Chưa làm", v: stats.ready }, { l: "Đã nộp", v: stats.submitted },
-              { l: "Bị trả", v: stats.returned }, { l: "Đã duyệt", v: stats.approved },
-            ].map((s) => (
-              <div key={s.l} className="rounded-lg bg-slate-50 border border-slate-100 p-2 text-center">
-                <div className="text-lg font-extrabold text-slate-900">{s.v}</div>
-                <div className="text-[10px] text-slate-400 uppercase">{s.l}</div>
-              </div>
-            ))}
+    <div className="space-y-4 -mt-2">
+      {/* Thành viên project + Gán claim — cùng một hàng. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Quản lý thành viên — 2 dropdown theo role (Annotator / QA). */}
+        <div className="app-card p-4 space-y-2">
+          <h3 className="text-sm font-bold text-slate-800">Thành viên project</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <MemberPicker
+              label="Annotator"
+              users={annotatorUsers}
+              activeIds={activeAnnotatorIds}
+              disabled={busy}
+              onAdd={(id) => doAddMember(id, "ANNOTATOR")}
+              onRemove={doRemoveMember}
+            />
+            <MemberPicker
+              label="QA"
+              users={qaUsers}
+              activeIds={activeQaIds}
+              disabled={busy}
+              onAdd={(id) => doAddMember(id, "QA")}
+              onRemove={doRemoveMember}
+            />
           </div>
-        )}
-      </div>
-
-      {/* Quản lý thành viên */}
-      <div className="app-card p-5 space-y-3">
-        <h3 className="text-sm font-bold text-slate-800">Thành viên project</h3>
-        <div className="flex flex-wrap gap-2">
-          {(info?.members.filter((m) => m.isActive) ?? []).length === 0 && (
-            <span className="text-xs text-amber-700">Chưa có thành viên — thêm annotator/QA bên dưới.</span>
-          )}
-          {info?.members.filter((m) => m.isActive).map((m) => (
-            <span key={m.userId} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
-              m.role === "QA" ? "bg-teal-50 text-teal-700 border-teal-200" : "bg-vsf-50 text-vsf-700 border-vsf-200"}`}>
-              {m.email} · {m.role}
-              <button onClick={() => doRemoveMember(m.userId)} className="text-red-500 hover:text-red-700"><Trash2 size={12} /></button>
-            </span>
-          ))}
         </div>
-        <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100">
-          <span className="text-xs font-semibold text-slate-600">Thêm thành viên:</span>
-          <select value={newMemberId} onChange={(e) => setNewMemberId(e.target.value)} className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
-            <option value="">— Chọn user —</option>
-            {userOpts.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
-          </select>
-          <select value={newMemberRole} onChange={(e) => setNewMemberRole(e.target.value as "ANNOTATOR" | "QA")} className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
-            <option value="ANNOTATOR">ANNOTATOR</option>
-            <option value="QA">QA</option>
-          </select>
-          <button onClick={doAddMember} disabled={busy} className="py-1.5 px-3 bg-vsf-600 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1 disabled:opacity-50">
-            <UserPlus size={13} /> Thêm
-          </button>
-        </div>
-      </div>
 
-      {/* Gán claim */}
-      <div className="app-card p-4 flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-semibold text-gray-700">Gán claim cho:</span>
-        <select value={annotatorId} onChange={(e) => setAnnotatorId(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
-          {annotators.length === 0 && <option value="">— Chưa có annotator —</option>}
-          {annotators.map((m) => <option key={m.userId} value={m.userId}>{m.email}</option>)}
-        </select>
-        <button onClick={() => doAssign(false)} disabled={busy || !annotatorId} className="btn-primary !py-2 !px-3 !text-xs inline-flex items-center gap-1.5 disabled:opacity-50">
-          {busy && <Loader2 size={13} className="animate-spin" />}<UserCheck size={13} /> Gán {selected.size} đã chọn
-        </button>
-        <button onClick={() => doAssign(true)} disabled={busy || !annotatorId} className="text-xs font-bold text-vsf-600 disabled:opacity-50">Gán TẤT CẢ (theo filter)</button>
+        {/* Gán claim */}
+        <div className="app-card p-4 space-y-2">
+          <h3 className="text-sm font-bold text-slate-800">Gán claim cho annotator</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select value={annotatorId} onChange={(e) => setAnnotatorId(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+              {annotators.length === 0 && <option value="">— Chưa có annotator —</option>}
+              {annotators.map((m) => <option key={m.userId} value={m.userId}>{m.email}</option>)}
+            </select>
+            <button onClick={doAssign} disabled={busy || !annotatorId} className="btn-primary !py-2 !px-3 !text-xs inline-flex items-center gap-1.5 disabled:opacity-50">
+              {busy && <Loader2 size={13} className="animate-spin" />}<UserCheck size={13} /> Gán {selected.size} đã chọn
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Filter claim */}
@@ -238,11 +235,21 @@ export function ProjectDetailPage() {
         <div className="app-card p-4"><TableSkeleton rows={PAGE} cols={5} /></div>
       ) : (
       <div className="app-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Bảng fix cứng chiều cao = 9 hàng; vượt thì cuộn dọc, header dính. */}
+        <div className="overflow-auto" style={{ height: `${VISIBLE_ROWS * ROW_H + HEAD_H}px` }}>
           <table className="data-table">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-white">
               <tr>
-                <th className="py-3 px-4 w-10"></th>
+                <th className="py-3 px-4 w-10">
+                  <input
+                    type="checkbox"
+                    aria-label="Chọn tất cả claim trong trang"
+                    checked={allChecked}
+                    ref={(el) => { if (el) el.indeterminate = !allChecked && someChecked; }}
+                    onChange={toggleAll}
+                    disabled={pageIds.length === 0}
+                  />
+                </th>
                 <th className="py-3 px-4">#</th>
                 <th className="py-3 px-4">Claim</th>
                 <th className="py-3 px-4">Trạng thái</th>
@@ -251,11 +258,17 @@ export function ProjectDetailPage() {
             </thead>
             <tbody className="text-gray-700">
               {page?.items.length === 0 && (
-                <tr><td colSpan={5} className="py-6 text-center text-gray-400">Không có claim khớp filter.</td></tr>
+                <tr style={{ height: `${VISIBLE_ROWS * ROW_H}px` }}>
+                  <td colSpan={5} className="text-center text-gray-400 align-middle">Không có claim khớp filter.</td>
+                </tr>
               )}
               {page?.items.map((c) => (
-                <tr key={c.claimId}>
-                  <td className="py-3 px-4"><input type="checkbox" checked={selected.has(c.claimId)} onChange={() => toggle(c.claimId)} /></td>
+                <tr
+                  key={c.claimId}
+                  onClick={() => toggle(c.claimId)}
+                  className="cursor-pointer transition-colors hover:bg-vsf-50/60"
+                >
+                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.has(c.claimId)} onChange={() => toggle(c.claimId)} /></td>
                   <td className="py-3 px-4 font-mono text-sm">{c.claimOrder}</td>
                   <td className="py-3 px-4 max-w-md truncate" title={c.claimText}>{c.claimText}</td>
                   <td className="py-3 px-4"><span className="status-pill bg-gray-50 text-gray-700 border-gray-200">{c.status}</span></td>
@@ -271,7 +284,7 @@ export function ProjectDetailPage() {
         </div>
         {/* Phân trang */}
         {page && page.total > PAGE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 text-xs">
+          <div className="flex items-center justify-between px-3 py-2 border-t border-slate-100 text-xs">
             <span className="text-slate-500">Trang {curPage}/{totalPages} · {page.total} claim</span>
             <div className="flex gap-2">
               <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}

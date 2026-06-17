@@ -10,6 +10,8 @@ import {
 export interface PageHeaderConfig {
   title: string;
   description?: string;
+  /** Phần tử nằm TRƯỚC tiêu đề (vd nút back hình tròn). */
+  leading?: ReactNode;
   /** Nút hành động bên phải header (vd "Tạo Project"). */
   action?: ReactNode;
   /** true → action căn giữa thanh header (dùng cho stepper); mặc định nằm phải. */

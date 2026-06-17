@@ -96,6 +96,8 @@ class TaskListItem(BaseModel):
     parent_task_id: uuid.UUID
     article_code: str | None
     title: str | None
+    project_id: uuid.UUID | None = None
+    project_name: str | None = None
 
 
 class TaskListOut(BaseModel):
@@ -114,10 +116,12 @@ class TaskDetailOut(BaseModel):
     claim_text: str
     status: str
     citation_markers: str | None
+    submitted_at: datetime | None = None
     # Ngữ cảnh bài gốc
     parent_task_id: uuid.UUID
     article_code: str | None
     title: str | None
+    project_name: str | None = None
     answer_context: str | None      # đoạn answer text xung quanh claim (200 ký tự)
     # Pre-score (immutable baseline — BR-5.1)
     pre_score: PreScoreOut | None

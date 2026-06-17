@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { ClaimTask, Dimension } from "../types";
 import { TEST_IDS } from "../testability";
 import {
-  ArrowLeft,
   CheckCircle,
   XCircle,
   FileText,
@@ -27,6 +26,16 @@ interface QaReviewViewProps {
   onApprove: (id: string) => void;
   onReturn: (id: string, errorType: string, comment: string) => void;
   showToast: (msg: string) => void;
+}
+
+/** ISO → "dd/MM/yyyy HH:mm"; chuỗi gốc nếu parse lỗi. */
+function formatSubmittedAt(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("vi-VN", {
+    day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
 }
 
 export default function QaReviewView({
@@ -89,30 +98,42 @@ export default function QaReviewView({
 
   return (
     <div className="space-y-4">
-      <section className="bg-white rounded-xl border border-slate-100 p-4 shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500" data-testid={TEST_IDS.qaReviewBreadcrumb}>
-            <button onClick={onBackToQueue} data-testid={TEST_IDS.qaBackQueue} className="hover:underline font-bold text-vsf-600 flex items-center gap-0.5">
-              <ArrowLeft size={12} /> Quay lại Queue
-            </button>
-            <span>/</span>
-            <span>QA Review Workspace</span>
-            <span>/</span>
-            <span>{task.id}</span>
+      <section className="bg-white rounded-xl border border-slate-100 p-4 shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" data-testid={TEST_IDS.qaReviewBreadcrumb}>
+        <div className="min-w-0">
+          <h2 className="text-base font-bold text-slate-900 truncate">{task.projectName || "Dự án"}</h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-400 mt-0.5">
+            {task.submittedAt && (
+              <span className="flex items-center gap-1 whitespace-nowrap"><History size={12} /> Nộp lúc {formatSubmittedAt(task.submittedAt)}</span>
+            )}
+            <span className="whitespace-nowrap">Annotator: <span className="font-semibold text-slate-600">{task.annotator || "—"}</span></span>
           </div>
-          <h2 className="text-base font-extrabold text-slate-900">
-            Thẩm Định Task: <span className="font-mono text-vsf-600">{task.id}</span>
-          </h2>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
-            Annotator: {task.annotator}
-          </span>
-          <span data-testid={TEST_IDS.qaReviewStatusBadge} className="px-2.5 py-1 rounded-full bg-vsf-50 text-vsf-800 border border-vsf-200 text-xs font-bold font-mono">
+        {isReviewable && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleApproveAction}
+              data-testid={TEST_IDS.qaApprove}
+              className="py-2 px-4 bg-gradient-to-tr from-emerald-600 to-emerald-700 text-white rounded-lg text-sm font-bold hover:from-emerald-700 hover:to-emerald-800 shadow flex items-center justify-center gap-1.5"
+            >
+              <CheckCircle size={15} /> Approve
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenReturnModal}
+              data-testid={TEST_IDS.qaReturnOpen}
+              className="py-2 px-4 bg-white border border-red-200 text-red-700 rounded-lg text-sm font-bold hover:bg-red-50 flex items-center justify-center gap-1.5"
+            >
+              <XCircle size={15} /> Return
+            </button>
+          </div>
+        )}
+        {!isReviewable && (
+          <span data-testid={TEST_IDS.qaReviewStatusBadge} className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold flex-shrink-0">
             {task.status}
           </span>
-        </div>
+        )}
       </section>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow">
@@ -152,17 +173,13 @@ export default function QaReviewView({
                   <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
                     <BookOpen size={15} className="text-vsf-600" /> Hồ sơ PDF để QA đối chiếu
                   </h3>
-                  <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-mono">
-                      {task.articleCode}
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-vsf-50 text-vsf-800 border border-vsf-100 font-mono">
-                      {task.answerPdf || "answer_pdf_pending"}
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                      {task.sectionName}
-                    </span>
-                  </div>
+                  {task.sectionName && (
+                    <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                        {task.sectionName}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 text-xs">
@@ -288,11 +305,11 @@ export default function QaReviewView({
                     <Info size={14} className="text-vsf-600" /> Claim sau khi annotator xử lý
                     {task.edited && <span className="bg-vsf-100 text-vsf-800 text-[9px] px-1 rounded ml-1 uppercase">Đã sửa</span>}
                   </h4>
-                  <div className="flex flex-wrap gap-1">
-                    <span className="px-1.5 py-0.5 bg-slate-200 rounded font-mono text-[10px]">{task.articleCode}</span>
-                    <span className="px-1.5 py-0.5 bg-slate-200 rounded font-mono text-[10px]">{task.sectionName}</span>
-                    <span className="px-1.5 py-0.5 bg-slate-100 rounded font-mono text-[10px]">{task.bundleId}</span>
-                  </div>
+                  {task.sectionName && (
+                    <div className="flex flex-wrap gap-1">
+                      <span className="px-1.5 py-0.5 bg-slate-200 rounded font-mono text-[10px]">{task.sectionName}</span>
+                    </div>
+                  )}
                   <p className="p-3 bg-white border border-gray-200 rounded-lg text-slate-800 leading-relaxed font-semibold">
                     {task.claimFinal}
                   </p>
@@ -400,33 +417,11 @@ export default function QaReviewView({
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 font-bold space-y-3">
-                {!isReviewable && (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                    Task đang ở trạng thái <strong>{task.status}</strong>. Theo workflow QA, mục này chỉ còn để xem lịch sử và đối chiếu, không cho approve hoặc return lần nữa.
-                  </div>
-                )}
-                {isReviewable && (
-                  <div className="flex gap-3.5">
-                    <button
-                      type="button"
-                      onClick={handleApproveAction}
-                      data-testid={TEST_IDS.qaApprove}
-                      className="flex-1 py-2.5 px-4 bg-gradient-to-tr from-emerald-600 to-emerald-700 text-white rounded-lg text-sm hover:from-emerald-700 hover:to-emerald-800 shadow shadow-emerald-50 flex items-center justify-center gap-1.5"
-                    >
-                      <CheckCircle size={15} /> Phê duyệt hồ sơ (Approve)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenReturnModal}
-                      data-testid={TEST_IDS.qaReturnOpen}
-                      className="flex-1 py-2.5 px-4 bg-white border border-red-200 text-red-700 rounded-lg text-sm hover:bg-red-50 flex items-center justify-center gap-1.5"
-                    >
-                      <XCircle size={15} /> Trả lại xử lý (Return)
-                    </button>
-                  </div>
-                )}
-              </div>
+              {!isReviewable && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                  Task đang ở trạng thái <strong>{task.status}</strong>. Theo workflow QA, mục này chỉ còn để xem lịch sử và đối chiếu, không cho approve hoặc return lần nữa.
+                </div>
+              )}
             </div>
           ) : (
             <div className="timeline-container space-y-6 max-w-2xl mx-auto py-2" data-testid={TEST_IDS.qaHistoryTimeline}>
@@ -435,7 +430,7 @@ export default function QaReviewView({
                   <div className="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white shadow"></div>
                   <div className="text-xs space-y-1">
                     <strong className="block text-slate-800">Tải tài liệu thô (Uploaded Bundle)</strong>
-                    <span className="block text-slate-400 font-medium">Hệ thống ghi nhận Bundle {task.bundleId} gồm Answer PDF và Sources.</span>
+                    <span className="block text-slate-400 font-medium">Hệ thống ghi nhận bundle gồm Answer PDF và Sources.</span>
                   </div>
                 </div>
 

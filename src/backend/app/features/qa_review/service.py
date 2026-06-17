@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.constants import JUSTIFICATION_THRESHOLD, ClaimStatus, QaDecision, Role
 from app.core.exceptions import AppError, NotFoundError
@@ -33,9 +33,11 @@ from app.features.qa_review.schemas import (
     ScoreDiffItem,
 )
 from app.models.annotation_submission import AnnotationSubmission
+from app.models.batch import Batch
 from app.models.claim_task import ClaimTask
 from app.models.llm_pre_score import LlmPreScore
 from app.models.parent_task import ParentTask
+from app.models.project import Project
 from app.models.qa_review import QaReview
 from app.models.user import UserAccount
 
@@ -141,30 +143,44 @@ async def qa_queue(
     *,
     db: AsyncSession,
 ) -> QueueOut:
-    """Lay danh sach claim da 'submitted' can review."""
+    """Lay danh sach claim da 'submitted' can review (kem project + annotator + composite)."""
+    # JOIN Project (qua ParentTask→Batch) + UserAccount (annotator) de hien ro du lieu.
+    annotator = aliased(UserAccount)
     stmt = (
-        select(ClaimTask)
+        select(ClaimTask, Project.id, Project.project_name, annotator.email, annotator.full_name)
+        .join(ParentTask, ParentTask.id == ClaimTask.parent_task_id)
+        .join(Batch, Batch.id == ParentTask.batch_id)
+        .join(Project, Project.id == Batch.project_id)
+        .outerjoin(annotator, annotator.id == ClaimTask.assigned_annotator_id)
         .where(ClaimTask.status == ClaimStatus.SUBMITTED)
-        .options(selectinload(ClaimTask.parent_task))
+        .options(selectinload(ClaimTask.parent_task), selectinload(ClaimTask.submissions))
         .order_by(ClaimTask.submitted_at.asc())
     )
     result = await db.execute(stmt)
-    claims = result.scalars().all()
+    rows = result.all()
 
-    items = [
-        QueueItem(
-            claim_id=c.id,
-            claim_order=c.claim_order,
-            claim_text=c.claim_text_original,
-            section_name=c.section_name,
-            parent_task_id=c.parent_task_id,
-            article_code=c.parent_task.article_code if c.parent_task else None,
-            title=c.parent_task.title if c.parent_task else None,
-            submitted_at=c.submitted_at,
-            annotator_id=c.assigned_annotator_id,
+    items = []
+    for c, project_id, project_name, ann_email, ann_name in rows:
+        sub = _latest_annotator_submission(c)
+        composite = float(sub.composite_score) if sub and sub.composite_score is not None else None
+        items.append(
+            QueueItem(
+                claim_id=c.id,
+                claim_order=c.claim_order,
+                claim_text=c.claim_text_original,
+                section_name=c.section_name,
+                parent_task_id=c.parent_task_id,
+                article_code=c.parent_task.article_code if c.parent_task else None,
+                title=c.parent_task.title if c.parent_task else None,
+                submitted_at=c.submitted_at,
+                annotator_id=c.assigned_annotator_id,
+                annotator_email=ann_email,
+                annotator_name=ann_name,
+                project_id=project_id,
+                project_name=project_name,
+                composite_annotator=composite,
+            )
         )
-        for c in claims
-    ]
     return QueueOut(items=items, total=len(items))
 
 
@@ -209,6 +225,16 @@ async def review_detail(
         for r in sorted(claim.qa_reviews, key=lambda r: r.created_at)
     ]
 
+    # Tên dự án (qua ParentTask→Batch→Project) + email annotator để hiện trên header.
+    project_name = await db.scalar(
+        select(Project.project_name)
+        .join(Batch, Batch.project_id == Project.id)
+        .where(Batch.id == claim.parent_task.batch_id)
+    ) if claim.parent_task else None
+    annotator_email = await db.scalar(
+        select(UserAccount.email).where(UserAccount.id == claim.assigned_annotator_id)
+    ) if claim.assigned_annotator_id else None
+
     return ReviewDetailOut(
         claim_id=claim.id,
         claim_order=claim.claim_order,
@@ -217,6 +243,9 @@ async def review_detail(
         citation_markers=claim.citation_markers,
         article_code=claim.parent_task.article_code if claim.parent_task else None,
         title=claim.parent_task.title if claim.parent_task else None,
+        project_name=project_name,
+        submitted_at=claim.submitted_at,
+        annotator_email=annotator_email,
         answer_context=_build_answer_context(claim),
         score_diff=score_diff,
         composite_pre=composite_pre,

@@ -32,6 +32,8 @@ export interface ClaimTask {
   id: string;
   answerId: string;
   bundleId: string;
+  projectId: string;
+  projectName: string;
   articleCode: string;
   title: string;
   category: string;
@@ -61,6 +63,8 @@ export interface ClaimTask {
   edited: boolean;
   pre: Record<Dimension, number>;
   ann: Record<Dimension, number>;
+  /** Composite annotator (server tính); null nếu chưa có. Dùng cho QA queue. */
+  compositeAnnotator?: number | null;
   sourceStatus: string;
   sourceNote: string;
   reason: string;
@@ -104,9 +108,13 @@ export interface ExportJob {
 
 export interface AuditLog {
   id: string;
+  /** Email/tên người thực hiện (đã rõ), fallback "Hệ thống" nếu không có. */
   user: string;
+  /** Vai trò người thực hiện tại thời điểm hành động (ADMIN/QA/ANNOTATOR). */
+  userRole: string;
   action: string;
   entity: string;
+  /** ISO timestamp gốc (để format hiển thị). */
   time: string;
   detail: string;
 }

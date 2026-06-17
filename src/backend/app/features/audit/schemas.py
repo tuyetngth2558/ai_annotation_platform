@@ -16,6 +16,8 @@ class AuditLogOut(BaseModel):
     id: uuid.UUID
     project_id: uuid.UUID | None
     user_id: uuid.UUID | None
+    user_email: str | None = None
+    user_name: str | None = None
     user_role: str | None
     entity_type: str
     entity_id: uuid.UUID | None
