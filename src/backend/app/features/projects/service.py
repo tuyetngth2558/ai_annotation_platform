@@ -1,0 +1,509 @@
+"""Logic nghiệp vụ cho Projects (AC-1.1..1.4, BR-1.1..1.3)."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import date
+
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.core.crypto import decrypt_secret, encrypt_secret, mask_secret
+from app.core.exceptions import AppError, NotFoundError
+from app.core.logging import get_logger
+from app.features.projects.schemas import (
+    AssignClaimsIn,
+    AssignClaimsOut,
+    AssignMembersIn,
+    ClaimStatusStats,
+    LlmConfigStatus,
+    MemberOut,
+    ProjectClaimOut,
+    ProjectClaimsOut,
+    ProjectCreate,
+    ProjectDetail,
+    ProjectOut,
+)
+from app.models.batch import Batch
+from app.models.claim_task import ClaimTask
+from app.models.parent_task import ParentTask
+from app.models.project import Project
+from app.models.user import UserAccount
+from app.models.user_project_role import UserProjectRole
+
+logger = get_logger(__name__)
+
+
+def _llm_status(project: Project) -> LlmConfigStatus:
+    """Tạo LlmConfigStatus từ model — API key luôn mask (BR-1.2)."""
+    is_configured = bool(
+        project.llm_endpoint and project.llm_api_key_enc and project.llm_model
+    )
+    return LlmConfigStatus(
+        endpoint=project.llm_endpoint,
+        api_key_masked=mask_secret(project.llm_api_key_enc or ""),
+        model=project.llm_model,
+        is_configured=is_configured,
+    )
+
+
+async def create_project(db: AsyncSession, payload: ProjectCreate) -> ProjectOut:
+    """Tạo project mới + LLM config (AC-1.1/1.2, BR-1.1/1.2/1.3).
+
+    Modality luôn 'text' (BR-1.1) — không nhận từ client.
+    API key được encrypt Fernet trước khi lưu (BR-1.2).
+    Prompt validate {{claim_text}} + {{source_context}} ở schema (BR-1.3).
+    """
+    # project_code: client gửi → check unique; bỏ trống → tự sinh proj_001, proj_002...
+    if payload.project_code:
+        dup = await db.execute(
+            select(Project.id).where(Project.project_code == payload.project_code)
+        )
+        if dup.scalar_one_or_none() is not None:
+            raise AppError("project_code đã tồn tại.", code="duplicate_code", status_code=409)
+        project_code = payload.project_code
+    else:
+        project_code = await _next_project_code(db)
+
+    # project_name unique (case-insensitive) — tránh trùng tên gây nhầm.
+    dup_name = await db.execute(
+        select(Project.id).where(
+            func.lower(Project.project_name) == payload.project_name.strip().lower()
+        )
+    )
+    if dup_name.scalar_one_or_none() is not None:
+        raise AppError("Tên project đã tồn tại.", code="duplicate_name", status_code=409)
+
+    # Validate deadline >= hôm nay nếu có
+    if payload.deadline and payload.deadline < date.today():
+        raise AppError("Deadline phải >= ngày hôm nay.", code="invalid_deadline", status_code=422)
+    # Validate start_date <= deadline (không cho hạn chót trước ngày bắt đầu)
+    if payload.start_date and payload.deadline and payload.start_date > payload.deadline:
+        raise AppError(
+            "Ngày bắt đầu phải trước hoặc bằng hạn chót.",
+            code="invalid_date_range",
+            status_code=422,
+        )
+
+    # llm_config tùy chọn: nếu None → để trống, pipeline dùng cấu hình LLM từ .env.
+    cfg = payload.llm_config
+    project = Project(
+        project_code=project_code,
+        project_name=payload.project_name,
+        description=payload.description,
+        modality="text",  # BR-1.1: luôn 'text' ở MVP
+        # 'draft' = vừa tạo, CHƯA import bundle. Chuyển 'active' khi confirm_import xong.
+        status="draft",
+        start_date=payload.start_date,
+        deadline=payload.deadline,
+        llm_endpoint=cfg.endpoint if cfg else None,
+        llm_api_key_enc=encrypt_secret(cfg.api_key) if cfg else None,  # BR-1.2
+        llm_model=cfg.model if cfg else None,
+        llm_prompt_template=cfg.prompt_template if cfg else None,
+    )
+    db.add(project)
+    await db.commit()
+    await db.refresh(project)
+
+    logger.info("Project tao thanh cong: %s (%s)", project.project_code, project.id)
+
+    return ProjectOut(
+        id=project.id,
+        project_code=project.project_code,
+        project_name=project.project_name,
+        description=project.description,
+        modality=project.modality,
+        status=project.status,
+        start_date=project.start_date,
+        deadline=project.deadline,
+        created_at=project.created_at,
+        llm_config=_llm_status(project),
+        member_count=0,
+    )
+
+
+async def _next_project_code(db: AsyncSession) -> str:
+    """Sinh mã project dạng proj_001, proj_002... (số lớn nhất hiện có + 1).
+
+    Quét các code khớp 'proj_NNN', lấy số lớn nhất; tăng dần tới khi không trùng
+    (an toàn cả khi có project bị xóa giữa chừng).
+    """
+    res = await db.execute(
+        select(Project.project_code).where(Project.project_code.like("proj\\_%"))
+    )
+    max_num = 0
+    for (code,) in res.all():
+        suffix = code.removeprefix("proj_")
+        if suffix.isdigit():
+            max_num = max(max_num, int(suffix))
+
+    n = max_num + 1
+    while True:
+        candidate = f"proj_{n:03d}"
+        exists = await db.execute(select(Project.id).where(Project.project_code == candidate))
+        if exists.scalar_one_or_none() is None:
+            return candidate
+        n += 1
+
+
+async def list_projects(db: AsyncSession, limit: int, offset: int) -> list[ProjectOut]:
+    """Danh sách project + member_count + trạng thái LLM (AC-1.4)."""
+    # Subquery đếm thành viên active per project
+    member_count_sq = (
+        select(
+            UserProjectRole.project_id,
+            func.count(UserProjectRole.id).label("cnt"),
+        )
+        .where(UserProjectRole.is_active == True)  # noqa: E712
+        .group_by(UserProjectRole.project_id)
+        .subquery()
+    )
+
+    rows = await db.execute(
+        select(Project, func.coalesce(member_count_sq.c.cnt, 0).label("member_count"))
+        .outerjoin(member_count_sq, Project.id == member_count_sq.c.project_id)
+        .order_by(Project.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+
+    result = []
+    for project, cnt in rows:
+        result.append(
+            ProjectOut(
+                id=project.id,
+                project_code=project.project_code,
+                project_name=project.project_name,
+                description=project.description,
+                modality=project.modality,
+                status=project.status,
+                start_date=project.start_date,
+                deadline=project.deadline,
+                created_at=project.created_at,
+                llm_config=_llm_status(project),
+                member_count=cnt,
+            )
+        )
+    return result
+
+
+async def get_project(db: AsyncSession, project_id: uuid.UUID) -> ProjectDetail:
+    """Chi tiết project gồm danh sách thành viên (AC-1.3, AC-1.4)."""
+    res = await db.execute(
+        select(Project)
+        .where(Project.id == project_id)
+        .options(
+            selectinload(Project.roles).selectinload(UserProjectRole.user)
+        )
+    )
+    project = res.scalar_one_or_none()
+    if project is None:
+        raise NotFoundError("Không tìm thấy project.")
+
+    members = [
+        MemberOut(
+            user_id=r.user_id,
+            full_name=r.user.full_name,
+            email=r.user.email,
+            role=r.role,
+            is_active=r.is_active,
+        )
+        for r in project.roles
+    ]
+
+    return ProjectDetail(
+        id=project.id,
+        project_code=project.project_code,
+        project_name=project.project_name,
+        description=project.description,
+        modality=project.modality,
+        status=project.status,
+        start_date=project.start_date,
+        deadline=project.deadline,
+        created_at=project.created_at,
+        llm_config=_llm_status(project),
+        member_count=len([m for m in members if m.is_active]),
+        members=members,
+    )
+
+
+async def assign_members(
+    db: AsyncSession, project_id: uuid.UUID, payload: AssignMembersIn
+) -> list[MemberOut]:
+    """Gán/cập nhật danh sách Annotator/QA vào project (AC-1.3).
+
+    Upsert: nếu user đã có role trong project thì cập nhật is_active=True + role.
+    Không xóa role cũ — dùng is_active=False để deactivate nếu cần.
+    """
+    # Kiểm tra project tồn tại
+    proj = await db.execute(select(Project.id).where(Project.id == project_id))
+    if proj.scalar_one_or_none() is None:
+        raise NotFoundError("Không tìm thấy project.")
+
+    # Lấy user_ids từ payload, kiểm tra tất cả tồn tại
+    user_ids = [m.user_id for m in payload.members]
+    existing_users = await db.execute(
+        select(UserAccount.id, UserAccount.full_name, UserAccount.email).where(
+            UserAccount.id.in_(user_ids)
+        )
+    )
+    user_map = {row.id: row for row in existing_users}
+    missing = [uid for uid in user_ids if uid not in user_map]
+    if missing:
+        raise NotFoundError(f"Không tìm thấy user: {[str(u) for u in missing]}")
+
+    # Lấy các role hiện có trong project
+    existing_roles = await db.execute(
+        select(UserProjectRole).where(
+            UserProjectRole.project_id == project_id,
+            UserProjectRole.user_id.in_(user_ids),
+        )
+    )
+    role_map: dict[tuple[uuid.UUID, str], UserProjectRole] = {
+        (r.user_id, r.role): r for r in existing_roles.scalars()
+    }
+
+    out: list[MemberOut] = []
+    for member in payload.members:
+        key = (member.user_id, member.role.value)
+        if key in role_map:
+            # Reactivate nếu đã tồn tại nhưng bị deactivate
+            role_map[key].is_active = True
+        else:
+            new_role = UserProjectRole(
+                user_id=member.user_id,
+                project_id=project_id,
+                role=member.role.value,
+                is_active=True,
+            )
+            db.add(new_role)
+
+        user = user_map[member.user_id]
+        out.append(
+            MemberOut(
+                user_id=member.user_id,
+                full_name=user.full_name,
+                email=user.email,
+                role=member.role.value,
+                is_active=True,
+            )
+        )
+
+    await db.commit()
+    logger.info(
+        "Gan %d thanh vien vao project %s", len(payload.members), project_id
+    )
+    return out
+
+
+def get_decrypted_llm_config(project: Project) -> dict:
+    """Trả LLM config plain text để gọi API (chỉ dùng nội bộ ở service layer).
+
+    Không trả ra ngoài API response — chỉ dùng khi cần gọi LLM.
+    """
+    if not project.llm_api_key_enc:
+        raise AppError("Project chưa có LLM API key.", code="llm_not_configured", status_code=422)
+    return {
+        "endpoint": project.llm_endpoint,
+        "api_key": decrypt_secret(project.llm_api_key_enc),
+        "model": project.llm_model,
+        "prompt_template": project.llm_prompt_template,
+    }
+
+
+async def _ensure_project(db: AsyncSession, project_id: uuid.UUID) -> Project:
+    res = await db.execute(select(Project).where(Project.id == project_id))
+    project = res.scalar_one_or_none()
+    if project is None:
+        raise NotFoundError("Không tìm thấy project.")
+    return project
+
+
+async def list_project_claims(
+    db: AsyncSession,
+    project_id: uuid.UUID,
+    *,
+    limit: int = 10,
+    offset: int = 0,
+    status: str | None = None,
+    annotator_id: uuid.UUID | None = None,
+    unassigned: bool = False,
+) -> ProjectClaimsOut:
+    """Danh sách claim của project (qua Batch.project_id) + email annotator, có phân trang + filter.
+
+    Trang chi tiết project (xem claim + gán người). Chỉ ADMIN.
+    `stats` đếm theo trạng thái toàn project (không theo filter) để hiển tiến độ.
+    """
+    await _ensure_project(db, project_id)
+
+    base = (
+        select(ClaimTask, ParentTask.article_code, ParentTask.title, UserAccount.email)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .outerjoin(UserAccount, ClaimTask.assigned_annotator_id == UserAccount.id)
+        .where(Batch.project_id == project_id)
+    )
+    # Filter
+    if status:
+        base = base.where(ClaimTask.status == status)
+    if unassigned:
+        base = base.where(ClaimTask.assigned_annotator_id.is_(None))
+    elif annotator_id:
+        base = base.where(ClaimTask.assigned_annotator_id == annotator_id)
+
+    # Tổng khớp filter (cho phân trang)
+    total = await db.scalar(
+        select(func.count())
+        .select_from(ClaimTask)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .where(Batch.project_id == project_id)
+        .where(*([ClaimTask.status == status] if status else []))
+        .where(*([ClaimTask.assigned_annotator_id.is_(None)] if unassigned else (
+            [ClaimTask.assigned_annotator_id == annotator_id] if annotator_id else []
+        )))
+    )
+
+    rows = await db.execute(
+        base.order_by(ParentTask.article_code, ClaimTask.claim_order).limit(limit).offset(offset)
+    )
+    items: list[ProjectClaimOut] = []
+    for claim, article_code, title, email in rows.all():
+        items.append(
+            ProjectClaimOut(
+                claim_id=claim.id,
+                claim_order=claim.claim_order,
+                section_name=claim.section_name,
+                claim_text=claim.claim_text_final or claim.claim_text_original,
+                status=claim.status,
+                article_code=article_code,
+                title=title,
+                assigned_annotator_id=claim.assigned_annotator_id,
+                assigned_annotator_email=email,
+            )
+        )
+
+    # Thống kê toàn project theo trạng thái + chưa gán
+    unassigned_count = func.count().filter(ClaimTask.assigned_annotator_id.is_(None))
+    stat_rows = await db.execute(
+        select(ClaimTask.status, func.count(), unassigned_count)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .where(Batch.project_id == project_id)
+        .group_by(ClaimTask.status)
+    )
+    stats = ClaimStatusStats()
+    for st, cnt, unassigned_cnt in stat_rows.all():
+        stats.total += cnt
+        stats.unassigned += unassigned_cnt or 0
+        if hasattr(stats, st):
+            setattr(stats, st, cnt)
+
+    return ProjectClaimsOut(
+        items=items, total=total or 0, limit=limit, offset=offset, stats=stats
+    )
+
+
+async def assign_claims(
+    db: AsyncSession, project_id: uuid.UUID, payload: AssignClaimsIn
+) -> AssignClaimsOut:
+    """Gán claim cho 1 annotator (ADMIN). claim_ids rỗng = gán toàn bộ claim project.
+
+    Annotator phải có role ANNOTATOR trong project (BR-RBAC). Bù khâu D3 (auto-assign).
+    """
+    await _ensure_project(db, project_id)
+
+    # Annotator tồn tại + có role ANNOTATOR trong project này.
+    res = await db.execute(select(UserAccount).where(UserAccount.id == payload.annotator_id))
+    annotator = res.scalar_one_or_none()
+    if annotator is None:
+        raise NotFoundError("Không tìm thấy annotator.")
+    role_check = await db.execute(
+        select(UserProjectRole.id).where(
+            UserProjectRole.user_id == payload.annotator_id,
+            UserProjectRole.project_id == project_id,
+            UserProjectRole.role == "ANNOTATOR",
+        )
+    )
+    if role_check.scalar_one_or_none() is None:
+        raise AppError(
+            "Annotator chưa được gán vào project này (role ANNOTATOR).",
+            code="annotator_not_in_project",
+            status_code=422,
+        )
+
+    # Tập claim hợp lệ thuộc project.
+    claim_q = (
+        select(ClaimTask.id)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .where(Batch.project_id == project_id)
+    )
+    if payload.claim_ids:
+        claim_q = claim_q.where(ClaimTask.id.in_(payload.claim_ids))
+    valid_ids = [row[0] for row in (await db.execute(claim_q)).all()]
+    if not valid_ids:
+        return AssignClaimsOut(assigned_count=0, annotator_id=payload.annotator_id)
+
+    await db.execute(
+        update(ClaimTask)
+        .where(ClaimTask.id.in_(valid_ids))
+        .values(assigned_annotator_id=payload.annotator_id)
+    )
+    await db.commit()
+    return AssignClaimsOut(assigned_count=len(valid_ids), annotator_id=payload.annotator_id)
+
+
+async def remove_member(
+    db: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID
+) -> None:
+    """Gỡ thành viên khỏi project (deactivate mọi role của user trong project).
+
+    Dùng is_active=False (không xóa cứng) để giữ lịch sử. Nếu user đang được gán claim
+    thì claim vẫn giữ assigned_annotator_id (admin tự gán lại nếu cần).
+    """
+    await _ensure_project(db, project_id)
+    await db.execute(
+        update(UserProjectRole)
+        .where(
+            UserProjectRole.project_id == project_id,
+            UserProjectRole.user_id == user_id,
+        )
+        .values(is_active=False)
+    )
+    await db.commit()
+
+
+async def delete_project(db: AsyncSession, project_id: uuid.UUID) -> None:
+    """Xóa project — chỉ cho phép khi CHƯA có claim nào (project nháp/trống).
+
+    Tránh xóa nhầm project đã có dữ liệu annotation. Khi xóa: bỏ luôn batch/bundle/file
+    rỗng + role gán (cascade qua relationship/FK). Project đã có claim → 409, dùng
+    'lưu trữ' (làm sau) thay vì xóa.
+    """
+    await _ensure_project(db, project_id)
+
+    # Đếm claim qua chuỗi ClaimTask → ParentTask → Batch.project_id
+    claim_count = await db.execute(
+        select(func.count(ClaimTask.id))
+        .select_from(ClaimTask)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .where(Batch.project_id == project_id)
+    )
+    if (claim_count.scalar() or 0) > 0:
+        raise AppError(
+            "Không thể xóa project đã có claim. Hãy lưu trữ thay vì xóa.",
+            code="project_has_claims",
+            status_code=409,
+        )
+
+    # Gỡ role gán (UserProjectRole) rồi xóa project. Batch/bundle/file rỗng cascade theo FK.
+    await db.execute(
+        update(UserProjectRole)
+        .where(UserProjectRole.project_id == project_id)
+        .values(is_active=False)
+    )
+    await db.execute(Project.__table__.delete().where(Project.id == project_id))
+    await db.commit()

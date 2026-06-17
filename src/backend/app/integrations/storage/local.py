@@ -43,7 +43,8 @@ class LocalStorage(FileStorage):
         self._path(key).unlink(missing_ok=True)
 
     async def presigned_url(self, key: str, expires_in: int = 3600) -> str:
-        # Local không có presign thật — trả path tương đối; FE dev tải qua API.
-        # TODO(storage): expose endpoint /files/{key} để stream khi dùng local backend.
+        # Local không có presign thật. FE xem PDF qua endpoint stream theo file_id:
+        # GET /api/v1/files/{file_id} (xem app/features/files). Trả path theo key chỉ
+        # để tương thích interface (debug/trace), KHÔNG phải kênh tải chính.
         safe_key = validate_storage_key(key)
         return f"/files/{safe_key}"

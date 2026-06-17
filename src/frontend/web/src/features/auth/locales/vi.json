@@ -1,9 +1,0 @@
-{
-  "title": "Đăng nhập",
-  "subtitle": "Nhập thông tin tài khoản nội bộ để mở workspace.",
-  "email": "Email",
-  "password": "Mật khẩu",
-  "submit": "Đăng nhập",
-  "demoNote": "Tài khoản mock (chỉ dev):",
-  "invalid": "Email hoặc mật khẩu không đúng."
-}

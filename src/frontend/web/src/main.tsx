@@ -1,11 +1,20 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App";
-import "./i18n/config";
-import "./styles/base.css";
+import { RouterProvider } from "react-router-dom";
+import { router } from "@/app/router/routes";
+import { AuthProvider } from "@/app/providers/AuthProvider";
+import { ToastProvider } from "@/app/providers/ToastProvider";
+import { PageHeaderProvider } from "@/app/providers/PageHeaderProvider";
+import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <AuthProvider>
+      <ToastProvider>
+        <PageHeaderProvider>
+          <RouterProvider router={router} />
+        </PageHeaderProvider>
+      </ToastProvider>
+    </AuthProvider>
   </StrictMode>,
 );

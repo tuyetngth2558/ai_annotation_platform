@@ -16,8 +16,10 @@ logger = get_logger(__name__)
 
 
 async def process_bundle(ctx: dict[str, Any], bundle_id: str) -> None:
-    """ARQ task entrypoint. `ctx` do ARQ inject (chứa redis, ...)."""
+    """ARQ task entrypoint. `ctx` do ARQ inject (chứa redis, ...).
+
+    `run_import_pipeline` tự set bundle_status="failed" + error_detail khi lỗi.
+    Exception propagate lên để ARQ retry theo max_tries (EC-LLM-004, xem worker.py).
+    """
     logger.info("process_bundle nhận bundle_id=%s", bundle_id)
     await run_import_pipeline(uuid.UUID(bundle_id))
-    # TODO(import_bundle): cập nhật trạng thái bundle/parent_task khi xong/lỗi;
-    #   retry pre-scoring qua cấu hình job (max_tries) — EC-LLM-004.

@@ -104,7 +104,7 @@ Mỗi bundle bắt buộc có:
 |---|---:|---|
 | `answer_pdf` | 1 | PDF câu trả lời nguyên bản từ portal |
 | `source_ref_pdf` | 1 | PDF danh sách nguồn (order, title, tier) |
-| `source_content_pdf` | 1+ | PDF nội dung nguồn để đối chiếu |
+| `source_content_pdf` | 0..N (optional) | PDF nội dung nguồn để đối chiếu (nếu có thì là evidence chính) |
 
 Tùy chọn hỗ trợ upload batch qua manifest CSV (`sample_pdf_bundle_manifest.csv`).
 
@@ -121,7 +121,7 @@ Tùy chọn hỗ trợ upload batch qua manifest CSV (`sample_pdf_bundle_manifes
 |---|---|---|
 | File không phải PDF hoặc corrupt | Block import | VR-UP-004 |
 | Thiếu `answer_pdf` hoặc `source_ref_pdf` | Block import | VR-UP-001, VR-UP-002 |
-| Không có `source_content_pdf` | Block import | VR-UP-003 |
+| Không có `source_content_pdf` | Không block (optional); warning nếu batch không có file source content nào | removed (was VR-UP-003) |
 | Trùng file role bắt buộc trong 1 bundle | Block import | VR-UP-001, VR-UP-002 |
 | `bundle_name` rỗng | Block import | VR-UP-006 |
 | File vượt max size | Block import | VR-UP-005 |

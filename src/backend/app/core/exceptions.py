@@ -42,4 +42,5 @@ class AuthError(AppError):
     code = "unauthorized"
 
 
-# TODO(core): đăng ký exception handler trong app.main để map AppError -> ErrorResponse.
+# Handler map AppError/Exception -> ErrorResponse đã đăng ký ở app/core/middleware.py
+# (register_middleware), được gọi trong app.main.create_app().

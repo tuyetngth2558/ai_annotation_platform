@@ -8,6 +8,8 @@ Chạy: uvicorn app.main:app --reload
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,6 +17,16 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.middleware import register_middleware
+from app.jobs.settings import close_arq_pool
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: chặn cấu hình nguy hiểm ở staging/production (debug/secret/mock/encryption).
+    settings.assert_safe_for_env()
+    yield
+    # Đóng ARQ pool (enqueue-side) khi app dừng — tránh leak connection.
+    await close_arq_pool()
 
 
 def create_app() -> FastAPI:
@@ -24,6 +36,7 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version="0.1.0",
         debug=settings.app_debug,
+        lifespan=lifespan,
     )
 
     app.add_middleware(

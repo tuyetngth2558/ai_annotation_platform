@@ -46,20 +46,33 @@ _MOCK_ACCOUNTS: dict[str, dict] = {
 }
 
 
-def mock_login(payload: LoginRequest) -> TokenResponse:
-    """Đăng nhập bằng tài khoản mock (chỉ dev)."""
+async def mock_login(db: AsyncSession, payload: LoginRequest) -> TokenResponse:
+    """Đăng nhập bằng tài khoản mock (chỉ dev).
+
+    Vẫn phát token với subject=str(user.id) GIỐNG login thật — tra user thật trong DB
+    (3 user demo seed qua scripts/seed_dev.py) để downstream service resolve theo id nhất
+    quán. Tránh đường mock-only (subject=email) che bug auth.
+    """
     account = _MOCK_ACCOUNTS.get(payload.email.lower())
     if not account or account["password"] != payload.password:
         raise AuthError("Email hoặc mật khẩu không đúng.")
+
+    res = await db.execute(select(UserAccount).where(UserAccount.email == payload.email.lower()))
+    user = res.scalar_one_or_none()
+    if user is None:
+        raise AuthError(
+            "Tài khoản mock chưa có trong DB. Chạy `python scripts/seed_dev.py` để seed user demo."
+        )
     return _issue_tokens(
-        subject=payload.email.lower(),
-        email=payload.email,
+        subject=str(user.id),
+        email=user.email,
         role=account["role"],
         name=account["name"],
     )
 
+    return _issue_tokens(subject=str(user.id), email=user.email, role=role, name=user.full_name)
 
-async def _get_primary_role(db: AsyncSession, user_id) -> Role:
+async def _get_primary_role(db: AsyncSession, user: UserAccount) -> Role:
     """Role CHÍNH của user để nhét vào access token.
 
     ⚠️ GIỚI HẠN MVP (có chủ đích): JWT mang 1 role toàn cục/user. Hệ thống enforce
@@ -68,15 +81,21 @@ async def _get_primary_role(db: AsyncSession, user_id) -> Role:
     (xem ADR 0003) — user có nhiều role ở nhiều project chưa được phân biệt ở tầng token.
     Khi cần per-project thật: `require_project_role` đọc role theo project_id của request
     thay vì dựa role trong token (TODO). Tham chiếu: OQ-008.
+
+    Fallback: nếu user CHƯA thuộc project nào (không có USER_PROJECT_ROLE active) thì dùng
+    `default_role` của user — đúng nghiệp vụ "1 user = 1 role, có thể chưa thuộc project nào".
     """
     res = await db.execute(
         select(UserProjectRole.role)
-        .where(UserProjectRole.user_id == user_id, UserProjectRole.is_active.is_(True))
+        .where(UserProjectRole.user_id == user.id, UserProjectRole.is_active.is_(True))
         .order_by(UserProjectRole.id)  # deterministic
         .limit(1)
     )
     role_str = res.scalar_one_or_none()
     if role_str is None:
+        # Chưa gán project → dùng default_role (role duy nhất của user).
+        if user.default_role:
+            return Role(user.default_role)
         raise AuthError("Tài khoản chưa được gán vai trò.")
     return Role(role_str)
 
@@ -105,7 +124,7 @@ async def login(db: AsyncSession, payload: LoginRequest) -> TokenResponse:
     if user.status != "active":
         raise AuthError("Tài khoản đã bị khóa.")
 
-    role = await _get_primary_role(db, user.id)
+    role = await _get_primary_role(db, user)
 
     user.last_login_at = datetime.now(UTC)
     await db.commit()
@@ -144,7 +163,7 @@ async def refresh(db: AsyncSession, payload_token: str) -> AccessTokenResponse:
             raise AuthError("Tài khoản không còn tồn tại.")
         if user.status != "active":
             raise AuthError("Tài khoản đã bị khóa.")
-        role = await _get_primary_role(db, user.id)
+        role = await _get_primary_role(db, user)
         access = create_access_token(
             subject=str(user.id), claims={"role": role.value, "name": user.full_name}
         )
@@ -156,6 +175,63 @@ async def refresh(db: AsyncSession, payload_token: str) -> AccessTokenResponse:
             subject=str(subject), claims={"role": data.get("role"), "name": data.get("name")}
         )
     return AccessTokenResponse(access_token=access)
+
+
+async def bootstrap_admin(
+    db: AsyncSession, email: str, password: str, full_name: str
+) -> TokenResponse:
+    """Tạo Admin đầu tiên — chỉ chạy được khi DB chưa có user nào (BR-bootstrap).
+
+    Tự khóa sau lần đầu: nếu đã có bất kỳ user nào thì từ chối (403).
+    Cũng seed một project DEFAULT để USER_PROJECT_ROLE có chỗ gán.
+    """
+    from app.models.project import Project
+    from app.models.user_project_role import UserProjectRole
+
+    # Kiểm tra đã có user chưa — nếu có thì khóa endpoint này
+    existing = await db.execute(select(UserAccount).limit(1))
+    if existing.scalar_one_or_none() is not None:
+        from app.core.exceptions import PermissionDeniedError
+        raise PermissionDeniedError(
+            "Bootstrap đã được thực hiện. Endpoint này chỉ dùng được 1 lần khi DB trống."
+        )
+
+    # Seed project DEFAULT nếu chưa có
+    proj_res = await db.execute(select(Project).limit(1))
+    project = proj_res.scalar_one_or_none()
+    if project is None:
+        project = Project(
+            project_code="DEFAULT",
+            project_name="Default Project",
+            description="Project mac dinh duoc tao tu bootstrap",
+            modality="text",
+            status="active",
+        )
+        db.add(project)
+        await db.flush()
+
+    # Tạo Admin user
+    user = UserAccount(
+        email=email.lower(),
+        full_name=full_name,
+        password_hash=hash_password(password),
+        status="active",
+    )
+    db.add(user)
+    await db.flush()
+
+    # Gán role ADMIN vào project
+    db.add(UserProjectRole(
+        user_id=user.id,
+        project_id=project.id,
+        role=Role.ADMIN.value,
+        is_active=True,
+    ))
+
+    user.last_login_at = datetime.now(UTC)
+    await db.commit()
+
+    return _issue_tokens(subject=str(user.id), email=user.email, role=Role.ADMIN, name=full_name)
 
 
 async def change_password(db: AsyncSession, user_id: str, payload: ChangePasswordRequest) -> None:

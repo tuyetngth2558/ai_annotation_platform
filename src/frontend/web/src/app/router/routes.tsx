@@ -1,30 +1,25 @@
-/**
- * Định nghĩa route + guard theo role.
- * - /login (AuthLayout)
- * - /admin/* (ADMIN), /annotator/* (ANNOTATOR), /qa/* (QA) trong AppLayout
- */
+/** Định nghĩa route + guard theo role. URL thật, back/forward chuẩn trình duyệt. */
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import { AppLayout } from "@/app/layouts/AppLayout";
-import { AuthLayout } from "@/app/layouts/AuthLayout";
+import { AppLayout } from "@/app/layout/AppLayout";
 import { RoleGuard } from "@/app/router/RoleGuard";
-import { LoginPage } from "@/features/auth/pages/LoginPage";
-import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
-import { ProjectListPage } from "@/features/projects/pages/ProjectListPage";
-import { ProjectSetupPage } from "@/features/projects/pages/ProjectSetupPage";
-import { ImportBundlePage } from "@/features/import-bundle/pages/ImportBundlePage";
-import { MyTasksPage } from "@/features/annotation-workspace/pages/MyTasksPage";
-import { AnnotationWorkspacePage } from "@/features/annotation-workspace/pages/AnnotationWorkspacePage";
-import { QaQueuePage } from "@/features/qa-review/pages/QaQueuePage";
-import { QaReviewWorkspacePage } from "@/features/qa-review/pages/QaReviewWorkspacePage";
-import { ExportPage } from "@/features/export/pages/ExportPage";
-import { AuditLogPage } from "@/features/audit-log/pages/AuditLogPage";
-import { ForbiddenPage, NotFoundPage } from "@/shared/ui/StatusPage";
+import { ForbiddenPage, NotFoundPage } from "@/app/router/StatusPage";
+
+import { LoginPage } from "@/features/auth/LoginPage";
+import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
+import { DashboardPage } from "@/features/dashboard/DashboardPage";
+import { ProjectsListPage } from "@/features/projects/ProjectsListPage";
+import { ImportPage } from "@/features/projects/ImportPage";
+import { ProjectDetailPage } from "@/features/projects/ProjectDetailPage";
+import { UsersPage } from "@/features/users/UsersPage";
+import { AuditPage } from "@/features/audit/AuditPage";
+import { TasksPage } from "@/features/annotation/TasksPage";
+import { AnnotationPage } from "@/features/annotation/AnnotationPage";
+import { QaQueuePage } from "@/features/qa/QaQueuePage";
+import { QaReviewPage } from "@/features/qa/QaReviewPage";
 
 export const router = createBrowserRouter([
-  {
-    element: <AuthLayout />,
-    children: [{ path: "/login", element: <LoginPage /> }],
-  },
+  { path: "/login", element: <LoginPage /> },
+
   {
     element: (
       <RoleGuard allow={["ADMIN"]}>
@@ -33,11 +28,11 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: "/admin/dashboard", element: <DashboardPage /> },
-      { path: "/admin/projects", element: <ProjectListPage /> },
-      { path: "/admin/projects/new", element: <ProjectSetupPage /> },
-      { path: "/admin/import", element: <ImportBundlePage /> },
-      { path: "/admin/export", element: <ExportPage /> },
-      { path: "/admin/audit", element: <AuditLogPage /> },
+      { path: "/admin/import", element: <ImportPage /> },
+      { path: "/admin/projects", element: <ProjectsListPage /> },
+      { path: "/admin/projects/:projectId", element: <ProjectDetailPage /> },
+      { path: "/admin/users", element: <UsersPage /> },
+      { path: "/admin/audit", element: <AuditPage /> },
     ],
   },
   {
@@ -47,8 +42,9 @@ export const router = createBrowserRouter([
       </RoleGuard>
     ),
     children: [
-      { path: "/annotator/tasks", element: <MyTasksPage /> },
-      { path: "/annotator/tasks/:claimId", element: <AnnotationWorkspacePage /> },
+      { path: "/annotator/dashboard", element: <DashboardPage /> },
+      { path: "/annotator/tasks", element: <TasksPage /> },
+      { path: "/annotator/tasks/:claimId", element: <AnnotationPage /> },
     ],
   },
   {
@@ -58,10 +54,22 @@ export const router = createBrowserRouter([
       </RoleGuard>
     ),
     children: [
+      { path: "/qa/dashboard", element: <DashboardPage /> },
       { path: "/qa/queue", element: <QaQueuePage /> },
-      { path: "/qa/review/:claimId", element: <QaReviewWorkspacePage /> },
+      { path: "/qa/review/:claimId", element: <QaReviewPage /> },
     ],
   },
+
+  // change-password dùng được cho mọi role đã đăng nhập (guard cho cả 3).
+  {
+    element: (
+      <RoleGuard allow={["ADMIN", "ANNOTATOR", "QA"]}>
+        <AppLayout />
+      </RoleGuard>
+    ),
+    children: [{ path: "/change-password", element: <ChangePasswordPage /> }],
+  },
+
   { path: "/", element: <Navigate to="/login" replace /> },
   { path: "/403", element: <ForbiddenPage /> },
   { path: "*", element: <NotFoundPage /> },

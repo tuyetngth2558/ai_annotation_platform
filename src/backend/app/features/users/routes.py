@@ -27,19 +27,19 @@ router = APIRouter(
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def create_user(payload: UserCreate, db=Depends(get_db)) -> UserOut:
-    """Tạo user + mật khẩu tạm + gán role trong project (AC-1.3)."""
+    """Tạo user + mật khẩu tạm + role duy nhất + gán vào 0..N project (AC-1.3)."""
     user = await service.create_user(db, payload)
-    return UserOut.model_validate(user)
+    return UserOut.from_user(user)
 
 
 @router.get("", response_model=list[UserOut])
 async def list_users(pg: PageParams = Depends(page_params), db=Depends(get_db)) -> list[UserOut]:
     """Danh sách user (phân trang)."""
     users = await service.list_users(db, pg.limit, pg.offset)
-    return [UserOut.model_validate(u) for u in users]
+    return [UserOut.from_user(u) for u in users]
 
 
 @router.get("/{user_id}", response_model=UserOut)
 async def get_user(user_id: uuid.UUID, db=Depends(get_db)) -> UserOut:
     user = await service.get_user(db, user_id)
-    return UserOut.model_validate(user)
+    return UserOut.from_user(user)

@@ -16,35 +16,45 @@ from app.models.user_project_role import UserProjectRole
 
 
 async def create_user(db: AsyncSession, payload: UserCreate) -> UserAccount:
-    """Tạo user mới + mật khẩu tạm (hash) + gán role trong 1 project."""
-    email = payload.email.lower()
+    """Tạo user mới + mật khẩu tạm (hash) + role duy nhất + gán vào 0..N project.
 
-    # Validate project tồn tại → trả 404 nghiệp vụ thay vì để FK lỗi thành 500.
-    project = await db.execute(select(Project.id).where(Project.id == payload.project_id))
-    if project.scalar_one_or_none() is None:
-        raise NotFoundError("Không tìm thấy project để gán role.")
+    1 user = 1 role (payload.role) áp cho mọi project. project_ids rỗng → user chưa
+    thuộc project nào (chỉ có default_role). Mỗi project_id → 1 UserProjectRole cùng role.
+    """
+    email = payload.email.lower()
 
     exists = await db.execute(select(UserAccount.id).where(UserAccount.email == email))
     if exists.scalar_one_or_none() is not None:
         raise AppError("Email đã tồn tại.", code="email_exists", status_code=409)
+
+    # Validate tất cả project_ids tồn tại (loại trùng) → 404 nghiệp vụ thay vì FK 500.
+    project_ids = list(dict.fromkeys(payload.project_ids))  # dedup, giữ thứ tự
+    if project_ids:
+        found = await db.execute(select(Project.id).where(Project.id.in_(project_ids)))
+        found_ids = {row[0] for row in found.all()}
+        missing = [str(pid) for pid in project_ids if pid not in found_ids]
+        if missing:
+            raise NotFoundError(f"Không tìm thấy project để gán role: {', '.join(missing)}")
 
     user = UserAccount(
         email=email,
         full_name=payload.full_name,
         password_hash=hash_password(payload.temp_password),
         status="active",
+        default_role=payload.role.value,  # role duy nhất của user
     )
     db.add(user)
     await db.flush()  # lấy user.id
 
-    db.add(
-        UserProjectRole(
-            user_id=user.id,
-            project_id=payload.project_id,
-            role=payload.role.value,
-            is_active=True,
+    for pid in project_ids:
+        db.add(
+            UserProjectRole(
+                user_id=user.id,
+                project_id=pid,
+                role=payload.role.value,  # cùng role ở mọi project
+                is_active=True,
+            )
         )
-    )
     await db.commit()
     await db.refresh(user)
     return user

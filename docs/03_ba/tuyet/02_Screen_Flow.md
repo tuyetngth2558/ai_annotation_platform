@@ -142,7 +142,7 @@ Project Setup
 Import PDF Bundle
   → Upload nhiều file PDF (hoặc upload theo batch manifest)
   → Gán file_role: answer_pdf / source_ref_pdf / source_content_pdf
-  → Validate bundle (đủ 3 loại file, PDF hợp lệ, không trùng role)
+  → Validate bundle (PDF hợp lệ, không trùng role bắt buộc; `source_content_pdf` là optional — ≥0)
   → Preview parse: article_code, title, source list, parse warnings
   → Confirm Import
 
@@ -167,7 +167,7 @@ Assignment
 |---|---|
 | File không phải PDF hoặc PDF corrupt | Hiển thị lỗi, không cho import |
 | Bundle thiếu `answer_pdf` hoặc `source_ref_pdf` | Block import, báo thiếu file role |
-| Bundle không có `source_content_pdf` | Block import (theo rule VR-UP-003) |
+| Bundle không có `source_content_pdf` | Không block (optional); nếu thiếu hoàn toàn → warning annotator dùng `source_ref_pdf` metadata + URL |
 | Không parse được answer text | Bundle invalid, báo `Cannot extract answer text` |
 | Không parse được source list | Block hoặc flag bundle invalid |
 | `source_url` không parse được từ PDF | Cho import, `source_url = null`, hiển thị warning |

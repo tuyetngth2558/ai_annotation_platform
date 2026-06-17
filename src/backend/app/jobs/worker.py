@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from arq import func
+
 from app.core.logging import configure_logging, get_logger
 from app.jobs.settings import get_redis_settings
 from app.jobs.tasks.export import build_export
@@ -27,7 +29,11 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 
 class WorkerSettings:
     redis_settings = get_redis_settings()
-    functions = [process_bundle, build_export]
+    # process_bundle gọi LLM nhiều lần (claim extraction + pre-score/claim) — retry tối đa
+    # 3 lần khi lỗi (timeout/HTTP/parse) và job_timeout dài hơn default (EC-LLM-004).
+    functions = [
+        func(process_bundle, max_tries=3, timeout=600),
+        build_export,
+    ]
     on_startup = startup
     on_shutdown = shutdown
-    # TODO(jobs): max_tries, retry_delay cho task gọi LLM (EC-LLM-004); job_timeout dài.
