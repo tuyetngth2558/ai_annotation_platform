@@ -311,5 +311,60 @@ export async function mockRequest<T>(path: string, options: RequestInit = {}): P
     return { status: "ok" } as unknown as T;
   }
 
+  // GET /projects/:id
+  if (cleaned.startsWith("projects/") && method === "GET") {
+    const id = cleaned.split("/")[1];
+    const project = projects.find((p) => p.id === id);
+    if (!project) throw new Error(`Project ${id} không tồn tại.`);
+    return clone(project) as T;
+  }
+
+  // POST /projects
+  if (cleaned === "projects" && method === "POST") {
+    const body = options.body ? JSON.parse(options.body as string) : {};
+    const newProject: Project = {
+      id: `proj-${String(projects.length + 1).padStart(3, "0")}`,
+      name: String(body.name ?? `New Project ${projects.length + 1}`),
+      batch: String(body.batch ?? "batch-001"),
+      bundleId: String(body.bundleId ?? "bundle-001"),
+      bundleName: String(body.bundleName ?? "Demo PDF Bundle"),
+      importType: String(body.importType ?? "pdf_bundle") as any,
+      answerPdf: String(body.answerPdf ?? "answer.pdf"),
+      sourceRefPdf: String(body.sourceRefPdf ?? "source-ref.pdf"),
+      sourceContentPdfs: (body.sourceContentPdfs ?? ["source-1.pdf"]) as string[],
+      status: String(body.status ?? "Active"),
+      createdAt: new Date().toISOString(),
+      deadline: String(body.deadline ?? "2026-07-01"),
+      owner: String(body.owner ?? "Admin Demo"),
+      annotators: (body.annotators ?? ["Annotator Mai"]) as string[],
+      qa: String(body.qa ?? "QA Demo"),
+    };
+    projects = [newProject, ...projects];
+    return clone(newProject) as T;
+  }
+
+  // GET /tasks/:id
+  if (cleaned.startsWith("tasks/") && method === "GET") {
+    const id = cleaned.split("/")[1];
+    const task = getTaskById(id);
+    if (!task) throw new Error(`Task ${id} không tồn tại.`);
+    return clone(task) as T;
+  }
+
+  // PUT /tasks/:id (partial update)
+  if (cleaned.startsWith("tasks/") && method === "PUT") {
+    const id = cleaned.split("/")[1];
+    const body = options.body ? JSON.parse(options.body as string) : {};
+    const task = getTaskById(id);
+    if (!task) throw new Error(`Task ${id} không tồn tại.`);
+    Object.assign(task, body);
+    return clone(task) as T;
+  }
+
+  // POST /auth/logout
+  if (cleaned === "auth/logout" && method === "POST") {
+    return { success: true } as unknown as T;
+  }
+
   throw new Error(`Mock API chưa hỗ trợ endpoint: ${path}`);
 }

@@ -18,10 +18,16 @@ export class ApiError extends Error {
   detail: unknown;
 
   constructor(status: number, detail: unknown) {
-    const message =
-      typeof detail === "object" && detail && "detail" in detail
-        ? String((detail as { detail: unknown }).detail)
-        : `Backend request failed with status ${status}`;
+    let message = `Backend request failed with status ${status}`;
+    try {
+      if (typeof detail === "object" && detail && "detail" in detail) {
+        message = String((detail as { detail: unknown }).detail);
+      } else if (typeof detail === "string" && detail.trim().length) {
+        message = `${message}: ${detail}`;
+      }
+    } catch (e) {
+      /* ignore */
+    }
     super(message);
     this.name = "ApiError";
     this.status = status;
