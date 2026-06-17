@@ -8,7 +8,7 @@
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
 
-**Cập nhật lần cuối:** 2026-06-16 · **Bởi:** Claude (Sync docs + review nhánh để FE tích hợp: API Integration Guide `docs/api/` đã có & sửa shape `/auth/me` (subject=UUID, không phải email — đồng bộ fix #1). Review nhánh `origin/fe`: FE đã có scaffold đủ component (Login/Annotation/QA/Export/Users/Audit/ProjectSetup) + `api/client.ts`+`types.ts`; **chỉ `/auth/login` đã nối BE**, các view còn lại render từ state local rỗng → việc FE tiếp theo: nối từng view vào endpoint thật + map snake_case↔camelCase. CÒN MỞ BE: #2 per-project RBAC, #3 pipeline dùng project LLM config)
+**Cập nhật lần cuối:** 2026-06-17 · **Bởi:** Claude (Tái cấu trúc FE chuẩn + giữ giao diện cam đỏ fe_ui (VinSmart Future). Chuyển từ App.tsx 722 dòng (hash routing, demo) sang **React Router + AuthProvider (session persist, hết văng login khi reload/back) + RoleGuard + AppLayout** — 14 feature page bọc component cam đỏ, nối API qua adapter. Thêm **BE endpoint** `GET /projects/{id}/claims` + `POST /projects/{id}/assign-claims` (gán claim cho annotator, bù D3) + trang **chi tiết project + gán nhân sự**. Import xong tự về /admin/projects. Pipeline LLM thật (OpenRouter gpt-4o-mini) verify chạy: bundle→6 claim, pre-score thật. Test: 152 PASS (+3), build FE xanh, navigation back/forward chuẩn. CÒN MỞ BE: per-project RBAC, pipeline dùng project LLM config)
 
 **Trước đó:** Điều chỉnh SQ [ADR 0008 A+D]: tách SQ → rule engine (sq_engine.py), LLM chấm 5 chiều, composite vẫn 6 (BR-7.2).
 

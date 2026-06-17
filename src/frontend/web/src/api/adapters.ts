@@ -180,6 +180,67 @@ export function dimensionsToScoreBlock(scores: Record<Dimension, number>): Score
   };
 }
 
+/** UI source status (6 trạng thái Screen Spec) → BE enum (4). */
+export function toSourceAccessStatus(ui: string): string {
+  const map: Record<string, string> = {
+    source_text_parsed: "accessible",
+    "Truy cập được - hỗ trợ rõ": "accessible",
+    accessible: "accessible",
+    "Truy cập được - hỗ trợ một phần": "partial",
+    "Truy cập được - không hỗ trợ": "partial",
+    "Không liên quan": "partial",
+    partial: "partial",
+    "inaccessible / Không truy cập được": "inaccessible",
+    inaccessible: "inaccessible",
+    unknown: "not_checked",
+    not_checked: "not_checked",
+  };
+  return map[ui] || "not_checked";
+}
+
+/** UI error type → BE error_category. */
+export function toErrorCategory(ui: string): string {
+  const map: Record<string, string> = {
+    "Factual Error": "factual_error",
+    "Guideline Violation": "guideline_violation",
+    "Source Mismatch": "source_mismatch",
+    Incomplete: "incomplete",
+    Other: "other",
+  };
+  return map[ui] || "other";
+}
+
+const _DIM_BE: { ui: Dimension; be: string }[] = [
+  { ui: "SF", be: "sf" }, { ui: "SC", be: "sc" }, { ui: "NH", be: "hr" },
+  { ui: "SQ", be: "sq" }, { ui: "REL", be: "rel" }, { ui: "COMP", be: "comp" },
+];
+
+/** POST /tasks/{id}/submit từ ClaimTask FE — map scores + justification >=0.20. */
+export async function submitTaskFromClaim(task: ClaimTask): Promise<void> {
+  const justifications: Record<string, string | null> = {};
+  for (const { ui, be } of _DIM_BE) {
+    const delta = Math.abs((task.ann[ui] ?? 0) - (task.pre[ui] ?? 0));
+    justifications[be] = delta >= 0.2 ? task.reason || null : null;
+  }
+  await apiClient.post(`/tasks/${task.id}/submit`, {
+    scores: dimensionsToScoreBlock(task.ann),
+    source_access_status: toSourceAccessStatus(task.sourceStatus),
+    annotator_note: task.notes || null,
+    justifications,
+  });
+}
+
+export async function approveClaim(claimId: string, comment?: string): Promise<void> {
+  await apiClient.post(`/qa-reviews/${claimId}/approve`, { qa_comment: comment || null });
+}
+
+export async function returnClaim(claimId: string, errorTypeUi: string, comment: string): Promise<void> {
+  await apiClient.post(`/qa-reviews/${claimId}/return`, {
+    error_category: toErrorCategory(errorTypeUi),
+    qa_comment: comment,
+  });
+}
+
 /** BE claim status (snake) → FE label hiển thị. */
 const STATUS_LABEL: Record<string, ClaimTask["status"]> = {
   source_mapping_required: "Source Mapping Required",
@@ -696,4 +757,69 @@ export async function getBundleStatus(bundleId: string): Promise<BundleStatus> {
     fileCount: res.file_count,
     errorDetail: res.error_detail,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Project detail: claims + gán annotator (B1 BE endpoints)
+// ---------------------------------------------------------------------------
+export interface ProjectClaim {
+  claimId: string;
+  claimOrder: number;
+  sectionName: string;
+  claimText: string;
+  status: string;
+  articleCode: string;
+  assignedAnnotatorId: string | null;
+  assignedAnnotatorEmail: string | null;
+}
+
+export async function fetchProjectClaims(projectId: string): Promise<ProjectClaim[]> {
+  const res = await apiClient.get<{
+    items: {
+      claim_id: string; claim_order: number; section_name: string | null; claim_text: string;
+      status: string; article_code: string | null;
+      assigned_annotator_id: string | null; assigned_annotator_email: string | null;
+    }[];
+    total: number;
+  }>(`/projects/${projectId}/claims`);
+  return res.items.map((c) => ({
+    claimId: c.claim_id,
+    claimOrder: c.claim_order,
+    sectionName: c.section_name || "",
+    claimText: c.claim_text,
+    status: c.status,
+    articleCode: c.article_code || "",
+    assignedAnnotatorId: c.assigned_annotator_id,
+    assignedAnnotatorEmail: c.assigned_annotator_email,
+  }));
+}
+
+/** Gán claim cho annotator. claimIds rỗng = gán tất cả. */
+export async function assignClaims(
+  projectId: string,
+  annotatorId: string,
+  claimIds: string[] = []
+): Promise<number> {
+  const res = await apiClient.post<{ assigned_count: number; annotator_id: string }>(
+    `/projects/${projectId}/assign-claims`,
+    { annotator_id: annotatorId, claim_ids: claimIds }
+  );
+  return res.assigned_count;
+}
+
+export interface ProjectMember {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: string;
+}
+
+/** GET /projects/{id} → members (cho dropdown gán annotator). */
+export async function fetchProjectMembers(projectId: string): Promise<ProjectMember[]> {
+  const res = await apiClient.get<{
+    members: { user_id: string; full_name: string; email: string; role: string }[];
+  }>(`/projects/${projectId}`);
+  return (res.members || []).map((m) => ({
+    userId: m.user_id, fullName: m.full_name, email: m.email, role: m.role,
+  }));
 }
