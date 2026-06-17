@@ -5,6 +5,7 @@ import AnnotationWorkspaceView from "@/components/AnnotationWorkspaceView";
 import { fetchTaskDetail, submitTaskFromClaim } from "@/api/adapters";
 import { enrichClaimTask } from "@/sqRules";
 import { useToast } from "@/app/providers/ToastProvider";
+import { usePageHeader } from "@/app/providers/PageHeaderProvider";
 import type { ClaimTask } from "@/types";
 
 export function AnnotationPage() {
@@ -14,6 +15,11 @@ export function AnnotationPage() {
   const [task, setTask] = useState<ClaimTask | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  usePageHeader({
+    title: "Chấm điểm claim",
+    description: "Đánh giá 6 chiều dựa trên nguồn tham chiếu.",
+  });
 
   useEffect(() => {
     setLoading(true);

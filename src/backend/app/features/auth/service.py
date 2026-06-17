@@ -71,7 +71,7 @@ async def mock_login(db: AsyncSession, payload: LoginRequest) -> TokenResponse:
     )
 
 
-async def _get_primary_role(db: AsyncSession, user_id) -> Role:
+async def _get_primary_role(db: AsyncSession, user: UserAccount) -> Role:
     """Role CHÍNH của user để nhét vào access token.
 
     ⚠️ GIỚI HẠN MVP (có chủ đích): JWT mang 1 role toàn cục/user. Hệ thống enforce
@@ -80,15 +80,21 @@ async def _get_primary_role(db: AsyncSession, user_id) -> Role:
     (xem ADR 0003) — user có nhiều role ở nhiều project chưa được phân biệt ở tầng token.
     Khi cần per-project thật: `require_project_role` đọc role theo project_id của request
     thay vì dựa role trong token (TODO). Tham chiếu: OQ-008.
+
+    Fallback: nếu user CHƯA thuộc project nào (không có USER_PROJECT_ROLE active) thì dùng
+    `default_role` của user — đúng nghiệp vụ "1 user = 1 role, có thể chưa thuộc project nào".
     """
     res = await db.execute(
         select(UserProjectRole.role)
-        .where(UserProjectRole.user_id == user_id, UserProjectRole.is_active.is_(True))
+        .where(UserProjectRole.user_id == user.id, UserProjectRole.is_active.is_(True))
         .order_by(UserProjectRole.id)  # deterministic
         .limit(1)
     )
     role_str = res.scalar_one_or_none()
     if role_str is None:
+        # Chưa gán project → dùng default_role (role duy nhất của user).
+        if user.default_role:
+            return Role(user.default_role)
         raise AuthError("Tài khoản chưa được gán vai trò.")
     return Role(role_str)
 
@@ -117,7 +123,7 @@ async def login(db: AsyncSession, payload: LoginRequest) -> TokenResponse:
     if user.status != "active":
         raise AuthError("Tài khoản đã bị khóa.")
 
-    role = await _get_primary_role(db, user.id)
+    role = await _get_primary_role(db, user)
 
     user.last_login_at = datetime.now(UTC)
     await db.commit()
@@ -156,7 +162,7 @@ async def refresh(db: AsyncSession, payload_token: str) -> AccessTokenResponse:
             raise AuthError("Tài khoản không còn tồn tại.")
         if user.status != "active":
             raise AuthError("Tài khoản đã bị khóa.")
-        role = await _get_primary_role(db, user.id)
+        role = await _get_primary_role(db, user)
         access = create_access_token(
             subject=str(user.id), claims={"role": role.value, "name": user.full_name}
         )

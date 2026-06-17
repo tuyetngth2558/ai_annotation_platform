@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ClaimTask } from "../types";
 import { TEST_IDS } from "../testability";
-import PageHeader from "./PageHeader";
 import { ClipboardList, Search, Eye, Inbox } from "lucide-react";
 
 interface QaQueueViewProps {
@@ -62,11 +61,6 @@ export default function QaQueueView({ tasks, onOpenTaskQa }: QaQueueViewProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="QA Queue"
-        description="Task đang chờ QA duyệt. Task đã duyệt hoặc đã trả về chỉ còn để đối chiếu lịch sử."
-      />
-
       <section className="app-card p-5 space-y-4">
         <div className="flex flex-wrap gap-2">
           <button
@@ -135,6 +129,13 @@ export default function QaQueueView({ tasks, onOpenTaskQa }: QaQueueViewProps) {
                 </tr>
               </thead>
               <tbody className="text-gray-700">
+                {filteredTasks.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center text-slate-400 font-medium">
+                      Không có claim nào trong hàng đợi.
+                    </td>
+                  </tr>
+                )}
                 {filteredTasks.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50/50" data-testid={TEST_IDS.qaRow(t.id)}>
                     <td className="py-3.5 px-3 font-bold text-slate-900">{t.id}</td>

@@ -33,7 +33,8 @@ class UploadFileOut(BaseModel):
 class ValidateBundleIn(BaseModel):
     project_id: uuid.UUID
     upload_token: str = Field(min_length=1)
-    bundle_name: str = Field(min_length=1, max_length=200)
+    # Rỗng → BE tự sinh tên khi confirm. Validate không cần tên thật.
+    bundle_name: str = Field(default="", max_length=200)
 
     @field_validator("bundle_name")
     @classmethod
@@ -117,7 +118,8 @@ class PreviewParseOut(BaseModel):
 class ConfirmImportIn(BaseModel):
     project_id: uuid.UUID
     upload_token: str = Field(min_length=1)
-    bundle_name: str = Field(min_length=1, max_length=200)
+    # Rỗng → BE tự sinh tên theo ngày-giờ (giống batch_name).
+    bundle_name: str = Field(default="", max_length=200)
     batch_name: str = Field(default="", max_length=200)
 
     @field_validator("bundle_name", "batch_name")

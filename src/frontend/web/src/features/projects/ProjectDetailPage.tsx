@@ -2,7 +2,7 @@
  * ProjectDetailPage (ADMIN) — chi tiết project: thông tin + thống kê tiến độ +
  * quản lý thành viên (thêm/xóa annotator/QA) + claim list (lọc + phân trang 10) + gán claim.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, UserCheck, UserPlus, Trash2, Loader2 } from "lucide-react";
 import {
@@ -10,8 +10,12 @@ import {
   type ProjectInfo, type ProjectClaimsPage, type UserOption,
 } from "@/api/adapters";
 import { useToast } from "@/app/providers/ToastProvider";
+import { usePageHeader } from "@/app/providers/PageHeaderProvider";
+import { setIfChanged } from "@/shared/setIfChanged";
+import { TableSkeleton } from "@/shared/Skeleton";
 
 const PAGE = 10;
+const POLL_MS = 30000; // auto-refresh ngầm 30s
 const STATUS_FILTERS = [
   { v: "", label: "Tất cả" },
   { v: "ready", label: "Chưa làm" },
@@ -32,6 +36,22 @@ export function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
+  usePageHeader(
+    {
+      title: info?.name ?? "Chi tiết dự án",
+      description: "Thông tin, thành viên & gán claim cho annotator.",
+      action: (
+        <button
+          onClick={() => navigate("/admin/projects")}
+          className="btn-secondary inline-flex items-center gap-2"
+        >
+          <ArrowLeft size={16} /> Danh sách
+        </button>
+      ),
+    },
+    [info?.name],
+  );
+
   // filters + paging
   const [status, setStatus] = useState("");
   const [onlyUnassigned, setOnlyUnassigned] = useState(false);
@@ -45,29 +65,48 @@ export function ProjectDetailPage() {
   const [newMemberId, setNewMemberId] = useState("");
   const [newMemberRole, setNewMemberRole] = useState<"ANNOTATOR" | "QA">("ANNOTATOR");
 
+  // Info/members chỉ tải 1 lần + sau khi tự thao tác (không polling — ít đổi).
   const loadInfo = useCallback(() => {
     fetchProjectDetail(projectId)
       .then((i) => {
-        setInfo(i);
-        const ann = i.members.find((m) => m.role === "ANNOTATOR" && m.isActive);
-        if (ann) setAnnotatorId(ann.userId);
+        setIfChanged(setInfo, i);
+        setAnnotatorId((prev) => {
+          if (prev) return prev; // giữ lựa chọn hiện tại của admin
+          const ann = i.members.find((m) => m.role === "ANNOTATOR" && m.isActive);
+          return ann ? ann.userId : prev;
+        });
       })
       .catch((e) => showToast(e?.message ?? "Không tải được thông tin project."));
   }, [projectId, showToast]);
 
-  const loadClaims = useCallback(() => {
+  // silent = refetch ngầm (không bật skeleton, chỉ setState khi data đổi).
+  const loadClaims = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
     fetchProjectClaims(projectId, {
       limit: PAGE, offset,
       status: status || undefined,
       unassigned: onlyUnassigned || undefined,
     })
-      .then(setPage)
-      .catch((e) => showToast(e?.message ?? "Không tải được claim."))
-      .finally(() => setLoading(false));
+      .then((p) => setIfChanged(setPage, p))
+      .catch((e) => { if (!silent) showToast(e?.message ?? "Không tải được claim."); })
+      .finally(() => { if (!silent) setLoading(false); });
   }, [projectId, offset, status, onlyUnassigned, showToast]);
 
   useEffect(() => { loadInfo(); fetchUserOptions().then(setUserOpts).catch(() => {}); }, [loadInfo]);
   useEffect(() => { loadClaims(); }, [loadClaims]);
+
+  // busy qua ref để tick đọc giá trị mới nhất (tránh stale closure + đè state khi đang thao tác).
+  const busyRef = useRef(false);
+  busyRef.current = busy;
+
+  // Auto-refresh ngầm 30s — CHỈ làm mới bảng claim + thống kê (info/members ít đổi).
+  // Bỏ qua khi tab ẩn hoặc đang thao tác.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!document.hidden && !busyRef.current) loadClaims(true);
+    }, POLL_MS);
+    return () => clearInterval(timer);
+  }, [loadClaims]);
 
   const annotators = info?.members.filter((m) => m.role === "ANNOTATOR" && m.isActive) ?? [];
 
@@ -107,29 +146,19 @@ export function ProjectDetailPage() {
     finally { setBusy(false); }
   };
 
-  if (loading && !info) return <div className="app-card p-6 text-gray-500">Đang tải…</div>;
-
   const stats = page?.stats;
   const totalPages = page ? Math.max(1, Math.ceil(page.total / PAGE)) : 1;
   const curPage = Math.floor(offset / PAGE) + 1;
 
   return (
     <div className="space-y-5">
-      {/* Header thông tin project */}
+      {/* Thông tin tóm tắt project (tên + nút back đã ở thanh header app). */}
       <div className="app-card p-5">
-        <button onClick={() => navigate("/admin/projects")} className="text-sm text-gray-500 inline-flex items-center gap-1 mb-2">
-          <ArrowLeft size={14} /> Danh sách project
-        </button>
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div>
-            <h2 className="page-title">{info?.name}</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              <span className="font-mono">{info?.code}</span> · {info?.status} ·
-              {info?.deadline ? ` deadline ${info.deadline}` : " không deadline"} ·
-              LLM {info?.llmConfigured ? info?.llmModel : "chưa cấu hình"}
-            </p>
-          </div>
-        </div>
+        <p className="text-sm text-gray-500">
+          <span className="font-mono">{info?.code}</span> · {info?.status} ·
+          {info?.deadline ? ` deadline ${info.deadline}` : " không deadline"} ·
+          LLM {info?.llmConfigured ? info?.llmModel : "chưa cấu hình"}
+        </p>
         {/* Thống kê tiến độ */}
         {stats && (
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-4">
@@ -204,7 +233,10 @@ export function ProjectDetailPage() {
         </label>
       </div>
 
-      {/* Claim table */}
+      {/* Claim table — skeleton khi tải lần đầu (khung trang đã hiện sẵn). */}
+      {loading && !page ? (
+        <div className="app-card p-4"><TableSkeleton rows={PAGE} cols={5} /></div>
+      ) : (
       <div className="app-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="data-table">
@@ -250,6 +282,7 @@ export function ProjectDetailPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

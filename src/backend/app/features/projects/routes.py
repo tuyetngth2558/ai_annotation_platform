@@ -70,6 +70,15 @@ async def get_project(
     return await service.get_project(db, project_id)
 
 
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_project(
+    project_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Xóa project (chỉ khi chưa có claim). Project đã có claim → 409 (dùng lưu trữ)."""
+    await service.delete_project(db, project_id)
+
+
 @router.post(
     "/{project_id}/assignments",
     response_model=list[MemberOut],

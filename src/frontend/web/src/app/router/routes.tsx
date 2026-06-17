@@ -10,7 +10,6 @@ import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ProjectsListPage } from "@/features/projects/ProjectsListPage";
 import { ImportPage } from "@/features/projects/ImportPage";
 import { ProjectDetailPage } from "@/features/projects/ProjectDetailPage";
-import { ExportPage } from "@/features/export/ExportPage";
 import { UsersPage } from "@/features/users/UsersPage";
 import { AuditPage } from "@/features/audit/AuditPage";
 import { TasksPage } from "@/features/annotation/TasksPage";
@@ -29,10 +28,9 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: "/admin/dashboard", element: <DashboardPage /> },
+      { path: "/admin/import", element: <ImportPage /> },
       { path: "/admin/projects", element: <ProjectsListPage /> },
-      { path: "/admin/projects/import", element: <ImportPage /> },
       { path: "/admin/projects/:projectId", element: <ProjectDetailPage /> },
-      { path: "/admin/export", element: <ExportPage /> },
       { path: "/admin/users", element: <UsersPage /> },
       { path: "/admin/audit", element: <AuditPage /> },
     ],

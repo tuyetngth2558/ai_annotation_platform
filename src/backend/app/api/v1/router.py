@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.v1 import health
+from app.features.admin_stats.routes import router as admin_stats_router
 from app.features.annotation.routes import router as annotation_router
 from app.features.audit.routes import router as audit_router
 from app.features.auth.routes import router as auth_router
@@ -27,3 +28,4 @@ api_router.include_router(qa_router)
 api_router.include_router(export_router)
 api_router.include_router(audit_router)
 api_router.include_router(files_router)
+api_router.include_router(admin_stats_router)

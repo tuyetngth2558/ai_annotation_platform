@@ -44,6 +44,7 @@ from app.jobs.settings import get_arq_pool
 from app.models.batch import Batch
 from app.models.bundle import PdfBundle
 from app.models.pdf_file import PdfFile
+from app.models.project import Project
 
 logger = get_logger(__name__)
 
@@ -373,8 +374,10 @@ async def confirm_import(
                 status_code=403,
             )
 
-    # Tạo Batch
-    batch_name = payload.batch_name or f"Batch {datetime.now(UTC).strftime('%Y%m%d-%H%M')}"
+    # Tạo Batch + Bundle. Tên rỗng → tự sinh theo ngày-giờ.
+    now_tag = datetime.now(UTC).strftime("%Y%m%d-%H%M")
+    batch_name = payload.batch_name or f"Batch {now_tag}"
+    bundle_name = payload.bundle_name or f"Bundle {now_tag}"
     batch = Batch(
         project_id=payload.project_id,
         batch_name=batch_name,
@@ -389,7 +392,7 @@ async def confirm_import(
     # Tạo PdfBundle
     bundle = PdfBundle(
         batch_id=batch.id,
-        bundle_name=payload.bundle_name,
+        bundle_name=bundle_name,
         bundle_status="uploaded",
         uploaded_by=uploader_id,
     )
@@ -398,6 +401,12 @@ async def confirm_import(
 
     for f in db_files:
         f.bundle_id = bundle.id
+
+    # Project đã có bundle đầu tiên → chuyển 'draft' sang 'active' (hết nháp).
+    proj_res = await db.execute(select(Project).where(Project.id == payload.project_id))
+    project = proj_res.scalar_one_or_none()
+    if project is not None and project.status == "draft":
+        project.status = "active"
 
     # Audit import (BR-2.3 / BR-10.2) — cùng transaction tạo batch+bundle (AC-10.1).
     await write_audit_log(
@@ -409,7 +418,7 @@ async def confirm_import(
         user_id=uploader_id,
         user_role=user_role,
         description=(
-            f"Admin import bundle '{payload.bundle_name}' "
+            f"Admin import bundle '{bundle_name}' "
             f"(batch={batch_name}, files={len(db_files)})"
         ),
         client_ip=client_ip,

@@ -3,16 +3,18 @@ import { UserAccount, UserRole } from "../types";
 import { TEST_IDS, toTestSlug } from "../testability";
 import { Users, Shield, Award, UserPlus, X, Loader2 } from "lucide-react";
 import { createUser, fetchProjectOptions } from "../api/adapters";
+import { TableSkeleton } from "../shared/Skeleton";
 
 interface UsersViewProps {
   users: UserAccount[];
+  loading?: boolean;
   showToast: (msg: string) => void;
   onUserCreated: () => void;
 }
 
 type RoleOpt = Exclude<UserRole, "">;
 
-export default function UsersView({ users, showToast, onUserCreated }: UsersViewProps) {
+export default function UsersView({ users, loading = false, showToast, onUserCreated }: UsersViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
@@ -134,24 +136,33 @@ export default function UsersView({ users, showToast, onUserCreated }: UsersView
         </div>
       )}
 
-      <div className="overflow-x-auto text-[11.5px] font-semibold text-gray-600">
-        <table className="w-full text-left" data-testid={TEST_IDS.usersTable}>
+      <div className="p-4">
+       {loading ? <TableSkeleton rows={6} cols={4} /> : (
+       <div className="app-table-wrap overflow-x-auto text-[11.5px] font-semibold text-gray-600">
+        <table className="app-table" data-testid={TEST_IDS.usersTable}>
           <thead>
-            <tr className="bg-slate-50/70 border-b border-gray-200 text-slate-400 font-bold uppercase text-[9.5px]">
-              <th className="py-2.5 px-3">Tên đăng ký</th>
-              <th className="py-2.5 px-3">Địa chỉ Email</th>
-              <th className="py-2.5 px-3">Vai Trò (Role)</th>
-              <th className="py-2.5 px-3">Trạng thái tài khoản</th>
+            <tr className="text-[9.5px]">
+              <th>Tên đăng ký</th>
+              <th>Địa chỉ Email</th>
+              <th>Vai Trò (Role)</th>
+              <th>Trạng thái tài khoản</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={4} className="py-10 text-center text-slate-400 font-medium">
+                  Chưa có tài khoản nào — bấm "Tạo tài khoản" để thêm thành viên.
+                </td>
+              </tr>
+            )}
             {users.map((u, i) => {
               const userSlug = toTestSlug(u.email || u.name || String(i));
               return (
-              <tr key={i} className="hover:bg-slate-50/40" data-testid={TEST_IDS.usersRow(userSlug)}>
-                <td className="py-3 px-3 font-bold text-slate-900">{u.name}</td>
-                <td className="py-3 px-3 text-slate-500 font-mono text-[11.5px]">{u.email}</td>
-                <td className="py-3 px-3">
+              <tr key={i} data-testid={TEST_IDS.usersRow(userSlug)}>
+                <td className="font-bold text-slate-900">{u.name}</td>
+                <td className="text-slate-500 font-mono text-[11.5px]">{u.email}</td>
+                <td>
                   {u.role ? (
                     <span data-testid={TEST_IDS.usersRole(userSlug)} className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded uppercase font-mono tracking-wider font-extrabold text-[10px] ${
                       u.role === "ADMIN" ? "bg-purple-100 text-purple-700" :
@@ -164,7 +175,7 @@ export default function UsersView({ users, showToast, onUserCreated }: UsersView
                     <span data-testid={TEST_IDS.usersRole(userSlug)} className="text-slate-400 font-mono" title="Role chưa xác định">—</span>
                   )}
                 </td>
-                <td className="py-3 px-3">
+                <td>
                   <span data-testid={TEST_IDS.usersStatus(userSlug)} className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10.5px] font-bold">
                     {u.status}
                   </span>
@@ -174,6 +185,8 @@ export default function UsersView({ users, showToast, onUserCreated }: UsersView
             })}
           </tbody>
         </table>
+       </div>
+       )}
       </div>
     </section>
   );

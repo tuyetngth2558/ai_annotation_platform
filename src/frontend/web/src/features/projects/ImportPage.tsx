@@ -1,31 +1,22 @@
-/** ImportPage (ADMIN) — wizard import bundle. Import xong → về /admin/projects (B5). */
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+/** ImportPage (ADMIN) — form tạo project + import bundle.
+ *  ?projectId=xxx → tiếp tục import cho project nháp đã tạo (bỏ qua bước 1). */
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ProjectSetupView from "@/components/ProjectSetupView";
-import { fetchProjects } from "@/api/adapters";
 import { useToast } from "@/app/providers/ToastProvider";
-import type { Project } from "@/types";
-
-const emptyProject: Project = {
-  id: "", name: "Chưa có project", batch: "", bundleId: "", bundleName: "",
-  importType: "pdf_bundle", answerPdf: "", sourceRefPdf: "", sourceContentPdfs: [],
-  status: "Pending", createdAt: "", deadline: "", owner: "", annotators: [], qa: "",
-};
 
 export function ImportPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [project, setProject] = useState<Project>(emptyProject);
-
-  useEffect(() => {
-    fetchProjects().then((ps) => { if (ps[0]) setProject(ps[0]); }).catch(() => {});
-  }, []);
+  const [params, setParams] = useSearchParams();
+  const projectIdParam = params.get("projectId") || "";
 
   return (
     <ProjectSetupView
-      project={project}
-      onBackToDashboard={() => navigate("/admin/projects")}
+      key={projectIdParam}
+      existingProjectId={projectIdParam}
       showToast={showToast}
+      // Khi bước 1 tạo xong project → ghi ?projectId vào URL (back/reload không tạo lại).
+      onProjectCreated={(projectId) => setParams({ projectId }, { replace: true })}
       onImported={(projectId) => {
         showToast("Import xong — mở chi tiết project để gán nhân sự.");
         navigate(projectId ? `/admin/projects/${projectId}` : "/admin/projects");

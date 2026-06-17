@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { UserRole } from "../types";
 import { TEST_IDS } from "../testability";
-import { apiClient, authToken } from "../api/client";
+import { apiClient, authToken, refreshToken } from "../api/client";
 import BrandLogo from "./BrandLogo";
 import { Eye, EyeOff, Lock, Mail, ArrowRight, Shield, BarChart3, FileCheck } from "lucide-react";
 
@@ -37,6 +37,8 @@ export default function LoginView({ onLoginSuccess, showToast }: LoginViewProps)
       setIsSubmitting(true);
       const session = await apiClient.login(email, password);
       authToken.set(session.access_token);
+      if (session.refresh_token) refreshToken.set(session.refresh_token);
+      else refreshToken.clear(); // demo login không có refresh
       onLoginSuccess(session.email, session.role);
       showToast(`Đăng nhập thành công — ${session.role}`);
     } catch (error) {

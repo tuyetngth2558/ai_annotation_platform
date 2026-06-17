@@ -169,3 +169,102 @@ async def test_assign_claims_annotator_not_in_project_422(
         json={"annotator_id": "00000000-0000-0000-0000-000000000000", "claim_ids": []},
     )
     assert res.status_code in (404, 422)
+
+
+async def test_create_project_duplicate_name_409(client, admin_token, db_session):
+    """Tạo 2 project cùng tên (khác mã) → project thứ 2 bị 409 duplicate_name."""
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    suffix = uuid.uuid4().hex[:8]
+    name = f"Dup Name {suffix}"
+
+    def body(code: str) -> dict:
+        return {
+            "project_code": code,
+            "project_name": name,
+            "llm_config": {
+                "endpoint": "https://openrouter.ai/api/v1",
+                "api_key": "sk-test",
+                "model": "openai/gpt-4o-mini",
+                "prompt_template": "Score {{claim_text}} vs {{source_context}}.",
+            },
+        }
+
+    res1 = await client.post("/api/v1/projects", headers=hdr, json=body(f"dup_a_{suffix}"))
+    assert res1.status_code == 201, res1.text
+
+    # Cùng tên (case-insensitive), mã khác → 409.
+    body2 = body(f"dup_b_{suffix}")
+    body2["project_name"] = name.upper()
+    res2 = await client.post("/api/v1/projects", headers=hdr, json=body2)
+    assert res2.status_code == 409, res2.text
+    assert res2.json()["error"]["code"] == "duplicate_name"
+
+    # cleanup project đã tạo
+    await db_session.execute(delete(Project).where(Project.project_name == name))
+    await db_session.commit()
+
+
+async def test_create_project_is_draft(client, admin_token):
+    """Project mới tạo phải ở trạng thái 'draft' (chưa import)."""
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    suffix = uuid.uuid4().hex[:8]
+    res = await client.post(
+        "/api/v1/projects", headers=hdr,
+        json={"project_name": f"Draft Status {suffix}"},
+    )
+    assert res.status_code == 201, res.text
+    assert res.json()["status"] == "draft"
+    # cleanup
+    await client.delete(f"/api/v1/projects/{res.json()['id']}", headers=hdr)
+
+
+async def test_create_project_auto_code(client, admin_token):
+    """Không gửi project_code → BE tự sinh dạng proj_NNN."""
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    suffix = uuid.uuid4().hex[:8]
+    res = await client.post(
+        "/api/v1/projects", headers=hdr,
+        json={"project_name": f"Auto Code {suffix}"},
+    )
+    assert res.status_code == 201, res.text
+    assert res.json()["project_code"].startswith("proj_")
+    await client.delete(f"/api/v1/projects/{res.json()['id']}", headers=hdr)
+
+
+async def test_delete_draft_project(client, admin_token):
+    """Xóa project nháp (chưa có claim) → 204, sau đó GET trả 404."""
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    suffix = uuid.uuid4().hex[:8]
+    created = await client.post(
+        "/api/v1/projects", headers=hdr,
+        json={"project_name": f"To Delete {suffix}"},
+    )
+    pid = created.json()["id"]
+    res = await client.delete(f"/api/v1/projects/{pid}", headers=hdr)
+    assert res.status_code == 204, res.text
+    assert (await client.get(f"/api/v1/projects/{pid}", headers=hdr)).status_code == 404
+
+
+async def test_delete_project_with_claims_409(client, admin_token, project_with_claims):
+    """Project đã có claim → KHÔNG cho xóa (409 project_has_claims)."""
+    pid = project_with_claims["project_id"]
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    res = await client.delete(f"/api/v1/projects/{pid}", headers=hdr)
+    assert res.status_code == 409, res.text
+    assert res.json()["error"]["code"] == "project_has_claims"
+
+
+async def test_create_project_start_after_deadline_422(client, admin_token):
+    """start_date sau deadline → 422 invalid_date_range."""
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    suffix = uuid.uuid4().hex[:8]
+    res = await client.post(
+        "/api/v1/projects", headers=hdr,
+        json={
+            "project_name": f"Bad Range {suffix}",
+            "start_date": "2027-07-10",
+            "deadline": "2027-07-01",
+        },
+    )
+    assert res.status_code == 422, res.text
+    assert res.json()["error"]["code"] == "invalid_date_range"

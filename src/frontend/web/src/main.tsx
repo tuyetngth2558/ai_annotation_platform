@@ -4,13 +4,16 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "@/app/router/routes";
 import { AuthProvider } from "@/app/providers/AuthProvider";
 import { ToastProvider } from "@/app/providers/ToastProvider";
+import { PageHeaderProvider } from "@/app/providers/PageHeaderProvider";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AuthProvider>
       <ToastProvider>
-        <RouterProvider router={router} />
+        <PageHeaderProvider>
+          <RouterProvider router={router} />
+        </PageHeaderProvider>
       </ToastProvider>
     </AuthProvider>
   </StrictMode>,

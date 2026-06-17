@@ -55,29 +55,52 @@ async def create_project(db: AsyncSession, payload: ProjectCreate) -> ProjectOut
     API key được encrypt Fernet trước khi lưu (BR-1.2).
     Prompt validate {{claim_text}} + {{source_context}} ở schema (BR-1.3).
     """
-    # project_code unique
-    dup = await db.execute(
-        select(Project.id).where(Project.project_code == payload.project_code)
+    # project_code: client gửi → check unique; bỏ trống → tự sinh proj_001, proj_002...
+    if payload.project_code:
+        dup = await db.execute(
+            select(Project.id).where(Project.project_code == payload.project_code)
+        )
+        if dup.scalar_one_or_none() is not None:
+            raise AppError("project_code đã tồn tại.", code="duplicate_code", status_code=409)
+        project_code = payload.project_code
+    else:
+        project_code = await _next_project_code(db)
+
+    # project_name unique (case-insensitive) — tránh trùng tên gây nhầm.
+    dup_name = await db.execute(
+        select(Project.id).where(
+            func.lower(Project.project_name) == payload.project_name.strip().lower()
+        )
     )
-    if dup.scalar_one_or_none() is not None:
-        raise AppError("project_code đã tồn tại.", code="duplicate_code", status_code=409)
+    if dup_name.scalar_one_or_none() is not None:
+        raise AppError("Tên project đã tồn tại.", code="duplicate_name", status_code=409)
 
     # Validate deadline >= hôm nay nếu có
     if payload.deadline and payload.deadline < date.today():
         raise AppError("Deadline phải >= ngày hôm nay.", code="invalid_deadline", status_code=422)
+    # Validate start_date <= deadline (không cho hạn chót trước ngày bắt đầu)
+    if payload.start_date and payload.deadline and payload.start_date > payload.deadline:
+        raise AppError(
+            "Ngày bắt đầu phải trước hoặc bằng hạn chót.",
+            code="invalid_date_range",
+            status_code=422,
+        )
 
+    # llm_config tùy chọn: nếu None → để trống, pipeline dùng cấu hình LLM từ .env.
     cfg = payload.llm_config
     project = Project(
-        project_code=payload.project_code,
+        project_code=project_code,
         project_name=payload.project_name,
         description=payload.description,
         modality="text",  # BR-1.1: luôn 'text' ở MVP
-        status="active",
+        # 'draft' = vừa tạo, CHƯA import bundle. Chuyển 'active' khi confirm_import xong.
+        status="draft",
+        start_date=payload.start_date,
         deadline=payload.deadline,
-        llm_endpoint=cfg.endpoint,
-        llm_api_key_enc=encrypt_secret(cfg.api_key),  # BR-1.2
-        llm_model=cfg.model,
-        llm_prompt_template=cfg.prompt_template,
+        llm_endpoint=cfg.endpoint if cfg else None,
+        llm_api_key_enc=encrypt_secret(cfg.api_key) if cfg else None,  # BR-1.2
+        llm_model=cfg.model if cfg else None,
+        llm_prompt_template=cfg.prompt_template if cfg else None,
     )
     db.add(project)
     await db.commit()
@@ -92,11 +115,36 @@ async def create_project(db: AsyncSession, payload: ProjectCreate) -> ProjectOut
         description=project.description,
         modality=project.modality,
         status=project.status,
+        start_date=project.start_date,
         deadline=project.deadline,
         created_at=project.created_at,
         llm_config=_llm_status(project),
         member_count=0,
     )
+
+
+async def _next_project_code(db: AsyncSession) -> str:
+    """Sinh mã project dạng proj_001, proj_002... (số lớn nhất hiện có + 1).
+
+    Quét các code khớp 'proj_NNN', lấy số lớn nhất; tăng dần tới khi không trùng
+    (an toàn cả khi có project bị xóa giữa chừng).
+    """
+    res = await db.execute(
+        select(Project.project_code).where(Project.project_code.like("proj\\_%"))
+    )
+    max_num = 0
+    for (code,) in res.all():
+        suffix = code.removeprefix("proj_")
+        if suffix.isdigit():
+            max_num = max(max_num, int(suffix))
+
+    n = max_num + 1
+    while True:
+        candidate = f"proj_{n:03d}"
+        exists = await db.execute(select(Project.id).where(Project.project_code == candidate))
+        if exists.scalar_one_or_none() is None:
+            return candidate
+        n += 1
 
 
 async def list_projects(db: AsyncSession, limit: int, offset: int) -> list[ProjectOut]:
@@ -130,6 +178,7 @@ async def list_projects(db: AsyncSession, limit: int, offset: int) -> list[Proje
                 description=project.description,
                 modality=project.modality,
                 status=project.status,
+                start_date=project.start_date,
                 deadline=project.deadline,
                 created_at=project.created_at,
                 llm_config=_llm_status(project),
@@ -170,6 +219,7 @@ async def get_project(db: AsyncSession, project_id: uuid.UUID) -> ProjectDetail:
         description=project.description,
         modality=project.modality,
         status=project.status,
+        start_date=project.start_date,
         deadline=project.deadline,
         created_at=project.created_at,
         llm_config=_llm_status(project),
@@ -422,4 +472,38 @@ async def remove_member(
         )
         .values(is_active=False)
     )
+    await db.commit()
+
+
+async def delete_project(db: AsyncSession, project_id: uuid.UUID) -> None:
+    """Xóa project — chỉ cho phép khi CHƯA có claim nào (project nháp/trống).
+
+    Tránh xóa nhầm project đã có dữ liệu annotation. Khi xóa: bỏ luôn batch/bundle/file
+    rỗng + role gán (cascade qua relationship/FK). Project đã có claim → 409, dùng
+    'lưu trữ' (làm sau) thay vì xóa.
+    """
+    await _ensure_project(db, project_id)
+
+    # Đếm claim qua chuỗi ClaimTask → ParentTask → Batch.project_id
+    claim_count = await db.execute(
+        select(func.count(ClaimTask.id))
+        .select_from(ClaimTask)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .where(Batch.project_id == project_id)
+    )
+    if (claim_count.scalar() or 0) > 0:
+        raise AppError(
+            "Không thể xóa project đã có claim. Hãy lưu trữ thay vì xóa.",
+            code="project_has_claims",
+            status_code=409,
+        )
+
+    # Gỡ role gán (UserProjectRole) rồi xóa project. Batch/bundle/file rỗng cascade theo FK.
+    await db.execute(
+        update(UserProjectRole)
+        .where(UserProjectRole.project_id == project_id)
+        .values(is_active=False)
+    )
+    await db.execute(Project.__table__.delete().where(Project.id == project_id))
     await db.commit()

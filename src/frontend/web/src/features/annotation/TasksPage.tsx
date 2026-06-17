@@ -1,9 +1,12 @@
 /** TasksPage (ANNOTATOR) — danh sách task được giao. Nối GET /tasks. */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckSquare } from "lucide-react";
+import { CheckSquare, ClipboardList } from "lucide-react";
 import { fetchMyTasks } from "@/api/adapters";
 import { enrichClaimTask } from "@/sqRules";
+import { EmptyState } from "@/shared/EmptyState";
+import { usePageHeader } from "@/app/providers/PageHeaderProvider";
+import { setIfChanged } from "@/shared/setIfChanged";
 import type { ClaimTask } from "@/types";
 import { TEST_IDS } from "@/testability";
 
@@ -13,24 +16,37 @@ export function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  usePageHeader({
+    title: "Nhiệm vụ được giao",
+    description: "Claim task phân công cho bạn (chỉ thấy task của mình).",
+  });
+
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
     fetchMyTasks()
-      .then((t) => setTasks(t.map(enrichClaimTask)))
-      .catch((e) => setError(e?.message ?? "Không tải được danh sách task."))
-      .finally(() => setLoading(false));
+      .then((t) => setIfChanged(setTasks, t.map(enrichClaimTask)))
+      .catch((e) => { if (!silent) setError(e?.message ?? "Không tải được danh sách task."); })
+      .finally(() => { if (!silent) setLoading(false); });
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Auto-refresh ngầm 30s — thấy claim admin vừa gán; chỉ re-render khi data đổi.
+  useEffect(() => {
+    const timer = setInterval(() => { if (!document.hidden) load(true); }, 30000);
+    return () => clearInterval(timer);
+  }, [load]);
 
   return (
     <div className="space-y-4" data-testid={TEST_IDS.view("tasks")}>
-      <div className="app-card p-5">
-        <h2 className="page-title">Nhiệm vụ được giao</h2>
-        <p className="text-sm text-gray-500 mt-1">Claim task phân công cho bạn (OQ-008).</p>
-      </div>
-
       {loading && <div className="app-card p-5 text-gray-500">Đang tải…</div>}
       {error && <div className="app-card p-5 text-red-600">{error}</div>}
       {!loading && !error && tasks.length === 0 && (
-        <div className="app-card p-5 text-gray-500">Chưa có claim nào được giao.</div>
+        <EmptyState
+          icon={<ClipboardList size={26} />}
+          title="Chưa có claim nào được giao"
+          description="Khi admin gán claim cho bạn, chúng sẽ xuất hiện ở đây."
+        />
       )}
 
       {tasks.length > 0 && (

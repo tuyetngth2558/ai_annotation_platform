@@ -5,6 +5,7 @@ import QaReviewView from "@/components/QaReviewView";
 import { fetchQaReviewDetail, approveClaim, returnClaim } from "@/api/adapters";
 import { enrichClaimTask } from "@/sqRules";
 import { useToast } from "@/app/providers/ToastProvider";
+import { usePageHeader } from "@/app/providers/PageHeaderProvider";
 import type { ClaimTask } from "@/types";
 
 export function QaReviewPage() {
@@ -14,6 +15,11 @@ export function QaReviewPage() {
   const [task, setTask] = useState<ClaimTask | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  usePageHeader({
+    title: "Kiểm duyệt claim",
+    description: "So sánh điểm annotator vs LLM, duyệt hoặc trả lại.",
+  });
 
   useEffect(() => {
     setLoading(true);

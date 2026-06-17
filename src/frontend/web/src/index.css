@@ -86,8 +86,9 @@
 
   /* —— App Shell —— */
   .app-shell-sidebar {
-    @apply z-40 w-full md:w-60 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0 md:fixed md:inset-y-0 md:left-0 md:h-screen md:overflow-hidden;
+    @apply z-40 w-full bg-sidebar border-r border-sidebar-border flex flex-col shrink-0 md:fixed md:inset-y-0 md:left-0 md:h-screen md:overflow-hidden;
     background: linear-gradient(180deg, #fafbfc 0%, #f5f6f8 100%);
+    transition: width 0.2s ease;
   }
 
   .app-shell-brand {
@@ -95,7 +96,8 @@
   }
 
   .app-shell-main {
-    @apply flex-1 flex flex-col min-w-0 min-h-screen bg-canvas md:ml-60;
+    @apply flex-1 flex flex-col min-w-0 min-h-screen bg-canvas;
+    transition: margin-left 0.2s ease;
   }
 
   .app-topbar {
@@ -195,7 +197,7 @@
 
   /* —— Navigation —— */
   .nav-item {
-    @apply w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-gray-500 hover:text-gray-900 hover:bg-sidebar-hover transition-all duration-150 cursor-pointer;
+    @apply w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-gray-500 hover:text-gray-900 hover:bg-sidebar-hover cursor-pointer;
   }
 
   .nav-item-active {
@@ -250,6 +252,29 @@
   }
   .data-table tbody tr:last-child {
     @apply border-b-0;
+  }
+
+  /* —— Bảng có khung (viền bao + kẻ hàng) — dùng cho list Users/Audit/Export... —— */
+  .app-table-wrap {
+    @apply rounded-xl border border-gray-200 overflow-hidden;
+  }
+  .app-table {
+    @apply w-full text-left border-collapse;
+  }
+  .app-table thead tr {
+    @apply bg-slate-50 text-slate-400 text-[10px] font-bold uppercase tracking-wider;
+  }
+  .app-table th {
+    @apply py-2.5 px-4 border-b border-gray-200;
+  }
+  .app-table td {
+    @apply py-3 px-4 border-b border-gray-100 align-middle;
+  }
+  .app-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .app-table tbody tr:hover {
+    @apply bg-slate-50/60;
   }
 
   /* —— Workspace (annotation / QA) —— */
@@ -357,4 +382,32 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* —— react-day-picker (DatePicker) —— */
+.rdp-root {
+  --rdp-accent-color: #dc2626;          /* đỏ (red-600) */
+  --rdp-accent-background-color: #fef2f2;
+  --rdp-day-width: 2.25rem;
+  --rdp-day-height: 2.25rem;
+  --rdp-day_button-width: 2.25rem;
+  --rdp-day_button-height: 2.25rem;
+  --rdp-day_button-border-radius: 9999px; /* tròn */
+  font-size: 13px;
+}
+/* Ngày được chọn: TRÒN ĐỎ, KHÔNG viền. */
+.rdp-day_button.vsf-day-selected,
+.vsf-day-selected .rdp-day_button {
+  background-color: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  font-weight: 700;
+}
+.rdp-day_button:hover:not([disabled]) {
+  background-color: #fef2f2;
+  border-radius: 9999px;
+}
+.rdp-day_button {
+  border: none;
 }

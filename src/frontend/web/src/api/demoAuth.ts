@@ -2,6 +2,7 @@ import { UserRole } from "../types";
 
 export interface DemoLoginResponse {
   access_token: string;
+  refresh_token?: string; // demo không có; để khớp LoginResponse cho TS
   token_type: string;
   role: UserRole;
   email: string;

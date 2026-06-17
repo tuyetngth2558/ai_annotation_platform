@@ -439,7 +439,9 @@ function mapProjectOut(p: ProjectOutBE): Project {
     name: p.project_name,
     batch: "", bundleId: "", bundleName: "", importType: "pdf_bundle",
     answerPdf: "", sourceRefPdf: "", sourceContentPdfs: [],
-    status: p.status === "active" ? "Active" : p.status === "completed" ? "Completed" : "Pending",
+    status: p.status === "active" ? "Active"
+      : p.status === "completed" ? "Completed"
+      : p.status === "draft" ? "Draft" : "Pending",
     createdAt: p.created_at, deadline: p.deadline || "", owner: "", annotators: [], qa: "",
   };
 }
@@ -574,32 +576,51 @@ export async function changePassword(oldPassword: string, newPassword: string): 
 // ---------------------------------------------------------------------------
 
 export interface CreateProjectInput {
-  projectCode: string;
   projectName: string;
   description: string;
+  startDate: string; // "YYYY-MM-DD" hoặc ""
   deadline: string; // "YYYY-MM-DD" hoặc ""
-  llmEndpoint: string;
-  llmApiKey: string;
-  llmModel: string;
-  promptTemplate: string;
 }
 
-/** POST /projects — tạo project + llm_config. Trả id project mới. */
+/** POST /projects — tạo project. Mã tự sinh phía BE; LLM config lấy từ .env. */
 export async function createProject(input: CreateProjectInput): Promise<{ id: string; name: string }> {
   const body = {
-    project_code: input.projectCode,
     project_name: input.projectName,
     description: input.description || null,
+    start_date: input.startDate || null,
     deadline: input.deadline || null,
-    llm_config: {
-      endpoint: input.llmEndpoint,
-      api_key: input.llmApiKey,
-      model: input.llmModel,
-      prompt_template: input.promptTemplate,
-    },
   };
   const res = await apiClient.post<ProjectOutBE>("/projects", body);
   return { id: res.id, name: res.project_name };
+}
+
+/** DELETE /projects/{id} — xóa project (BE chặn nếu đã có claim → 409). */
+export async function deleteProject(projectId: string): Promise<void> {
+  await apiClient.del(`/projects/${projectId}`);
+}
+
+// ---- Dashboard ADMIN stats ----
+export interface AdminStats {
+  users: { total: number; admin: number; annotator: number; qa: number };
+  projects: { total: number; active: number; draft: number };
+  claims: { total: number; ready: number; in_annotation: number; submitted: number; returned: number; approved: number };
+  auditCount: number;
+}
+
+/** GET /admin/stats — thống kê tổng quan toàn hệ thống cho Dashboard ADMIN. */
+export async function fetchAdminStats(): Promise<AdminStats> {
+  const r = await apiClient.get<{
+    users: AdminStats["users"];
+    projects: AdminStats["projects"];
+    claims: AdminStats["claims"];
+    audit_count: number;
+  }>("/admin/stats");
+  return {
+    users: r.users,
+    projects: r.projects,
+    claims: r.claims,
+    auditCount: r.audit_count,
+  };
 }
 
 export type FileRole = "answer_pdf" | "source_ref_pdf" | "source_content_pdf";
@@ -654,7 +675,6 @@ export interface ValidateResult {
 export async function validateBundle(
   projectId: string,
   tokens: string[],
-  bundleName: string
 ): Promise<ValidateResult> {
   const res = await apiClient.post<{
     is_valid: boolean;
@@ -664,7 +684,7 @@ export async function validateBundle(
   }>(`/import-bundles/validate?${uploadTokensQuery(tokens)}`, {
     project_id: projectId,
     upload_token: tokens[0],
-    bundle_name: bundleName,
+    bundle_name: "", // BE tự sinh
   });
   return {
     isValid: res.is_valid,
@@ -743,8 +763,6 @@ export interface ConfirmResult {
 export async function confirmImport(
   projectId: string,
   tokens: string[],
-  bundleName: string,
-  batchName: string
 ): Promise<ConfirmResult> {
   const res = await apiClient.post<{
     bundle_id: string;
@@ -755,8 +773,8 @@ export async function confirmImport(
   }>(`/import-bundles/confirm?${uploadTokensQuery(tokens)}`, {
     project_id: projectId,
     upload_token: tokens[0],
-    bundle_name: bundleName,
-    batch_name: batchName,
+    bundle_name: "", // BE tự sinh
+    batch_name: "",
   });
   return {
     bundleId: res.bundle_id,

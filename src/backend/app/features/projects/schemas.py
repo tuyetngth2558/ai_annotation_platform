@@ -56,13 +56,19 @@ class LlmConfigIn(BaseModel):
 
 
 class ProjectCreate(BaseModel):
-    """Tạo project mới (AC-1.1 + AC-1.2). Modality luôn 'text' (BR-1.1)."""
+    """Tạo project mới (AC-1.1 + AC-1.2). Modality luôn 'text' (BR-1.1).
 
-    project_code: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_\-]+$")
+    llm_config tùy chọn: nếu bỏ trống, pipeline dùng cấu hình LLM từ .env
+    (settings.llm_*) — không cần nhập endpoint/key/model per-project ở MVP.
+    """
+
+    # project_code tùy chọn: bỏ trống → BE tự sinh proj_001, proj_002...
+    project_code: str | None = Field(default=None, max_length=64, pattern=r"^[A-Za-z0-9_\-]+$")
     project_name: str = Field(min_length=3, max_length=100)
     description: str | None = Field(default=None, max_length=500)
+    start_date: date | None = None
     deadline: date | None = None
-    llm_config: LlmConfigIn
+    llm_config: LlmConfigIn | None = None
 
 
 class AssignMemberIn(BaseModel):
@@ -124,6 +130,7 @@ class ProjectOut(BaseModel):
     description: str | None
     modality: str
     status: str
+    start_date: date | None = None
     deadline: date | None
     created_at: datetime
     llm_config: LlmConfigStatus

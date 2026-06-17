@@ -25,6 +25,7 @@ class Project(UUIDPkMixin, TimestampMixin, Base):
     modality: Mapped[str] = mapped_column(String(16), default="text", nullable=False)
     project_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # LLM config (AC-1.2) — API key mã hóa Fernet at-rest (BR-1.2).

@@ -82,7 +82,7 @@ export interface Project {
   answerPdf: string;
   sourceRefPdf: string;
   sourceContentPdfs: string[];
-  status: "Active" | "Completed" | "Pending";
+  status: "Active" | "Completed" | "Pending" | "Draft";
   createdAt: string;
   deadline: string;
   owner: string;

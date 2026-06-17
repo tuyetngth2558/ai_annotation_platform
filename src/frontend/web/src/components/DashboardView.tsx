@@ -1,12 +1,15 @@
 import { ClaimTask, UserRole } from "../types";
 import { TEST_IDS } from "../testability";
-import PageHeader from "./PageHeader";
-import { FolderOpen, CheckCircle, Clock, AlertCircle, FileText, ArrowRight } from "lucide-react";
+import type { AdminStats } from "../api/adapters";
+import {
+  CheckCircle, Clock, AlertCircle, FileText, ArrowRight,
+  Users, FolderKanban, ListChecks, History,
+} from "lucide-react";
 
 interface DashboardViewProps {
   userRole: UserRole;
   tasks: ClaimTask[];
-  exportJobsCount: number;
+  stats: AdminStats | null; // chỉ ADMIN dùng
   onNavigate: (view: string) => void;
   onOpenTaskAnnotation: (id: string) => void;
   onOpenTaskQa: (id: string) => void;
@@ -43,18 +46,20 @@ function MetricCard({ label, value, icon, color, testId }: MetricProps) {
 export default function DashboardView({
   userRole,
   tasks,
-  exportJobsCount,
+  stats,
   onNavigate,
   onOpenTaskAnnotation,
   onOpenTaskQa
 }: DashboardViewProps) {
-  const myTasks = tasks.filter((t) => t.annotator === "Annotator Mai");
+  // ADMIN: dashboard tổng quan riêng (thống kê hệ thống + workload), không bảng claim.
+  if (userRole === "ADMIN") return <AdminDashboard stats={stats} onNavigate={onNavigate} />;
 
+  // ANNOTATOR: `tasks` đã là task của chính mình (fetchMyTasks) → dùng thẳng, không lọc theo tên.
   const counts = {
-    assigned: myTasks.filter((t) => ["Ready for Annotation", "In Annotation", "Returned"].includes(t.status)).length,
-    inWork: myTasks.filter((t) => t.status === "In Annotation").length,
-    returned: myTasks.filter((t) => t.status === "Returned").length,
-    submitted: myTasks.filter((t) => t.status === "Submitted").length,
+    assigned: tasks.filter((t) => ["Ready for Annotation", "In Annotation", "Returned"].includes(t.status)).length,
+    inWork: tasks.filter((t) => t.status === "In Annotation").length,
+    returned: tasks.filter((t) => t.status === "Returned").length,
+    submitted: tasks.filter((t) => t.status === "Submitted").length,
     submittedGlobal: tasks.filter((t) => t.status === "Submitted").length,
     approvedGlobal: tasks.filter((t) => t.status === "Approved").length,
     returnedGlobal: tasks.filter((t) => t.status === "Returned").length,
@@ -83,31 +88,10 @@ export default function DashboardView({
 
   const isReviewable = (status: ClaimTask["status"]) => status === "Submitted";
 
-  const roleGreeting = () => {
-    switch (userRole) {
-      case "ADMIN": return "Quản lý dự án và theo dõi tiến độ chung.";
-      case "ANNOTATOR": return "Các claim task được giao cho bạn.";
-      case "QA": return "Các task chờ bạn kiểm duyệt.";
-    }
-  };
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Tổng quan"
-        description={roleGreeting()}
-      />
-
+    <div className="space-y-6">
       {/* Metrics row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {userRole === "ADMIN" && (
-          <>
-            <MetricCard testId={TEST_IDS.dashboardMetricProjects} label="Dự án" value={1} icon={<FolderOpen size={18} />} color="blue" />
-            <MetricCard label="Tổng claim" value={tasks.length} icon={<FileText size={18} />} color="gray" />
-            <MetricCard testId={TEST_IDS.dashboardMetricApproved} label="Đã duyệt" value={counts.approvedGlobal} icon={<CheckCircle size={18} />} color="green" />
-            <MetricCard testId={TEST_IDS.dashboardMetricSubmitted} label="Chờ QA" value={counts.submittedGlobal} icon={<Clock size={18} />} color="amber" />
-          </>
-        )}
         {userRole === "ANNOTATOR" && (
           <>
             <MetricCard label="Được giao" value={counts.assigned} icon={<FileText size={18} />} color="blue" />
@@ -121,7 +105,7 @@ export default function DashboardView({
             <MetricCard testId={TEST_IDS.dashboardMetricSubmitted} label="Chờ review" value={counts.submittedGlobal} icon={<Clock size={18} />} color="amber" />
             <MetricCard testId={TEST_IDS.dashboardMetricApproved} label="Đã duyệt" value={counts.approvedGlobal} icon={<CheckCircle size={18} />} color="green" />
             <MetricCard label="Đã trả lại" value={counts.returnedGlobal} icon={<AlertCircle size={18} />} color="red" />
-            <MetricCard testId={TEST_IDS.dashboardMetricExports} label="Export jobs" value={exportJobsCount} icon={<FileText size={18} />} color="blue" />
+            <MetricCard label="Tổng trong hàng đợi" value={tasks.length} icon={<FileText size={18} />} color="blue" />
           </>
         )}
       </div>
@@ -129,19 +113,6 @@ export default function DashboardView({
       {/* Quick actions */}
       <div className="app-card p-4">
         <div className="flex flex-wrap items-center gap-2">
-          {userRole === "ADMIN" && (
-            <>
-              <button onClick={() => onNavigate("projects")} data-testid={TEST_IDS.dashboardOpenProjects} className="btn-primary !text-xs !py-2 !px-4">
-                Import dữ liệu <ArrowRight size={14} />
-              </button>
-              <button onClick={() => onNavigate("export")} data-testid={TEST_IDS.dashboardOpenExport} className="btn-secondary !text-xs !py-2 !px-4">
-                Xuất kết quả
-              </button>
-              <button onClick={() => onNavigate("audit")} data-testid={TEST_IDS.dashboardOpenAudit} className="btn-ghost !text-xs">
-                Nhật ký hệ thống
-              </button>
-            </>
-          )}
           {userRole === "ANNOTATOR" && (
             <>
               <button onClick={() => onNavigate("tasks")} data-testid={TEST_IDS.dashboardOpenTasks} className="btn-primary !text-xs !py-2 !px-4">
@@ -149,7 +120,7 @@ export default function DashboardView({
               </button>
               <button
                 onClick={() => {
-                  const first = tasks.find((t) => t.annotator === "Annotator Mai");
+                  const first = tasks[0];
                   if (first) onOpenTaskAnnotation(first.id);
                   else onNavigate("tasks");
                 }}
@@ -164,9 +135,6 @@ export default function DashboardView({
             <>
               <button onClick={() => onNavigate("qa")} data-testid={TEST_IDS.dashboardOpenQa} className="btn-primary !text-xs !py-2 !px-4">
                 Kiểm duyệt <ArrowRight size={14} />
-              </button>
-              <button onClick={() => onNavigate("export")} data-testid={TEST_IDS.dashboardOpenExport} className="btn-secondary !text-xs !py-2 !px-4">
-                Xuất kết quả
               </button>
             </>
           )}
@@ -195,7 +163,7 @@ export default function DashboardView({
             </thead>
             <tbody>
               {tasks.map((t) => {
-                const isMyTask = userRole === "ANNOTATOR" && t.annotator === "Annotator Mai";
+                const isMyTask = userRole === "ANNOTATOR";
                 const composite = compositeAverage(t);
 
                 return (
@@ -247,7 +215,7 @@ export default function DashboardView({
                           {t.status === "Returned" ? "Sửa" : "Mở"}
                         </button>
                       )}
-                      {(userRole === "QA" || userRole === "ADMIN") && (
+                      {userRole === "QA" && (
                         <button
                           onClick={() => onOpenTaskQa(t.id)}
                           data-testid={TEST_IDS.dashboardOpenQaTask(t.id)}
@@ -266,6 +234,78 @@ export default function DashboardView({
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** Dashboard ADMIN — tổng quan hệ thống: thống kê + workload "ai đang làm đến đâu". */
+function AdminDashboard({ stats, onNavigate }: { stats: AdminStats | null; onNavigate: (v: string) => void }) {
+  const s = stats;
+  const claimTotal = s?.claims.total ?? 0;
+  const approvedPct = claimTotal ? Math.round((s!.claims.approved / claimTotal) * 100) : 0;
+
+  return (
+    <div className="space-y-6">
+      {/* 4 nhóm metric tổng quan */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <MetricCard testId={TEST_IDS.dashboardMetricProjects} label="Dự án" value={s?.projects.total ?? 0} icon={<FolderKanban size={18} />} color="blue" />
+        <MetricCard label="Người dùng" value={s?.users.total ?? 0} icon={<Users size={18} />} color="gray" />
+        <MetricCard label="Tổng claim" value={claimTotal} icon={<ListChecks size={18} />} color="amber" />
+        <MetricCard label="Hành động (log)" value={s?.auditCount ?? 0} icon={<History size={18} />} color="green" />
+      </div>
+
+      {/* Chi tiết: người dùng theo vai trò + dự án + claim theo trạng thái */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <section className="app-card p-5">
+          <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5"><Users size={15} className="text-vsf-600" /> Người dùng</h3>
+          <ul className="space-y-2 text-sm">
+            <li className="flex justify-between"><span className="text-slate-500">Admin</span><strong>{s?.users.admin ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Annotator</span><strong>{s?.users.annotator ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">QA</span><strong>{s?.users.qa ?? 0}</strong></li>
+          </ul>
+        </section>
+
+        <section className="app-card p-5">
+          <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5"><FolderKanban size={15} className="text-vsf-600" /> Dự án</h3>
+          <ul className="space-y-2 text-sm">
+            <li className="flex justify-between"><span className="text-slate-500">Đang chạy (active)</span><strong className="text-emerald-600">{s?.projects.active ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Nháp (drafting)</span><strong className="text-amber-600">{s?.projects.draft ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Tổng</span><strong>{s?.projects.total ?? 0}</strong></li>
+          </ul>
+        </section>
+
+        <section className="app-card p-5">
+          <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5"><ListChecks size={15} className="text-vsf-600" /> Claim theo trạng thái</h3>
+          <ul className="space-y-1.5 text-[13px]">
+            <li className="flex justify-between"><span className="text-slate-500">Chưa làm</span><strong>{s?.claims.ready ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Đang làm</span><strong>{s?.claims.in_annotation ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Đã nộp (chờ QA)</span><strong className="text-violet-600">{s?.claims.submitted ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Bị trả</span><strong className="text-red-600">{s?.claims.returned ?? 0}</strong></li>
+            <li className="flex justify-between"><span className="text-slate-500">Đã duyệt</span><strong className="text-emerald-600">{s?.claims.approved ?? 0}</strong></li>
+          </ul>
+        </section>
+      </div>
+
+      {/* Tiến độ duyệt tổng */}
+      <section className="app-card p-5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold text-slate-800">Tiến độ duyệt toàn hệ thống</h3>
+          <span className="text-sm font-bold text-emerald-600">{approvedPct}%</span>
+        </div>
+        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${approvedPct}%` }} />
+        </div>
+        <p className="text-[12px] text-slate-400 mt-2">{s?.claims.approved ?? 0}/{claimTotal} claim đã được QA duyệt.</p>
+      </section>
+
+      {/* Quick actions */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={() => onNavigate("import")} data-testid={TEST_IDS.dashboardOpenProjects} className="btn-primary !text-xs !py-2 !px-4">
+          Tạo & Import <ArrowRight size={14} />
+        </button>
+        <button onClick={() => onNavigate("projects")} className="btn-secondary !text-xs !py-2 !px-4">Dự án</button>
+        <button onClick={() => onNavigate("audit")} data-testid={TEST_IDS.dashboardOpenAudit} className="btn-ghost !text-xs">Nhật ký hệ thống</button>
+      </div>
     </div>
   );
 }
