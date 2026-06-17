@@ -1,0 +1,153 @@
+# render.yaml — Render Blueprint cho VSF AI Annotation Platform
+# ---------------------------------------------------------------------------
+# Deploy: Render Dashboard → New → Blueprint → chọn repo này → Apply.
+# Kiến trúc (ADR docs/05_architecture/tech-selection/07-deployment.md + mem VPS2):
+#   - Backend (FastAPI)  → Render (file này)
+#   - Frontend (Vite)    → Vercel (xem src/frontend/web/vercel.json)
+#   - Database           → Supabase (ngoài Render — điền DATABASE_URL ở dưới)
+#   - Redis + ARQ worker → block COMMENT cuối file (bật khi pipeline chạy thật)
+#
+# Demo MVP: chỉ cần service `vsf-api` (login mock + điều hướng). Worker/Redis
+# CHƯA cần vì pipeline import/export hiện trả 501 (skeleton).
+# ---------------------------------------------------------------------------
+
+services:
+  # ── API (FastAPI) ─────────────────────────────────────────────────────
+  - type: web
+    name: vsf-api
+    runtime: docker
+    plan: free          # web service free (ngủ sau ~15ph idle → request đầu chậm)
+    region: singapore   # gần Supabase ap-southeast-1
+    dockerfilePath: ./infra/docker/api.Dockerfile
+    dockerContext: ./src/backend
+    # Render cấp $PORT động → bind vào đó thay vì 8000 hardcode trong Dockerfile.
+    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: staging
+      - key: APP_DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_FORMAT
+        value: json
+      # ⚠️ DEMO-ONLY: login thật chưa implement (app/features/auth/service.py).
+      # Mock cho 3 user demo (admin/annotator/qa @vsf.local). ĐẶT LẠI false
+      # ngay khi auth thật xong — staging không được để mock.
+      - key: AUTH_MOCK_ENABLED
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true   # Render tự sinh secret ngẫu nhiên
+      - key: JWT_ALGORITHM
+        value: HS256
+
+      # ── Điền TAY trên dashboard (đánh dấu sync:false = secret) ──────────
+      # CORS: dán URL Vercel sau khi frontend deploy xong
+      #   (vd: https://vsf-annotation.vercel.app). Nhiều origin cách nhau dấu phẩy.
+      - key: CORS_ORIGINS
+        sync: false
+      # Supabase — dùng Shared Pooler (IPv4), format ở src/backend/.env.example
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_SYNC
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Fernet key (mã hóa LLM key at-rest) — chưa dùng ở demo, có thể để trống.
+      # Sinh: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - key: SECRET_ENCRYPTION_KEY
+        sync: false
+
+      # ── Storage (Supabase S3) — chưa cần cho demo (upload chưa chạy) ────
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        value: vsf-pdf
+      - key: S3_REGION
+        value: ap-southeast-1
+
+      # ── Redis ──────────────────────────────────────────────────────────
+      # API chỉ cần Redis khi enqueue job. Pipeline đang 501 → chưa cần.
+      # Khi bật worker (block dưới), đổi thành fromService keyvalue vsf-redis.
+      - key: REDIS_URL
+        value: redis://localhost:6379/0
+
+      # ── LLM provider (OQ-002 chưa chốt) ────────────────────────────────
+      - key: LLM_PROVIDER
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+
+# ===========================================================================
+# WORKER + REDIS — BẬT KHI PIPELINE CHẠY THẬT (KHÔNG cần cho demo skeleton).
+# ⚠️ Render Background Worker KHÔNG có free tier (~$7/tháng).
+#    Redis (Render Key Value) free tier có giới hạn bộ nhớ.
+#
+# Cách bật:
+#   1. Bỏ comment cả 2 block dưới (vsf-worker + vsf-redis).
+#   2. Ở env vsf-api phía trên, ĐỔI REDIS_URL thành:
+#         - key: REDIS_URL
+#           fromService: { type: keyvalue, name: vsf-redis, property: connectionString }
+#   3. Lặp lại các secret (DATABASE_URL, SUPABASE_*, S3_*, LLM_*) cho worker,
+#      hoặc gom vào 1 Environment Group dùng chung (fromGroup).
+# ---------------------------------------------------------------------------
+#  - type: worker
+#    name: vsf-worker
+#    runtime: docker
+#    plan: starter
+#    region: singapore
+#    dockerfilePath: ./infra/docker/worker.Dockerfile
+#    dockerContext: ./src/backend
+#    autoDeploy: true
+#    envVars:
+#      - key: REDIS_URL
+#        fromService: { type: keyvalue, name: vsf-redis, property: connectionString }
+#      - key: DATABASE_URL
+#        sync: false
+#      - key: DATABASE_URL_SYNC
+#        sync: false
+#      - key: SUPABASE_URL
+#        sync: false
+#      - key: SUPABASE_SERVICE_ROLE_KEY
+#        sync: false
+#      - key: STORAGE_BACKEND
+#        value: s3
+#      - key: S3_ENDPOINT_URL
+#        sync: false
+#      - key: S3_ACCESS_KEY
+#        sync: false
+#      - key: S3_SECRET_KEY
+#        sync: false
+#      - key: S3_BUCKET
+#        value: vsf-pdf
+#      - key: S3_REGION
+#        value: ap-southeast-1
+#      - key: LLM_PROVIDER
+#        sync: false
+#      - key: LLM_API_KEY
+#        sync: false
+#      - key: LLM_MODEL
+#        sync: false
+#      - key: LLM_BASE_URL
+#        sync: false
+#
+#  - type: keyvalue
+#    name: vsf-redis
+#    plan: free
+#    region: singapore
+#    maxmemoryPolicy: noeviction   # ARQ giữ job — không evict
+#    ipAllowList: []               # chỉ truy cập nội bộ Render

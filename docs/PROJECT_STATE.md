@@ -7,7 +7,7 @@
 > ⚠️ **FILE NÀY PHẢI ĐƯỢC CẬP NHẬT.** Quy ước "ai cập nhật gì, khi nào" ở cuối file và
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
-**Cập nhật lần cuối:** 2026-06-09 · **Bởi:** sửa security/quality review (RBAC enforce, storage path-traversal, DB constraints, quality gates)
+**Cập nhật lần cuối:** 2026-06-17 · **Bởi:** DevOps — thêm cấu hình deploy staging (render.yaml + vercel.json) cho demo MVP
 
 ---
 
@@ -56,6 +56,7 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 | ARQ worker + pipeline | 🚧 | khung xong, các bước TODO |
 | i18n (vi/en) + theme OKLCH | ✅ | |
 | Logging (JSON/request-id) | 🚧 | xem logging-and-observability |
+| Deploy staging (Vercel + Render) | 🚧 | config xong (`render.yaml`, `vercel.json`); demo dùng API+FE+mock auth, worker/redis hoãn — xem [deploy guide](07_devops/tuananh/deploy-vercel-render.md) |
 
 ---
 
