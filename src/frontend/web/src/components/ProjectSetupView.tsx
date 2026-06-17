@@ -10,6 +10,8 @@ import {
   FolderPlus,
   Loader2,
   XCircle,
+  FileText,
+  X,
 } from "lucide-react";
 import {
   createProject,
@@ -42,6 +44,58 @@ const STEPS = [
   { num: 5, label: "Confirm + Theo dõi" },
 ];
 
+// Ô thả file cố định (1 file/ô). Kéo-thả hoặc click chọn. Chiều cao cố định, không tràn.
+function DropSlot(props: {
+  label: string;
+  hint: string;
+  accent: "vsf" | "amber";
+  file: File | null;
+  dragging: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onPick: (file: File) => void;
+  onClear: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const ring = props.accent === "vsf" ? "border-vsf-400 bg-vsf-50/60" : "border-amber-400 bg-amber-50/60";
+  const chip = props.accent === "vsf" ? "text-vsf-700" : "text-amber-700";
+
+  return (
+    <div
+      onDragOver={props.onDragOver}
+      onDragLeave={props.onDragLeave}
+      onDrop={props.onDrop}
+      className={`h-44 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center px-4 transition-colors ${
+        props.dragging ? ring : props.file ? "border-emerald-300 bg-emerald-50/40" : "border-slate-300 bg-slate-50/50"
+      }`}
+    >
+      <input
+        ref={inputRef} type="file" accept="application/pdf" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) props.onPick(f); e.target.value = ""; }}
+      />
+      <span className={`text-[11px] font-bold uppercase tracking-wide ${chip}`}>{props.label}</span>
+
+      {props.file ? (
+        <>
+          <FileText size={22} className="text-emerald-600 my-2" />
+          <span className="text-xs font-semibold text-slate-700 truncate max-w-full">{props.file.name}</span>
+          <div className="flex gap-2 mt-2">
+            <button onClick={() => inputRef.current?.click()} className="text-[11px] font-bold text-slate-500 hover:text-slate-700">Đổi file</button>
+            <button onClick={props.onClear} className="text-[11px] font-bold text-red-500 hover:text-red-700 flex items-center gap-0.5"><X size={11} /> Xóa</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <Upload size={22} className="text-slate-400 my-2" />
+          <span className="text-[11px] text-slate-500">{props.hint}</span>
+          <button onClick={() => inputRef.current?.click()} className="mt-2 py-1 px-3 bg-vsf-600 text-white rounded-lg text-[11px] font-bold">Kéo-thả hoặc chọn file</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectSetupView({
   project,
   onBackToDashboard,
@@ -66,9 +120,8 @@ export default function ProjectSetupView({
   const [projectId, setProjectId] = useState<string>("");
   const [useExistingProject, setUseExistingProject] = useState(false);
 
-  // Step 2 — file staging
+  // Step 2 — file staging (2 slot cố định: answer + source_ref)
   const [staged, setStaged] = useState<StagedFile[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [bundleName, setBundleName] = useState("Bundle 01");
   const [batchName, setBatchName] = useState("Batch 01");
 
@@ -155,21 +208,29 @@ export default function ProjectSetupView({
     }
   };
 
-  // ---- Step 2: stage files + gán role ----
-  const handleFilesPicked = (files: FileList | null) => {
-    if (!files) return;
-    const added: StagedFile[] = Array.from(files).map((file, i) => ({
-      file,
-      // đoán role: file đầu = answer, thứ 2 = ref, còn lại = content
-      role: staged.length + i === 0 ? "answer_pdf" : staged.length + i === 1 ? "source_ref_pdf" : "source_content_pdf",
-    }));
-    setStaged((prev) => [...prev, ...added]);
+  // ---- Step 2: 2 ô cố định (answer + source_ref), mỗi ô đúng 1 file (kéo-thả hoặc click) ----
+  const answerFile = staged.find((s) => s.role === "answer_pdf")?.file ?? null;
+  const sourceRefFile = staged.find((s) => s.role === "source_ref_pdf")?.file ?? null;
+  const [dragOver, setDragOver] = useState<FileRole | null>(null);
+
+  // Đặt file vào 1 slot role (thay thế file cũ của role đó nếu có).
+  const setSlotFile = (role: FileRole, file: File | null) => {
+    setStaged((prev) => {
+      const others = prev.filter((s) => s.role !== role);
+      return file ? [...others, { file, role }] : others;
+    });
   };
 
-  const setRole = (idx: number, role: FileRole) =>
-    setStaged((prev) => prev.map((s, i) => (i === idx ? { ...s, role } : s)));
-  const removeStaged = (idx: number) => setStaged((prev) => prev.filter((_, i) => i !== idx));
+  const onDropToSlot = (role: FileRole, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(null);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type === "application/pdf") setSlotFile(role, file);
+    else if (file) showToast("Chỉ nhận file PDF.");
+  };
 
+  // Đủ role bắt buộc khi có cả 2 file.
+  const bundleRolesOk = !!answerFile && !!sourceRefFile;
   // ---- Step 3: upload thật + validate ----
   const handleUploadAndValidate = async () => {
     if (staged.length === 0) {
@@ -337,10 +398,10 @@ export default function ProjectSetupView({
                 </div>
               )}
 
-              {/* STEP 2 */}
+              {/* STEP 2 — 2 ô cố định: Answer PDF + Source Ref PDF (kéo-thả hoặc click) */}
               {step === 2 && (
-                <div className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-700">Tên Bundle</label>
                       <input value={bundleName} onChange={(e) => setBundleName(e.target.value)} className={inputCls} />
@@ -351,42 +412,33 @@ export default function ProjectSetupView({
                     </div>
                   </div>
 
-                  <div className="border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-xl p-6 text-center space-y-3" data-testid={TEST_IDS.projectUploadZone}>
-                    <Upload size={24} className="mx-auto text-vsf-600" />
-                    <p className="text-xs text-slate-500">Chọn các file PDF (answer + source_ref + source_content…)</p>
-                    <input ref={fileInputRef} type="file" accept="application/pdf" multiple data-testid={TEST_IDS.projectPdfFilesInput}
-                      onChange={(e) => handleFilesPicked(e.target.files)} className="hidden" />
-                    <button onClick={() => fileInputRef.current?.click()} className="py-1.5 px-4 bg-vsf-600 text-white rounded-lg text-xs font-bold">Chọn file</button>
+                  <div className="grid grid-cols-2 gap-4" data-testid={TEST_IDS.projectUploadZone}>
+                    {/* Slot 1: Answer PDF */}
+                    <DropSlot
+                      label="Answer PDF" hint="File câu trả lời"
+                      accent="vsf" file={answerFile} dragging={dragOver === "answer_pdf"}
+                      onDragOver={(e) => { e.preventDefault(); setDragOver("answer_pdf"); }}
+                      onDragLeave={() => setDragOver(null)}
+                      onDrop={(e) => onDropToSlot("answer_pdf", e)}
+                      onPick={(f) => setSlotFile("answer_pdf", f)}
+                      onClear={() => setSlotFile("answer_pdf", null)}
+                    />
+                    {/* Slot 2: Source Ref PDF */}
+                    <DropSlot
+                      label="Source Ref PDF" hint="File liệt kê nguồn tham chiếu"
+                      accent="amber" file={sourceRefFile} dragging={dragOver === "source_ref_pdf"}
+                      onDragOver={(e) => { e.preventDefault(); setDragOver("source_ref_pdf"); }}
+                      onDragLeave={() => setDragOver(null)}
+                      onDrop={(e) => onDropToSlot("source_ref_pdf", e)}
+                      onPick={(f) => setSlotFile("source_ref_pdf", f)}
+                      onClear={() => setSlotFile("source_ref_pdf", null)}
+                    />
                   </div>
 
-                  {staged.length > 0 && (
-                    <table className="w-full text-left text-[11.5px]" data-testid={TEST_IDS.projectBundleBuilderTable}>
-                      <thead><tr className="text-slate-400 font-bold uppercase text-[10px] border-b">
-                        <th className="py-2">Tên file</th><th className="py-2">Gán file_role</th><th className="py-2"></th>
-                      </tr></thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {staged.map((s, i) => (
-                          <tr key={i}>
-                            <td className="py-2 font-semibold text-slate-700">{s.file.name}</td>
-                            <td className="py-2">
-                              <select value={s.role} onChange={(e) => setRole(i, e.target.value as FileRole)} className="border border-slate-200 rounded px-2 py-1 text-xs">
-                                <option value="answer_pdf">answer_pdf</option>
-                                <option value="source_ref_pdf">source_ref_pdf</option>
-                                <option value="source_content_pdf">source_content_pdf</option>
-                              </select>
-                            </td>
-                            <td className="py-2 text-right">
-                              <button onClick={() => removeStaged(i)} className="text-red-500 text-xs font-bold">Xóa</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  <div className="pt-4 border-t border-slate-100 flex justify-between">
+                  <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
                     <button onClick={() => setStep(1)} data-testid={TEST_IDS.projectWizardPrev} className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2"><ArrowLeft size={14} /> Quay lại</button>
-                    <button onClick={() => setStep(3)} disabled={staged.length === 0} data-testid={TEST_IDS.projectUploadContinue}
+                    {!bundleRolesOk && <span className="text-[11px] text-amber-700">Cần đủ Answer PDF + Source Ref PDF</span>}
+                    <button onClick={() => setStep(3)} disabled={!bundleRolesOk} data-testid={TEST_IDS.projectUploadContinue}
                       className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow disabled:opacity-40">
                       <span>Tiếp tục (Upload)</span> <ArrowRight size={14} />
                     </button>
@@ -397,8 +449,21 @@ export default function ProjectSetupView({
               {/* STEP 3 */}
               {step === 3 && (
                 <div className="space-y-5">
+                  {/* Tóm tắt file sẽ upload (role badge) */}
+                  <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 text-[11.5px]">
+                    {staged.map((s, i) => (
+                      <div key={i} className="flex items-center justify-between px-3 py-2">
+                        <span className="font-semibold text-slate-700 truncate">{s.file.name}</span>
+                        <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                          s.role === "answer_pdf" ? "bg-vsf-100 text-vsf-700"
+                          : s.role === "source_ref_pdf" ? "bg-amber-100 text-amber-700"
+                          : "bg-slate-100 text-slate-600"}`}>{s.role}</span>
+                      </div>
+                    ))}
+                  </div>
+
                   <button onClick={handleUploadAndValidate} disabled={busy} data-testid={TEST_IDS.projectValidateBundle}
-                    className="w-full py-2.5 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white font-extrabold rounded-lg text-xs flex items-center justify-center gap-2 disabled:opacity-50">
+                    className="w-full py-2.5 bg-gradient-to-tr from-vsf-600 to-vsf-700 text-white font-extrabold rounded-lg text-xs flex items-center justify-center gap-2 disabled:opacity-50">
                     {busy && <Loader2 size={14} className="animate-spin" />} Upload {staged.length} file + Validate Bundle
                   </button>
 
