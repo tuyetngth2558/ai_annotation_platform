@@ -363,3 +363,50 @@
 | FT-STO-001 | File PDF upload lưu được với metadata `bundle_id`, filename, file_role | Not Run | |
 | FT-STO-002 | Source file reference hiển thị đúng trong source viewer hoặc task detail | Not Run | |
 | FT-STO-003 | Export CSV trace đúng về `bundle_id`, PDF filenames và source file refs | Not Run | |
+
+---
+
+## 12. Backend/API edge checklist
+
+> Checklist bo sung cho backend. Chay bang API test, DB assertion, worker log va storage inspection khi co the.
+
+| ID | Checklist | Status | Notes |
+|---|---|---|---|
+| FT-BE-AUTH-001 | Refresh token phai revalidate user active/role trong DB, user disabled bi 401/403 | Not Run | |
+| FT-BE-AUTH-002 | Change password khong tra password hash, old password/token path khong con hop le theo rule auth da chot | Not Run | |
+| FT-BE-AUTH-003 | Login error khong phan biet email ton tai hay sai password | Not Run | |
+| FT-BE-USR-001 | Admin tao user validate email unique, role hop le, temporary password policy | Not Run | |
+| FT-BE-USR-002 | Non-admin khong list/get/create user; response user khong chua password/API key/secret | Not Run | |
+| FT-BE-RBAC-001 | API task/detail/draft/submit/QA/export bi chan theo project assignment, khong chi theo global role | Not Run | |
+| FT-BE-RBAC-002 | Direct API call voi ID khong thuoc scope tra 403/404 va khong leak metadata | Not Run | |
+| FT-BE-PRJ-001 | LLM API key duoc encrypt at-rest; get/list config chi tra masked/metadata | Not Run | |
+| FT-BE-PRJ-002 | Prompt/template va endpoint bi trim/validate; URL localhost/private network neu bi cam phai reject | Not Run | |
+| FT-BE-IMP-001 | Upload validate MIME + magic/content, khong chi dua vao extension/content-type | Not Run | |
+| FT-BE-IMP-002 | Filename unicode/space/long name/duplicate name duoc normalize an toan va khong ghi de file | Not Run | |
+| FT-BE-IMP-003 | Storage key/path traversal (`../`, `%2e%2e`, `\`, absolute path) bi reject | Not Run | |
+| FT-BE-IMP-004 | Confirm invalid bundle khong tao batch/parent task/job/audit thanh cong | Not Run | |
+| FT-BE-IMP-005 | Confirm import idempotent hoac tra 409 an toan khi double click/replay | Not Run | |
+| FT-BE-IMP-006 | Loi giua chung khi confirm import rollback DB/storage hoac danh dau failed de cleanup | Not Run | |
+| FT-BE-PIP-001 | Worker retry parse/claim/pre-score khong tao duplicate parent task, claim, pre-score | Not Run | |
+| FT-BE-PIP-002 | Pipeline status summary dung khi co mix success/failed/skipped claims | Not Run | |
+| FT-BE-PIP-003 | Claim extraction voi answer text rong sau trim, chi whitespace, hoac qua ngan bi fail dung rule | Not Run | |
+| FT-BE-PIP-004 | Source order duplicate, missing, gap, non-numeric duoc validate hoac map dung rule | Not Run | |
+| FT-BE-LLM-001 | LLM timeout/retry/circuit behavior khong block vinh vien worker | Not Run | |
+| FT-BE-LLM-002 | LLM response missing dimension, extra dimension, wrong type, null, NaN, out-of-range deu bi reject | Not Run | |
+| FT-BE-LLM-003 | Pre-score immutable: API/DB app role khong update/delete duoc baseline sau khi tao | Not Run | |
+| FT-BE-ANN-001 | Draft save dung task version/updated_at de tranh lost update | Not Run | |
+| FT-BE-ANN-002 | Draft/submit bi reject neu task da `Submitted`, `Approved`, hoac khong assigned cho annotator | Not Run | |
+| FT-BE-ANN-003 | Score boundary chap nhan `0`, `0.00`, `1`, `1.00`; reject `-0`, `1.000`, scientific notation neu khong support | Not Run | |
+| FT-BE-ANN-004 | Justification/source note trim whitespace truoc khi dem ky tu | Not Run | |
+| FT-BE-ANN-005 | Submit double request chi tao mot transition/history/audit | Not Run | |
+| FT-BE-QA-001 | Approve/return chi hop le tu `Submitted`; stale/concurrent request tra 409 | Not Run | |
+| FT-BE-QA-002 | Return comment trim whitespace, reject HTML/script neu backend sanitize theo rule | Not Run | |
+| FT-BE-QA-003 | QA approve/return double click hoac hai QA thao tac dong thoi chi co mot action thang | Not Run | |
+| FT-BE-EXP-001 | Export snapshot consistent, row_count metadata khop so dong CSV | Not Run | |
+| FT-BE-EXP-002 | CSV injection cells bat dau `=`, `+`, `-`, `@`, tab, CR duoc neutralize theo rule | Not Run | |
+| FT-BE-EXP-003 | Export khong include returned/submitted/pre-scoring-failed/source-mapping-required tasks | Not Run | |
+| FT-BE-EXP-004 | Download export het han/khong thuoc quyen bi 403/404 va khong leak file path | Not Run | |
+| FT-BE-AUD-001 | Audit log insert-only; khong co update/delete API; DB app role bi revoke update/delete neu da chot | Not Run | |
+| FT-BE-AUD-002 | Audit payload khong luu raw secret/password/JWT/API key | Not Run | |
+| FT-BE-LOG-001 | Moi loi backend tra `request_id`/error_code an toan; stack trace chi nam trong log noi bo | Not Run | |
+| FT-BE-LOG-002 | Log co correlation ID xuyen suot request -> worker job -> export job | Not Run | |

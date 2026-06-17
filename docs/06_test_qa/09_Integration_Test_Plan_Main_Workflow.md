@@ -151,3 +151,34 @@ Integration test tập trung kiểm tra **data contract, state transition, API/U
 | `05_Functional_Test_Checklist.md` | Checklist từng module |
 | `06_API_UI_Sanity_Checklist.md` | Sanity API/UI sau deploy |
 | `08_Regression_Checklist.md` | Regression sau fix bug/deploy |
+
+---
+
+## 10. Backend integration stress and failure scenarios
+
+> Cac case nay kiem tra handoff giua API, DB, storage, worker, audit/log. Uu tien P0/P1 truoc UAT.
+
+| ID | Integration scenario | Steps | Expected result | Priority |
+|---|---|---|---|---|
+| INT-BE-001 | Request ID propagates from API to worker | Confirm import with a known request/correlation ID, let parser/LLM worker run | API response, worker log, batch status, audit/log entries can be correlated by request/job/bundle ID | P1 |
+| INT-BE-002 | Storage failure during import does not create ready workflow data | Inject storage write failure after DB transaction starts | Import returns safe error; no ready parent/claim task; failed artifacts are cleaned or marked failed | P0 |
+| INT-BE-003 | DB failure during worker step is retry-safe | Inject DB failure while saving claims or pre-scores, then retry job | Retry finishes without duplicate claims/pre-scores; status/audit reflects one successful result | P0 |
+| INT-BE-004 | Parser warning and parser hard-fail split correctly | Run one bundle with `SOURCE_URL_MISSING` and one with no answer text | Warning bundle continues; hard-fail bundle stops before claim/pre-score; batch counts are correct | P0 |
+| INT-BE-005 | Cross-project ID mix is blocked through full workflow | Use Project A token with Project B bundle/task/export IDs | Every API returns 403/404; no audit/action created for unauthorized target | P0 |
+| INT-BE-006 | Annotation stale draft does not overwrite submitted data | Open same task in two API clients, save/submit in client A, then save old draft from client B | Backend returns 409 for stale write; QA sees client A data only | P0 |
+| INT-BE-007 | QA terminal race is atomic | Two QA clients approve/return the same submitted task concurrently | Exactly one terminal state transition; one audit/history item for the winning action; loser receives 409 | P0 |
+| INT-BE-008 | Export snapshot and audit are consistent | Start export while another approved claim is being created | CSV row count matches export metadata and audit; snapshot behavior is deterministic and documented | P1 |
+| INT-BE-009 | Secret-safe failure path across LLM and logs | Configure bad LLM key/provider and run pre-score | API/log/audit include safe error code and provider status, never raw API key/prompt secret/JWT | P0 |
+| INT-BE-010 | Audit immutability survives app-level attempts | After import/submit/approve/export, attempt update/delete using app API or app DB role | Audit rows remain unchanged; update/delete denied; denial is observable for Dev/Test | P0 |
+
+## 11. Backend data integrity checkpoints
+
+| Checkpoint | Assertion |
+|---|---|
+| Import idempotency | Same staging ID/idempotency key cannot create two bundles, batches, parent tasks, or worker jobs. |
+| Transaction boundary | A failed confirm/import worker step cannot leave a task visible to annotator unless all required data exists. |
+| Worker retry | Retry of parse/claim/pre-score steps is safe and does not duplicate child records. |
+| State versioning | Draft, submit, approve, return, and export use current task state/version and reject stale writes. |
+| Authorization | Every object access checks project/scope, not only global role. |
+| Secret handling | API responses, audit payloads, and logs redact JWT/password/API key/LLM secret. |
+| Export snapshot | Export metadata row_count, CSV rows, status filter, and audit row agree. |

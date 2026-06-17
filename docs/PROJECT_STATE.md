@@ -8,7 +8,7 @@
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
 
-**Cập nhật lần cuối:** 2026-06-15 · **Bởi:** Khải (auth/users BE) + Tuấn Anh (devops CI) + Nhung (QA test plan)
+**Cập nhật lần cuối:** 2026-06-16 · **Bởi:** Khải (auth/users BE) + Tuấn Anh (devops CI) + Nhung (QA test plan) + Codex (backend/API test case expansion)
 
 ---
 
@@ -60,7 +60,7 @@ Import PDF → Parse → Claim Extract → Pre-score → Annotate → QA → Exp
 | ARQ worker + pipeline | 🚧 | khung xong, các bước TODO |
 | i18n (vi/en) + theme OKLCH | ✅ | |
 | Logging (JSON/request-id) | 🚧 | xem logging-and-observability |
-| Test plan + test cases (QA) | ✅ | docs/06_test_qa/ — test plan, AC mapping, E2E, checklist, bug log template |
+| Test plan + test cases (QA) | ✅ | docs/06_test_qa/ — test plan, AC mapping, E2E, checklist, bug log template; bổ sung backend/API edge, concurrency, storage, audit, export safety cases |
 
 ---
 

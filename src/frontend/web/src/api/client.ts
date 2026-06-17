@@ -35,6 +35,8 @@ export const authToken = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
+import { mockRequest } from "./mockApi";
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = authToken.get();
   const headers = new Headers(options.headers);
@@ -44,6 +46,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  if (import.meta.env.VITE_USE_MOCK_API === "true") {
+    return mockRequest<T>(path, options);
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {

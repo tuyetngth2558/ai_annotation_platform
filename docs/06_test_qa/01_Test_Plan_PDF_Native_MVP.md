@@ -463,3 +463,23 @@ Functional Checklist và API/UI Sanity là checklist hỗ trợ để không b�
 | API/UI Sanity Test | Build/staging sanity, route/API/action chính | `06_API_UI_Sanity_Checklist.md` |
 | Workflow Export Verification | CSV approved-only, UTF-8, quoting, PDF trace | `03_E2E_Test_Scenarios.md`, `05_Functional_Test_Checklist.md` |
 | Bug Log Triage | Phân loại bug blocking/defer trước demo | `04_Bug_Log_Template.md` |
+
+---
+
+## 14. Backend-focused test expansion notes
+
+Nhom test bo sung ngay 16/06/2026 tap trung vao backend/API thay vi UI. Muc tieu la bat cac loi thuong chi lo ra khi test qua API, DB, worker va storage:
+
+- Authorization theo project/scope, khong chi theo global role.
+- Idempotency cho import confirm, worker retry, annotation submit, QA approve/return.
+- Transaction rollback va orphan data khi storage/DB/worker fail giua chung.
+- LLM schema drift, timeout, partial success/failure va immutable pre-score.
+- Storage/file safety: spoofed PDF, path traversal, duplicate/long/unicode filename.
+- Export safety: approved-only, consistent snapshot, row_count metadata, CSV injection.
+- Audit/log safety: insert-only audit, request ID correlation, no secret/PII in response/log.
+
+Exit criteria backend bo sung:
+
+- Tat ca P0 trong `E2E-BE-*`, `FT-BE-*`, `API-BE-*`, `INT-BE-*`, `REG-BE-*` lien quan den auth/RBAC/import/annotation/QA/export phai pass hoac co workaround duoc PO/BA chap nhan.
+- Khong con bug P0 ve data leak, secret leak, duplicate state transition, invalid export row, hoac audit mutation.
+- Moi bug backend P1 con mo phai co evidence: request/response, request_id, DB state truoc/sau, worker log neu co.

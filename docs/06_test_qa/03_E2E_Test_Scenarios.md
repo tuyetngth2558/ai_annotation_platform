@@ -167,3 +167,32 @@
 - OCR handling for scan/image PDFs: reject or flag `ocr_required`.
 - Exact LLM output schema and mock response contract.
 - Source content PDF mapping rule: one file per source or bundled source content.
+
+---
+
+## 12. Backend/API deep-dive scenarios
+
+> Nhom case nay uu tien test qua API/DB/log de bat loi backend de sot. Khong yeu cau thay doi UI.
+
+| ID | Scenario | Preconditions | Steps | Expected result | Priority |
+|---|---|---|---|---|---|
+| E2E-BE-AUTH-001 | Refresh token revalidates inactive user | User has valid refresh token, then is disabled in DB | 1. Login and keep refresh token. 2. Disable user. 3. Call refresh/current-user API. | API returns 401/403; no new access token; audit/log does not leak token. | P0 |
+| E2E-BE-AUTH-002 | Change password invalidates old credential path | Active user exists | 1. Login. 2. Change password. 3. Try login with old password. 4. Login with new password. | Old password fails, new password works; response never returns password hash. | P0 |
+| E2E-BE-RBAC-001 | Cross-project task access is blocked | Annotator A assigned to Project A only; task exists in Project B | Call task detail/draft/submit APIs for Project B task using Annotator A token. | 403/404 without task data leak; no draft/history created. | P0 |
+| E2E-BE-RBAC-002 | QA cannot approve task outside assigned project/scope | QA assigned to Project A only; submitted task exists in Project B | Call QA approve/return API for Project B task. | 403/404; task state unchanged; no audit approve/return. | P0 |
+| E2E-BE-IMP-001 | Confirm import is idempotent for same validated bundle | Valid staged bundle exists | Send confirm request twice with same idempotency key or same staging ID. | Only one batch/bundle/parent task is created; second response is same result or 409 safe conflict. | P0 |
+| E2E-BE-IMP-002 | Confirm import rollback on storage/DB failure | Backend can simulate storage or DB failure after some files are staged | Confirm import while failure is injected. | No orphan batch/claim task; partial DB writes are rolled back or marked failed with recoverable cleanup state. | P0 |
+| E2E-BE-IMP-003 | Filename/content-type spoofing rejected | Test file named `.pdf` but body is not a PDF | Upload spoofed file with `application/pdf`. | Backend validates magic/content enough to reject; parser not triggered. | P0 |
+| E2E-BE-IMP-004 | Storage key path traversal rejected | Upload/download request uses filename/key with `../`, encoded traversal, absolute path, or backslash variants | Call upload/download/file metadata API. | 400/403; no file outside configured storage root is read/written. | P0 |
+| E2E-BE-PIP-001 | Pipeline retry does not duplicate claims/pre-scores | Valid import; worker job retry is triggered | Run parse/claim/pre-score job twice or retry same job ID. | Claim order and pre-score records remain single per claim/version; retry updates status safely. | P0 |
+| E2E-BE-PIP-002 | Partial LLM success/failure per claim is isolated | Bundle creates multiple claims; LLM succeeds for one and fails for another | Run pre-scoring. | Successful claim becomes ready; failed claim enters `Pre-scoring Failed`; parent/batch summary counts are correct. | P1 |
+| E2E-BE-PIP-003 | LLM schema rejects missing/extra/wrong-type dimensions | Mock provider returns missing score, score as string, extra field, or out-of-range value | Run pre-scoring for each malformed response. | Invalid output is rejected; no invalid baseline saved; error code/log is searchable by task ID. | P0 |
+| E2E-BE-ANN-001 | Draft save cannot overwrite submitted/approved task | Task already submitted or approved | Call draft API with old/stale payload. | 409 invalid state/version; saved annotation and task status remain unchanged. | P0 |
+| E2E-BE-ANN-002 | Double submit creates one state transition | Valid ready task and annotation payload | Send two submit requests quickly or replay same request. | Exactly one submit history/audit; task remains `Submitted`; second request returns idempotent success or 409. | P0 |
+| E2E-BE-ANN-003 | Optimistic locking catches stale annotation draft | Two sessions load same task version | Session A saves/submits; Session B submits older version. | Backend rejects stale version with 409; no lost update. | P1 |
+| E2E-BE-QA-001 | Double approve/return race is safe | Submitted task exists | QA A approves while QA B returns or approves same task nearly simultaneously. | Only one final transition wins; loser gets 409; history/audit has one terminal action. | P0 |
+| E2E-BE-QA-002 | Returned task cannot be exported until re-approved | Task is returned after previously being submitted | Trigger export before resubmit/approve. | Returned claim is excluded; export row count/status is correct. | P0 |
+| E2E-BE-EXP-001 | CSV injection is neutralized | Approved claim/source/note begins with `=`, `+`, `-`, `@`, tab, or CR | Export CSV and inspect cell values. | Export prevents spreadsheet formula execution according to chosen rule; text remains traceable. | P0 |
+| E2E-BE-EXP-002 | Export snapshot is consistent during concurrent approval | Export starts while QA approves another task in same project | Start export and approve concurrently. | CSV includes a consistent snapshot; export metadata row_count matches actual file rows. | P1 |
+| E2E-BE-AUD-001 | Audit log is insert-only via API and DB permission | Audit row exists | Try update/delete via exposed API if any and via DB role used by app if testable. | Update/delete blocked; no mutable audit API; attempt is logged or denied safely. | P0 |
+| E2E-BE-LOG-001 | Error responses use request ID and hide internals | Force parser/LLM/storage errors | Call relevant API and inspect response/log. | Client sees safe error code/request_id; log has diagnostic detail without secret/PII. | P1 |

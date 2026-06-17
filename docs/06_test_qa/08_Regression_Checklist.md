@@ -95,3 +95,35 @@ Checklist này dùng sau mỗi lần fix bug, deploy staging hoặc chuẩn bị
 | Có lỗi High/P1 ở auth/import/annotation/QA/export | Chỉ pass nếu có workaround được BA/PO chấp nhận |
 | Chỉ còn lỗi Medium/Low không ảnh hưởng luồng chính | Có thể pass có điều kiện |
 | Full MVP regression pass | Build sẵn sàng cho UAT/demo |
+
+---
+
+## 7. Backend regression focus after API/worker/storage changes
+
+| ID | Area | Checklist | Expected result | Status | Notes |
+|---|---|---|---|---|---|
+| REG-BE-AUTH-001 | Auth | Refresh/current-user revalidates disabled user and role changes | Disabled/downgraded user loses access without token/secret leak | Not Run | |
+| REG-BE-USR-001 | Users | Admin create/list/get user, duplicate email, non-admin forbidden | Correct 2xx/4xx/403; no password hash in response | Not Run | |
+| REG-BE-RBAC-001 | RBAC | Cross-project task/export/audit access by wrong role/scope | 403/404 and no data/action leak | Not Run | |
+| REG-BE-IMP-001 | Import | Non-PDF body with `.pdf`, corrupt PDF, duplicate role, traversal filename | Backend rejects and parser/job not triggered | Not Run | |
+| REG-BE-IMP-002 | Import | Confirm valid bundle twice | One batch/bundle/job only, or second request returns safe 409/idempotent result | Not Run | |
+| REG-BE-PIP-001 | Worker | Retry parse/claim/pre-score job | No duplicate parent task/claim/pre-score; status counts correct | Not Run | |
+| REG-BE-LLM-001 | LLM | Timeout, invalid schema, out-of-range score, missing dimension | `Pre-scoring Failed`; no invalid baseline saved; logs safe | Not Run | |
+| REG-BE-ANN-001 | Annotation | Stale draft, double submit, submit on non-ready task | 409 or idempotent safe result; no duplicate history/audit | Not Run | |
+| REG-BE-QA-001 | QA | Double approve/return and approve non-submitted task | One terminal action only; invalid state rejected | Not Run | |
+| REG-BE-EXP-001 | Export | Approved-only, CSV injection, row_count metadata, unauthorized download | CSV/data correct; unauthorized blocked; no formula injection | Not Run | |
+| REG-BE-AUD-001 | Audit | Try update/delete audit row via API/app DB role if testable | Update/delete denied; audit insert-only behavior holds | Not Run | |
+| REG-BE-LOG-001 | Logging | Forced parser/LLM/storage errors | Response has request_id/error_code; logs have diagnostics without secrets | Not Run | |
+
+## 8. Backend bug-fix targeted rerun matrix
+
+| Bug area fixed | Minimum rerun |
+|---|---|
+| Auth/session/RBAC | REG-BE-AUTH-001, REG-BE-RBAC-001, API-N-001..003, E2E-BE-RBAC-001..002 |
+| User management | REG-BE-USR-001, FT-BE-USR-001..002 |
+| Import/storage/parser | REG-BE-IMP-001..002, REG-BE-PIP-001, E2E-BE-IMP-001..004 |
+| Worker/LLM | REG-BE-PIP-001, REG-BE-LLM-001, E2E-BE-PIP-001..003 |
+| Annotation state | REG-BE-ANN-001, E2E-BE-ANN-001..003 |
+| QA workflow | REG-BE-QA-001, E2E-BE-QA-001..002 |
+| Export CSV | REG-BE-EXP-001, E2E-BE-EXP-001..002 |
+| Audit/log/error envelope | REG-BE-AUD-001, REG-BE-LOG-001, E2E-BE-AUD-001, E2E-BE-LOG-001 |

@@ -162,3 +162,26 @@ Mapping này dùng cho đầu việc của QA: đảm bảo mỗi AC/BR chính �
 | AC-10.2 | Chỉ Admin xem Audit Log | FT-AUTH-005, FT-AUD-007, E2E-RBAC-001..003 | Covered |
 | BR-10.1 | Audit log insert-only/không sửa xóa nếu API expose | API-021, FT-AUD-007, API/UI Sanity Test ticket | Partial |
 | BR-10.2 | Audit log đủ actor/action/object/time | FT-AUD-001..006, E2E-AUD-001 | Covered |
+
+---
+
+## 6. Backend risk-to-test mapping addendum
+
+| Backend risk / rule | Why it matters | Added coverage | Expected evidence |
+|---|---|---|---|
+| Auth refresh must revalidate DB state | Disabled user or changed role can keep access if token is trusted blindly | E2E-BE-AUTH-001, FT-BE-AUTH-001, API-BE-001, REG-BE-AUTH-001 | 401/403 after disable/role change; no new token |
+| User/admin APIs must hide secrets | Password hash/API key/JWT leak is a security P0 | FT-BE-USR-001..002, API-BE-003..004 | API response snapshots without secret fields |
+| Project-scoped RBAC | Global role check alone can leak another project's task/export | E2E-BE-RBAC-001..002, FT-BE-RBAC-001..002, API-BE-005, REG-BE-RBAC-001 | 403/404 and unchanged target data |
+| LLM API key encrypt/mask | BR-1.2 requires secret protection at rest and in response/log | FT-BE-PRJ-001, API-BE-006, INT-BE-009 | Masked read response; no plaintext in DB/log evidence |
+| PDF validation cannot trust extension | Spoofed upload can break parser or bypass file policy | E2E-BE-IMP-003, FT-BE-IMP-001, API-BE-007, REG-BE-IMP-001 | Rejected upload and no parser job |
+| Storage path traversal | File APIs are high-risk for reading/writing outside storage root | E2E-BE-IMP-004, FT-BE-IMP-003, API-BE-008 | 400/403 and no file leak |
+| Import confirm idempotency/rollback | Double click or mid-request failure can create duplicate/orphan workflow records | E2E-BE-IMP-001..002, FT-BE-IMP-004..006, API-BE-009..010, INT-BE-002 | Single bundle/job or safe failure; DB/storage checks |
+| Worker retry safety | ARQ retries can duplicate claims/pre-scores if steps are not idempotent | E2E-BE-PIP-001, FT-BE-PIP-001..002, INT-BE-003 | Unique child records and correct status counts |
+| LLM schema drift | Provider may return wrong shape/types/ranges | E2E-BE-PIP-003, FT-BE-LLM-001..002, API-BE-012, REG-BE-LLM-001 | No invalid baseline; `Pre-scoring Failed` with safe error code |
+| Pre-score immutability | Baseline must stay auditably read-only | FT-BE-LLM-003, E2E-BE-PIP-003 | Update/delete blocked or ignored; baseline unchanged |
+| Annotation stale write/double submit | Autosave and concurrent tabs can overwrite final work | E2E-BE-ANN-001..003, FT-BE-ANN-001..005, API-BE-013..014 | 409/idempotent behavior; one history/audit entry |
+| QA terminal race | Approve and Return must be atomic | E2E-BE-QA-001, FT-BE-QA-001..003, API-BE-015, INT-BE-007 | One final state and one terminal audit/history row |
+| Export approved-only and snapshot consistency | CSV is deliverable; wrong rows or row_count breaks trust | E2E-BE-EXP-001..002, FT-BE-EXP-001..004, API-BE-016..018, INT-BE-008 | CSV rows match metadata and status filter |
+| CSV injection | Spreadsheet formula execution risk in exported text | E2E-BE-EXP-001, FT-BE-EXP-002, API-BE-017 | Formula-like cells neutralized by agreed rule |
+| Audit insert-only | BR-10.1 says audit should not be mutable | E2E-BE-AUD-001, FT-BE-AUD-001..002, API-BE-019, INT-BE-010 | Update/delete denied; row unchanged |
+| Safe error envelope and log correlation | Debuggability without secret leakage | E2E-BE-LOG-001, FT-BE-LOG-001..002, API-BE-020, INT-BE-001 | Response has request_id/error_code; logs correlate safely |

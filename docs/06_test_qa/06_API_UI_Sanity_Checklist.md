@@ -226,3 +226,45 @@
 13. Verify UI Testability selectors for Login, Import, Annotation, QA Review, and Export.
 14. Run `11_UI_UX_Testability_Acceptance_Checklist.md` section "Manual test cases - thao tac de chay" for strict UI/UX contract pass/fail before frontend sign-off.
 15. Record result in test execution notes.
+
+---
+
+## 5. Backend API contract and negative deep checks
+
+> Bo sung cho sanity API sau deploy. Cac endpoint thuc te co the doi theo implementation, nhung capability/expected result can giu.
+
+| ID | Capability/check | Suggested endpoint | Method | Expected result | Status |
+|---|---|---|---|---|---|
+| API-BE-001 | Refresh token after user disabled | `/auth/refresh` | POST | 401/403; no new token/session; response hides auth details | Not Run |
+| API-BE-002 | Change password validation | `/auth/change-password` | POST | Wrong old password rejected; weak/short new password rejected if policy exists | Not Run |
+| API-BE-003 | Admin create user unique email | `/users` | POST | Duplicate email returns 409/validation error; password is never returned | Not Run |
+| API-BE-004 | User list RBAC and projection | `/users` | GET | Admin only; response excludes password hash/secret fields | Not Run |
+| API-BE-005 | Project-scoped access control | `/projects/:projectId/tasks/:taskId` or `/tasks/:id` | GET | User outside project scope gets 403/404 without entity data | Not Run |
+| API-BE-006 | LLM config secret masking | `/projects/:id/llm-config` | GET/PUT | Save succeeds for valid admin request; read returns masked key only | Not Run |
+| API-BE-007 | PDF magic-byte/content validation | Upload endpoint | POST | `.pdf` filename with non-PDF body rejected | Not Run |
+| API-BE-008 | Storage traversal guard | File metadata/download endpoint | GET/POST | Encoded traversal/absolute path/backslash variants rejected | Not Run |
+| API-BE-009 | Import confirm idempotency | Confirm import endpoint | POST | Duplicate confirm creates one bundle/job only or returns safe 409 | Not Run |
+| API-BE-010 | Import transaction rollback | Confirm import endpoint | POST | Simulated mid-request failure leaves no ready orphan batch/task | Not Run |
+| API-BE-011 | Worker job status contract | Batch/job status endpoint | GET | Status includes counts for pending/running/succeeded/failed/skipped and safe error codes | Not Run |
+| API-BE-012 | LLM malformed schema handling | Pipeline/pre-score trigger or worker test hook | POST | Invalid provider output rejected; no invalid pre-score persisted | Not Run |
+| API-BE-013 | Draft version conflict | `/tasks/:id/annotation/draft` | PUT | Stale version returns 409; latest draft not overwritten | Not Run |
+| API-BE-014 | Submit state conflict | `/tasks/:id/submit` | POST | Submit on submitted/approved/returned-by-other-state returns 409 | Not Run |
+| API-BE-015 | QA concurrent terminal action | `/qa/tasks/:id/approve`, `/qa/tasks/:id/return` | POST | Only one approve/return wins; loser receives 409 | Not Run |
+| API-BE-016 | Export approved-only backend filter | `/exports` | POST | Returned/submitted/failed tasks excluded regardless of request payload | Not Run |
+| API-BE-017 | Export CSV injection guard | `/exports/:id/download` | GET | Formula-like cells are escaped/neutralized per chosen rule | Not Run |
+| API-BE-018 | Export download authorization | `/exports/:id/download` | GET | Unauthorized user receives 401/403/404; no file path leaked | Not Run |
+| API-BE-019 | Audit immutability | `/audit/:id` if any | PUT/DELETE | No mutable audit endpoint, or update/delete returns 405/403 | Not Run |
+| API-BE-020 | Safe error envelope | Any forced 4xx/5xx | Any | Response has stable error code/request_id; no stack trace/secret/PII | Not Run |
+
+## 6. Backend release sanity run order
+
+1. Run health/build/schema check and confirm migrations.
+2. Login Admin/Annotator/QA, then verify refresh/current-user and role projection.
+3. Create or load project with masked LLM config.
+4. Run upload validation negatives: non-PDF body, corrupt PDF, missing role, duplicate role, traversal filename.
+5. Confirm one valid import and immediately replay confirm to test idempotency.
+6. Inspect batch/job status and worker logs by request/job ID.
+7. Submit annotation once, then replay submit and stale draft APIs.
+8. Run QA approve/return conflict on a submitted task.
+9. Export CSV and verify approved-only, row_count, UTF-8/quoting, CSV injection guard.
+10. Check audit rows and secret-safe logs for every backend action above.
