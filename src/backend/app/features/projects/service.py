@@ -16,6 +16,7 @@ from app.features.projects.schemas import (
     AssignClaimsIn,
     AssignClaimsOut,
     AssignMembersIn,
+    ClaimStatusStats,
     LlmConfigStatus,
     MemberOut,
     ProjectClaimOut,
@@ -270,21 +271,52 @@ async def _ensure_project(db: AsyncSession, project_id: uuid.UUID) -> Project:
 
 
 async def list_project_claims(
-    db: AsyncSession, project_id: uuid.UUID
+    db: AsyncSession,
+    project_id: uuid.UUID,
+    *,
+    limit: int = 10,
+    offset: int = 0,
+    status: str | None = None,
+    annotator_id: uuid.UUID | None = None,
+    unassigned: bool = False,
 ) -> ProjectClaimsOut:
-    """Danh sách claim của project (qua Batch.project_id) + email annotator được gán.
+    """Danh sách claim của project (qua Batch.project_id) + email annotator, có phân trang + filter.
 
-    Dùng cho trang chi tiết project (xem claim + gán người). Chỉ ADMIN.
+    Trang chi tiết project (xem claim + gán người). Chỉ ADMIN.
+    `stats` đếm theo trạng thái toàn project (không theo filter) để hiển tiến độ.
     """
     await _ensure_project(db, project_id)
 
-    rows = await db.execute(
+    base = (
         select(ClaimTask, ParentTask.article_code, ParentTask.title, UserAccount.email)
         .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
         .join(Batch, ParentTask.batch_id == Batch.id)
         .outerjoin(UserAccount, ClaimTask.assigned_annotator_id == UserAccount.id)
         .where(Batch.project_id == project_id)
-        .order_by(ParentTask.article_code, ClaimTask.claim_order)
+    )
+    # Filter
+    if status:
+        base = base.where(ClaimTask.status == status)
+    if unassigned:
+        base = base.where(ClaimTask.assigned_annotator_id.is_(None))
+    elif annotator_id:
+        base = base.where(ClaimTask.assigned_annotator_id == annotator_id)
+
+    # Tổng khớp filter (cho phân trang)
+    total = await db.scalar(
+        select(func.count())
+        .select_from(ClaimTask)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .where(Batch.project_id == project_id)
+        .where(*([ClaimTask.status == status] if status else []))
+        .where(*([ClaimTask.assigned_annotator_id.is_(None)] if unassigned else (
+            [ClaimTask.assigned_annotator_id == annotator_id] if annotator_id else []
+        )))
+    )
+
+    rows = await db.execute(
+        base.order_by(ParentTask.article_code, ClaimTask.claim_order).limit(limit).offset(offset)
     )
     items: list[ProjectClaimOut] = []
     for claim, article_code, title, email in rows.all():
@@ -301,7 +333,26 @@ async def list_project_claims(
                 assigned_annotator_email=email,
             )
         )
-    return ProjectClaimsOut(items=items, total=len(items))
+
+    # Thống kê toàn project theo trạng thái + chưa gán
+    unassigned_count = func.count().filter(ClaimTask.assigned_annotator_id.is_(None))
+    stat_rows = await db.execute(
+        select(ClaimTask.status, func.count(), unassigned_count)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .where(Batch.project_id == project_id)
+        .group_by(ClaimTask.status)
+    )
+    stats = ClaimStatusStats()
+    for st, cnt, unassigned_cnt in stat_rows.all():
+        stats.total += cnt
+        stats.unassigned += unassigned_cnt or 0
+        if hasattr(stats, st):
+            setattr(stats, st, cnt)
+
+    return ProjectClaimsOut(
+        items=items, total=total or 0, limit=limit, offset=offset, stats=stats
+    )
 
 
 async def assign_claims(
@@ -352,3 +403,23 @@ async def assign_claims(
     )
     await db.commit()
     return AssignClaimsOut(assigned_count=len(valid_ids), annotator_id=payload.annotator_id)
+
+
+async def remove_member(
+    db: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID
+) -> None:
+    """Gỡ thành viên khỏi project (deactivate mọi role của user trong project).
+
+    Dùng is_active=False (không xóa cứng) để giữ lịch sử. Nếu user đang được gán claim
+    thì claim vẫn giữ assigned_annotator_id (admin tự gán lại nếu cần).
+    """
+    await _ensure_project(db, project_id)
+    await db.execute(
+        update(UserProjectRole)
+        .where(
+            UserProjectRole.project_id == project_id,
+            UserProjectRole.user_id == user_id,
+        )
+        .values(is_active=False)
+    )
+    await db.commit()

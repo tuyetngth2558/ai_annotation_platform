@@ -31,7 +31,7 @@ interface ProjectSetupViewProps {
   project: Project;
   onBackToDashboard: () => void;
   showToast: (msg: string) => void;
-  onImported?: () => void; // gọi khi import xong để App reload data
+  onImported?: (projectId: string) => void; // gọi khi import xong (kèm id project)
 }
 
 type StagedFile = { file: File; role: FileRole };
@@ -150,7 +150,7 @@ export default function ProjectSetupView({
           clearInterval(timer);
           if (st.bundleStatus === "done") {
             showToast("Pipeline xử lý bundle hoàn tất!");
-            onImported?.();
+            onImported?.(projectId);
           } else {
             showToast(`Pipeline lỗi: ${st.errorDetail || "không rõ"}`);
           }
@@ -547,7 +547,7 @@ export default function ProjectSetupView({
                     )}
                   </div>
                   <div className="pt-4 border-t border-slate-100 flex justify-end">
-                    <button onClick={() => { setMode("list"); onImported?.(); }} className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold">Về danh sách</button>
+                    <button onClick={() => onImported?.(projectId)} className="py-2 px-4 bg-vsf-600 hover:bg-vsf-700 text-white rounded-lg text-xs font-bold">Mở chi tiết project →</button>
                   </div>
                 </div>
               )}

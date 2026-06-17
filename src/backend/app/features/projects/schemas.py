@@ -152,9 +152,24 @@ class ProjectClaimOut(BaseModel):
     assigned_annotator_email: str | None
 
 
+class ClaimStatusStats(BaseModel):
+    """Đếm claim theo trạng thái (tiến độ project) — KHÔNG phụ thuộc filter/phân trang."""
+
+    total: int = 0
+    ready: int = 0
+    in_annotation: int = 0
+    submitted: int = 0
+    returned: int = 0
+    approved: int = 0
+    unassigned: int = 0
+
+
 class ProjectClaimsOut(BaseModel):
     items: list[ProjectClaimOut]
-    total: int
+    total: int  # tổng claim KHỚP filter (cho phân trang)
+    limit: int
+    offset: int
+    stats: ClaimStatusStats  # thống kê toàn project (không theo filter)
 
 
 class AssignClaimsOut(BaseModel):

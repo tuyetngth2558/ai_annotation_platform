@@ -124,6 +124,40 @@ async def test_assign_all_claims(client, admin_token, project_with_claims, db_se
     assert all(c["assigned_annotator_id"] == aid for c in res2.json()["items"])
 
 
+async def test_claims_pagination_and_stats(client, admin_token, project_with_claims):
+    pid = project_with_claims["project_id"]
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    # limit=1 → 1 item, total=2, stats.total=2
+    res = await client.get(f"/api/v1/projects/{pid}/claims?limit=1&offset=0", headers=hdr)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert len(body["items"]) == 1
+    assert body["total"] == 2
+    assert body["limit"] == 1
+    assert body["stats"]["total"] == 2
+    assert body["stats"]["unassigned"] == 2  # chưa gán ai
+
+
+async def test_claims_filter_unassigned(client, admin_token, project_with_claims):
+    pid = project_with_claims["project_id"]
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    res = await client.get(f"/api/v1/projects/{pid}/claims?unassigned=true", headers=hdr)
+    assert res.status_code == 200
+    assert res.json()["total"] == 2  # cả 2 chưa gán
+
+
+async def test_remove_member(client, admin_token, project_with_claims):
+    pid = project_with_claims["project_id"]
+    aid = str(project_with_claims["annotator_id"])
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    res = await client.delete(f"/api/v1/projects/{pid}/members/{aid}", headers=hdr)
+    assert res.status_code == 204
+    # sau khi gỡ, member không còn active trong project detail
+    detail = await client.get(f"/api/v1/projects/{pid}", headers=hdr)
+    active = [m for m in detail.json()["members"] if m["is_active"]]
+    assert all(m["user_id"] != aid for m in active)
+
+
 async def test_assign_claims_annotator_not_in_project_422(
     client, admin_token, project_with_claims, db_session
 ):

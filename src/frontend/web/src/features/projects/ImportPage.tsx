@@ -26,9 +26,9 @@ export function ImportPage() {
       project={project}
       onBackToDashboard={() => navigate("/admin/projects")}
       showToast={showToast}
-      onImported={() => {
-        showToast("Import xong — về danh sách project.");
-        navigate("/admin/projects");
+      onImported={(projectId) => {
+        showToast("Import xong — mở chi tiết project để gán nhân sự.");
+        navigate(projectId ? `/admin/projects/${projectId}` : "/admin/projects");
       }}
     />
   );

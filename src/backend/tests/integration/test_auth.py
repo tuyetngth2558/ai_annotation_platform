@@ -157,7 +157,7 @@ async def test_create_user_rejects_long_password_bytes(client):
             "full_name": "X",
             "temp_password": long_pw,
             "role": "ANNOTATOR",
-            "project_id": "00000000-0000-0000-0000-000000000000",
+            "project_ids": [],
         },
     )
     assert res.status_code == 422

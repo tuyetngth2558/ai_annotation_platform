@@ -97,6 +97,7 @@ export const apiClient = {
       method: "PUT",
       body: body ? JSON.stringify(body) : undefined,
     }),
+  del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   login: async (email: string, password: string) => {
     try {
       return await request<LoginResponse>("/auth/login", {

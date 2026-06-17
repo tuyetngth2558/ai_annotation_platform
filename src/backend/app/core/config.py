@@ -24,7 +24,9 @@ class Settings(BaseSettings):
     app_name: str = "VSF AI Annotation Platform"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    cors_origins: str = "http://localhost:5173"
+    # Origin được phép gọi API (CORS, so khớp chính xác chuỗi). Dev cho cả localhost +
+    # 127.0.0.1. Thêm origin khác (IP LAN, domain deploy) qua .env, phân tách bằng dấu phẩy.
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # ---- Auth / security ----
     jwt_secret: str = "dev-only-change-me-please"

@@ -87,10 +87,18 @@ async def assign_members(
 @router.get("/{project_id}/claims", response_model=ProjectClaimsOut)
 async def list_project_claims(
     project_id: uuid.UUID,
+    paging: PageParams = Depends(page_params),
+    status: str | None = None,
+    annotator_id: uuid.UUID | None = None,
+    unassigned: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
-    """Danh sách claim của project + annotator được gán (trang chi tiết project)."""
-    return await service.list_project_claims(db, project_id)
+    """Danh sách claim project (phân trang + filter status/annotator) + thống kê tiến độ."""
+    return await service.list_project_claims(
+        db, project_id,
+        limit=paging.limit, offset=paging.offset,
+        status=status, annotator_id=annotator_id, unassigned=unassigned,
+    )
 
 
 @router.post(
@@ -105,3 +113,13 @@ async def assign_claims(
 ):
     """Gán claim cho 1 annotator (bù khâu auto-assign D3). claim_ids rỗng = gán tất cả."""
     return await service.assign_claims(db, project_id, payload)
+
+
+@router.delete("/{project_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_member(
+    project_id: uuid.UUID,
+    user_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Gỡ thành viên khỏi project (deactivate role). Trả 204."""
+    await service.remove_member(db, project_id, user_id)

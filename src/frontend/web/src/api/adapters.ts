@@ -773,25 +773,61 @@ export interface ProjectClaim {
   assignedAnnotatorEmail: string | null;
 }
 
-export async function fetchProjectClaims(projectId: string): Promise<ProjectClaim[]> {
+export interface ClaimStats {
+  total: number; ready: number; in_annotation: number;
+  submitted: number; returned: number; approved: number; unassigned: number;
+}
+export interface ProjectClaimsPage {
+  items: ProjectClaim[];
+  total: number;
+  limit: number;
+  offset: number;
+  stats: ClaimStats;
+}
+export interface ClaimsQuery {
+  limit?: number;
+  offset?: number;
+  status?: string;
+  annotatorId?: string;
+  unassigned?: boolean;
+}
+
+export async function fetchProjectClaims(
+  projectId: string,
+  q: ClaimsQuery = {}
+): Promise<ProjectClaimsPage> {
+  const params = new URLSearchParams();
+  params.set("limit", String(q.limit ?? 10));
+  params.set("offset", String(q.offset ?? 0));
+  if (q.status) params.set("status", q.status);
+  if (q.unassigned) params.set("unassigned", "true");
+  else if (q.annotatorId) params.set("annotator_id", q.annotatorId);
+
   const res = await apiClient.get<{
     items: {
       claim_id: string; claim_order: number; section_name: string | null; claim_text: string;
       status: string; article_code: string | null;
       assigned_annotator_id: string | null; assigned_annotator_email: string | null;
     }[];
-    total: number;
-  }>(`/projects/${projectId}/claims`);
-  return res.items.map((c) => ({
-    claimId: c.claim_id,
-    claimOrder: c.claim_order,
-    sectionName: c.section_name || "",
-    claimText: c.claim_text,
-    status: c.status,
-    articleCode: c.article_code || "",
-    assignedAnnotatorId: c.assigned_annotator_id,
-    assignedAnnotatorEmail: c.assigned_annotator_email,
-  }));
+    total: number; limit: number; offset: number; stats: ClaimStats;
+  }>(`/projects/${projectId}/claims?${params.toString()}`);
+
+  return {
+    items: res.items.map((c) => ({
+      claimId: c.claim_id,
+      claimOrder: c.claim_order,
+      sectionName: c.section_name || "",
+      claimText: c.claim_text,
+      status: c.status,
+      articleCode: c.article_code || "",
+      assignedAnnotatorId: c.assigned_annotator_id,
+      assignedAnnotatorEmail: c.assigned_annotator_email,
+    })),
+    total: res.total,
+    limit: res.limit,
+    offset: res.offset,
+    stats: res.stats,
+  };
 }
 
 /** Gán claim cho annotator. claimIds rỗng = gán tất cả. */
@@ -812,14 +848,78 @@ export interface ProjectMember {
   fullName: string;
   email: string;
   role: string;
+  isActive: boolean;
 }
 
-/** GET /projects/{id} → members (cho dropdown gán annotator). */
+export interface ProjectInfo {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  deadline: string;
+  modality: string;
+  llmModel: string | null;
+  llmConfigured: boolean;
+  memberCount: number;
+  members: ProjectMember[];
+}
+
+interface ProjectDetailBE {
+  id: string;
+  project_code: string;
+  project_name: string;
+  status: string;
+  deadline: string | null;
+  modality: string;
+  member_count: number;
+  llm_config: { model: string | null; is_configured: boolean };
+  members: { user_id: string; full_name: string; email: string; role: string; is_active: boolean }[];
+}
+
+/** GET /projects/{id} → thông tin đầy đủ + members. */
+export async function fetchProjectDetail(projectId: string): Promise<ProjectInfo> {
+  const r = await apiClient.get<ProjectDetailBE>(`/projects/${projectId}`);
+  return {
+    id: r.id,
+    code: r.project_code,
+    name: r.project_name,
+    status: r.status,
+    deadline: r.deadline || "",
+    modality: r.modality,
+    llmModel: r.llm_config?.model ?? null,
+    llmConfigured: !!r.llm_config?.is_configured,
+    memberCount: r.member_count,
+    members: (r.members || []).map((m) => ({
+      userId: m.user_id, fullName: m.full_name, email: m.email, role: m.role, isActive: m.is_active,
+    })),
+  };
+}
+
+/** Members đang active của project (cho dropdown gán annotator). */
 export async function fetchProjectMembers(projectId: string): Promise<ProjectMember[]> {
-  const res = await apiClient.get<{
-    members: { user_id: string; full_name: string; email: string; role: string }[];
-  }>(`/projects/${projectId}`);
-  return (res.members || []).map((m) => ({
-    userId: m.user_id, fullName: m.full_name, email: m.email, role: m.role,
-  }));
+  const info = await fetchProjectDetail(projectId);
+  return info.members.filter((m) => m.isActive);
+}
+
+/** POST /projects/{id}/assignments — gán user (đã có) vào project với role. */
+export async function assignMembers(
+  projectId: string,
+  members: { userId: string; role: "ANNOTATOR" | "QA" }[]
+): Promise<void> {
+  await apiClient.post(`/projects/${projectId}/assignments`, {
+    members: members.map((m) => ({ user_id: m.userId, role: m.role })),
+  });
+}
+
+/** DELETE /projects/{id}/members/{userId} — gỡ thành viên khỏi project. */
+export async function removeMember(projectId: string, userId: string): Promise<void> {
+  await apiClient.del(`/projects/${projectId}/members/${userId}`);
+}
+
+export interface UserOption { id: string; email: string; role: string }
+
+/** GET /users → option cho dropdown gán vào project. */
+export async function fetchUserOptions(): Promise<UserOption[]> {
+  const res = await apiClient.get<{ id: string; email: string; role: string | null }[]>("/users");
+  return res.map((u) => ({ id: u.id, email: u.email, role: u.role || "" }));
 }
