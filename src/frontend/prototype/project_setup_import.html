@@ -5,25 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VSF AI Annotation Platform MVP</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
     :root {
-      --bg: #eff6ff;
+      --bg: #f6fbff;
       --surface: #ffffff;
-      --surface-2: #f8fafc;
-      --ink: #0f172a;
-      --muted: #475569;
-      --line: #dbe5f2;
-      --primary: #1e40af;
-      --primary-2: #3b82f6;
-      --accent: #0f766e;
-      --cta: #22c55e;
-      --good: #16a34a;
-      --warn: #d97706;
-      --bad: #dc2626;
-      --info: #0369a1;
-      --shadow: none;
+      --surface-2: #f9fcff;
+      --surface-3: #edf6ff;
+      --ink: #132033;
+      --muted: #607086;
+      --line: #d8e6f5;
+      --line-strong: #bfd2ea;
+      --interactive: #eaf6ff;
+      --interactive-hover: #dcf0ff;
+      --interactive-border: #bdd7f4;
+      --interactive-border-hover: #79aef5;
+      --button-secondary: linear-gradient(180deg, #ffffff 0%, #f3f9ff 100%);
+      --button-secondary-hover: linear-gradient(180deg, #f9fcff 0%, #e8f4ff 100%);
+      --button-secondary-border: #a9c4e8;
+      --button-secondary-text: #1e4f9a;
+      --primary: #2563eb;
+      --primary-2: #1d4ed8;
+      --accent: #0f9f8f;
+      --cta: #0f9f8f;
+      --good: #0f9f6e;
+      --warn: #b7791f;
+      --bad: #b91c1c;
+      --info: #2563eb;
+      --shadow: 0 18px 42px rgba(37, 99, 235, .10), 0 2px 10px rgba(19, 32, 51, .05);
       --radius: 8px;
-      --sidebar: 280px;
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --sidebar: 268px;
+      font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     * { box-sizing: border-box; }
@@ -31,19 +43,23 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background: var(--bg);
+      background:
+        radial-gradient(circle at 8% 8%, rgba(37, 99, 235, .14), transparent 30%),
+        radial-gradient(circle at 92% 6%, rgba(15, 159, 143, .13), transparent 28%),
+        linear-gradient(135deg, #ffffff 0%, var(--bg) 48%, #eaf6ff 100%);
       color: var(--ink);
       overflow-x: hidden;
+      font-size: 14px;
     }
 
     button, input, textarea, select { font: inherit; }
 
-    button, select, .nav-item, .task-row, .source-card, .tab, .step, .chip, .clickable {
+    button, select, .nav-item, .task-row, .source-card, .tab, .step, .chip, .clickable, a {
       cursor: pointer;
     }
 
     button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .nav-item:focus-visible, .tab:focus-visible, .user-pill:focus-visible {
-      outline: 3px solid rgba(59, 130, 246, .28);
+      outline: 3px solid rgba(37, 99, 235, .18);
       outline-offset: 2px;
     }
 
@@ -58,10 +74,10 @@
       position: sticky;
       top: 0;
       height: 100vh;
-      background: #ffffff;
+      background: rgba(255, 255, 255, .9);
       color: var(--ink);
       border-right: 1px solid var(--line);
-      padding: 22px 18px;
+      padding: 20px 16px;
       display: flex;
       flex-direction: column;
       gap: 18px;
@@ -81,17 +97,18 @@
       border-radius: 8px;
       display: grid;
       place-items: center;
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
       color: white;
       font-weight: 800;
-      letter-spacing: .04em;
+      letter-spacing: 0;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, .22);
     }
 
     .brand strong { display: block; color: var(--ink); font-size: 14px; }
     .brand span { color: var(--muted); font-size: 12px; }
 
     .nav-section-title {
-      color: #64748b;
+      color: #708095;
       text-transform: uppercase;
       letter-spacing: .08em;
       font-size: 11px;
@@ -110,15 +127,16 @@
       border: 1px solid transparent;
       border-radius: 8px;
       padding: 10px;
-      color: #475569;
+      color: #4b5c72;
       background: transparent;
       text-align: left;
       transition: background .18s ease, color .18s ease, border-color .18s ease;
       width: 100%;
+      min-height: 42px;
     }
 
-    .nav-item:hover { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
-    .nav-item.active { background: #eff6ff; border-color: #93c5fd; color: #1e3a8a; }
+    .nav-item:hover { background: var(--interactive); color: var(--primary-2); border-color: var(--interactive-border); }
+    .nav-item.active { background: var(--interactive); border-color: var(--interactive-border-hover); color: var(--primary-2); box-shadow: inset 3px 0 0 var(--primary); }
     .nav-icon {
       width: 18px;
       height: 18px;
@@ -137,13 +155,14 @@
       position: sticky;
       top: 0;
       z-index: 20;
-      background: #f8fbff;
+      background: rgba(255, 255, 255, .9);
       border-bottom: 1px solid var(--line);
-      padding: 16px 24px;
+      padding: 14px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 18px;
+      backdrop-filter: blur(10px);
     }
 
     .breadcrumb {
@@ -158,7 +177,7 @@
 
     .page-title {
       margin: 4px 0 0;
-      font-size: 23px;
+      font-size: 22px;
       line-height: 1.2;
       letter-spacing: 0;
     }
@@ -186,12 +205,13 @@
       color: var(--muted);
       font-size: 13px;
       cursor: pointer;
+      min-height: 40px;
     }
 
     .user-pill:hover {
-      border-color: #93c5fd;
-      background: #eff6ff;
-      color: #1e3a8a;
+      border-color: var(--interactive-border-hover);
+      background: var(--interactive);
+      color: var(--primary-2);
     }
 
     .user-caret {
@@ -212,7 +232,7 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--surface);
-      box-shadow: none;
+      box-shadow: var(--shadow);
     }
 
     .account-dropdown.open {
@@ -231,13 +251,13 @@
       display: grid;
       place-items: center;
       color: white;
-      background: var(--primary-2);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
       font-size: 12px;
       font-weight: 800;
     }
 
     .content {
-      padding: 24px;
+      padding: 20px 24px 28px;
       min-width: 0;
       max-width: 100%;
     }
@@ -258,14 +278,14 @@
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      box-shadow: none;
+      box-shadow: var(--shadow);
       min-width: 0;
       max-width: 100%;
     }
 
-    .card.padded { padding: 16px; }
+    .card.padded { padding: 14px; }
     .card-header {
-      padding: 16px;
+      padding: 13px 14px;
       border-bottom: 1px solid var(--line);
       display: flex;
       align-items: center;
@@ -276,7 +296,7 @@
 
     .card-header h2, .card-header h3, .section-title {
       margin: 0;
-      font-size: 16px;
+      font-size: 15px;
       letter-spacing: 0;
     }
 
@@ -285,21 +305,22 @@
     .body-copy { font-size: 14px; line-height: 1.6; color: #334155; }
 
     .metric {
-      padding: 16px;
+      padding: 14px;
       display: grid;
-      gap: 10px;
-      min-height: 118px;
+      gap: 9px;
+      min-height: 104px;
+      border-left: 4px solid var(--primary);
     }
 
     .metric span { color: var(--muted); font-size: 13px; }
-    .metric strong { font-size: 30px; line-height: 1; }
+    .metric strong { font-size: 28px; line-height: 1; }
     .metric .trend { color: var(--info); font-size: 12px; }
 
     .btn {
-      border: 1px solid var(--line);
-      background: var(--surface);
-      color: var(--ink);
-      padding: 9px 13px;
+      border: 1px solid var(--button-secondary-border);
+      background: var(--button-secondary);
+      color: var(--button-secondary-text);
+      padding: 8px 12px;
       border-radius: 8px;
       display: inline-flex;
       align-items: center;
@@ -309,19 +330,27 @@
       transition: background .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
       text-decoration: none;
       font-weight: 650;
+      box-shadow: 0 1px 0 rgba(19, 32, 51, .04);
     }
 
-    .btn:hover { border-color: #93c5fd; background: #eff6ff; }
+    .btn:hover {
+      border-color: #79aef5;
+      background: var(--button-secondary-hover);
+      color: var(--primary-2);
+      box-shadow: 0 10px 22px rgba(37, 99, 235, .13);
+    }
     .btn.primary {
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
       color: white;
       border-color: transparent;
-      box-shadow: none;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, .18);
     }
-    .btn.primary:hover { background: var(--primary-2); box-shadow: none; }
-    .btn.cta { background: var(--cta); border-color: var(--cta); color: #052e16; }
-    .btn.danger { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
-    .btn.ghost { background: transparent; }
+    .btn.primary:hover { filter: brightness(.98) saturate(1.08); box-shadow: 0 14px 30px rgba(37, 99, 235, .23); }
+    .btn.cta { background: var(--cta); border-color: var(--cta); color: #ecfeff; }
+    .btn.cta:hover { background: #0f8f82; border-color: #0f8f82; color: white; }
+    .btn.danger { background: #fff1f2; color: var(--bad); border-color: #fecdd3; }
+    .btn.danger:hover { background: #ffe4e6; border-color: #fda4af; }
+    .btn.ghost { background: var(--surface); border-color: var(--line-strong); }
     .btn:disabled, select:disabled { opacity: .55; cursor: not-allowed; }
 
     .badge {
@@ -336,51 +365,59 @@
       white-space: nowrap;
     }
 
-    .badge.imported { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
-    .badge.running { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
-    .badge.ready { background: #ecfdf5; color: #047857; border-color: #bbf7d0; }
-    .badge.work { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
-    .badge.submitted { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    .badge.returned { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-    .badge.approved { background: #ecfdf5; color: #15803d; border-color: #bbf7d0; }
-    .badge.exported { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    .badge.neutral { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+    .badge.imported { background: #f7fbff; color: #3f4b5f; border-color: #dce5f2; }
+    .badge.running { background: var(--interactive); color: var(--primary-2); border-color: var(--interactive-border); }
+    .badge.ready { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+    .badge.work { background: #fffbeb; color: #a16207; border-color: #fde68a; }
+    .badge.submitted { background: var(--interactive); color: var(--primary-2); border-color: var(--interactive-border); }
+    .badge.returned { background: #fff1f2; color: var(--bad); border-color: #fecdd3; }
+    .badge.approved { background: #ecfdf5; color: var(--good); border-color: #a7f3d0; }
+    .badge.exported { background: var(--interactive); color: var(--primary-2); border-color: var(--interactive-border); }
+    .badge.neutral { background: #f7fbff; color: #4b5c72; border-color: #dce5f2; }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12.5px;
     }
 
     th, td {
       text-align: left;
-      padding: 12px 14px;
+      padding: 10px 12px;
       border-bottom: 1px solid var(--line);
       vertical-align: top;
     }
 
     th {
-      color: #475569;
+      color: #4b5c72;
       font-weight: 750;
-      background: #f8fafc;
+      background: #f7fbff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
 
-    tr:hover td { background: #fbfdff; }
+    tr:hover td { background: #f7fbff; }
 
-    .table-wrap { overflow: auto; max-width: 100%; }
+    .table-wrap { overflow: auto; max-width: 100%; border-radius: var(--radius); }
 
     .form-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
+      gap: 12px;
     }
 
     .field { display: grid; gap: 7px; }
     .field.full { grid-column: 1 / -1; }
     .field label {
-      color: #334155;
+      color: #374151;
       font-size: 13px;
       font-weight: 700;
+    }
+
+    .required::after {
+      content: " *";
+      color: var(--bad);
     }
 
     input, textarea, select {
@@ -389,8 +426,13 @@
       border-radius: 8px;
       background: white;
       color: var(--ink);
-      padding: 10px 11px;
+      padding: 9px 10px;
       min-height: 40px;
+    }
+
+    input:focus-visible, textarea:focus-visible, select:focus-visible {
+      border-color: var(--interactive-border-hover);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .10);
     }
 
     textarea {
@@ -404,7 +446,7 @@
     .stepper {
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 8px;
+      gap: 7px;
       margin-bottom: 16px;
     }
 
@@ -414,16 +456,18 @@
       padding: 10px;
       background: white;
       transition: border-color .18s ease, background .18s ease;
+      min-height: 68px;
     }
 
-    .step.active { border-color: var(--primary); background: #eff6ff; }
+    .step:hover { border-color: var(--interactive-border-hover); background: var(--surface-2); }
+    .step.active { border-color: var(--primary); background: var(--interactive); }
     .step.done { border-color: #bbf7d0; background: #f0fdf4; }
     .step span { display: block; font-size: 11px; color: var(--muted); }
     .step strong { font-size: 13px; }
 
     .upload-zone {
-      border: 1.5px dashed #94a3b8;
-      background: #f8fafc;
+      border: 1.5px dashed #9ca3af;
+      background: #f7fbff;
       border-radius: var(--radius);
       min-height: 150px;
       display: grid;
@@ -432,7 +476,7 @@
       padding: 18px;
       transition: background .18s ease, border-color .18s ease;
     }
-    .upload-zone:hover { background: #eff6ff; border-color: var(--primary); }
+    .upload-zone:hover { background: var(--interactive); border-color: var(--primary); }
 
     .error-panel {
       display: grid;
@@ -456,14 +500,15 @@
 
     .workspace {
       display: grid;
-      grid-template-columns: minmax(260px, .85fr) minmax(420px, 1.35fr) minmax(280px, .95fr);
+      grid-template-columns: minmax(270px, .82fr) minmax(430px, 1.3fr) minmax(300px, .94fr);
       gap: 16px;
       align-items: start;
       min-width: 0;
     }
 
     .panel {
-      min-height: 680px;
+      min-height: calc(100vh - 184px);
+      max-height: calc(100vh - 112px);
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -471,7 +516,7 @@
     }
 
     .panel-body {
-      padding: 16px;
+      padding: 14px;
       overflow: auto;
       min-height: 0;
       flex: 1;
@@ -496,9 +541,22 @@
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 13px;
-      background: #fbfdff;
+      background: #f7fbff;
       display: grid;
       gap: 10px;
+    }
+
+    .stat-box,
+    .detail-box {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      background: #f7fbff;
+      min-width: 0;
+    }
+
+    .detail-box {
+      background: #ffffff;
     }
 
     .score-table input {
@@ -534,7 +592,7 @@
       background: #fff;
       transition: border-color .18s ease, background .18s ease;
     }
-    .source-card:hover { border-color: #93c5fd; background: #f8fafc; }
+    .source-card:hover { border-color: var(--interactive-border-hover); background: var(--surface-2); }
 
     .source-card .badge {
       max-width: 100%;
@@ -546,7 +604,7 @@
       display: flex;
       gap: 8px;
       border-bottom: 1px solid var(--line);
-      padding: 0 16px;
+      padding: 0 14px;
     }
 
     .tab {
@@ -570,7 +628,7 @@
       margin-bottom: 14px;
     }
     .banner.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-    .banner.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .banner.blue { background: var(--interactive); border: 1px solid var(--interactive-border); color: var(--primary-2); }
 
     .split-diff {
       display: grid;
@@ -588,7 +646,7 @@
     .diff-col h3 {
       margin: 0;
       padding: 12px;
-      background: #f8faff;
+      background: #f7fbff;
       border-bottom: 1px solid var(--line);
       font-size: 14px;
     }
@@ -602,7 +660,7 @@
     }
 
     .timeline-item {
-      border-left: 2px solid #93c5fd;
+      border-left: 2px solid var(--interactive-border-hover);
       padding-left: 12px;
       display: grid;
       gap: 4px;
@@ -654,7 +712,7 @@
       border: 1px solid #cbd5e1;
       background: white;
       border-left: 4px solid var(--primary);
-      box-shadow: none;
+      box-shadow: var(--shadow);
       border-radius: var(--radius);
       padding: 12px 14px;
       animation: slideUp .18s ease;
@@ -680,7 +738,68 @@
       font-weight: 700;
       transition: background .18s ease, border-color .18s ease;
     }
-    .chip.active { border-color: #93c5fd; background: #eff6ff; color: #1e3a8a; }
+    .chip:hover { border-color: var(--interactive-border-hover); background: var(--surface-2); }
+    .chip.active { border-color: var(--interactive-border-hover); background: var(--interactive); color: var(--primary-2); }
+
+    .page-intel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px;
+      background: rgba(255, 255, 255, .88);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .page-intel h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+    }
+
+    .workflow-rail {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .rail-step {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, #ffffff, #f7fbff);
+      border-radius: var(--radius);
+      padding: 10px;
+      min-height: 74px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .rail-step strong {
+      font-size: 12px;
+      color: var(--ink);
+    }
+
+    .rail-step span {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .toolbar .form-grid {
+      flex: 1 1 520px;
+      margin: 0;
+    }
 
     .quick-actions {
       display: flex;
@@ -717,7 +836,7 @@
       border: 1px solid #d8dee7;
       background: #ffffff;
       border-radius: 8px;
-      box-shadow: none;
+      box-shadow: var(--shadow);
       padding: 24px;
     }
 
@@ -738,7 +857,7 @@
       gap: 7px;
       padding: 12px;
       border-radius: var(--radius);
-      background: #f8fafc;
+      background: #f7fbff;
       border: 1px solid #d8dee7;
       color: #475569;
       font-size: 13px;
@@ -753,6 +872,67 @@
         scroll-behavior: auto !important;
         transition-duration: .01ms !important;
       }
+    }
+
+    @media (max-width: 1280px) {
+      .workspace {
+        grid-template-columns: minmax(300px, .95fr) minmax(420px, 1.15fr);
+      }
+
+      .workspace .panel:nth-child(3) {
+        grid-column: 1 / -1;
+        min-height: auto;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 1024px) {
+      :root { --sidebar: 220px; }
+      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .workspace { grid-template-columns: 1fr; }
+      .panel { min-height: auto; max-height: none; }
+      .stepper, .workflow-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split-diff { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        height: auto;
+        padding: 14px;
+      }
+
+      .nav-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .topbar {
+        position: static;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 14px;
+      }
+
+      .top-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .content { padding: 14px; }
+      .grid-2, .grid-3, .grid-4, .form-grid { grid-template-columns: 1fr; }
+      .page-intel { grid-template-columns: 1fr; }
+      .nav-list { grid-template-columns: 1fr; }
+      .stepper, .workflow-rail { grid-template-columns: 1fr; }
+      .user-pill { width: 100%; justify-content: space-between; }
+      .account-menu { width: 100%; }
+      .account-dropdown { left: 0; right: auto; width: 100%; }
+      .toast-area { left: 14px; right: 14px; bottom: 14px; }
+      .toast { min-width: 0; max-width: none; }
     }
   </style>
 </head>
@@ -895,7 +1075,6 @@
         "admin-import-dataset.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 3 },
         "admin-team-assignment.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 7 },
         "admin-project-detail.html": { role: "ADMIN", view: "projects", projectMode: "wizard", wizardStep: 8, bundleValidated: true },
-        "admin-qa-queue.html": { role: "ADMIN", view: "qa" },
         "admin-export.html": { role: "ADMIN", view: "export" },
         "admin-users.html": { role: "ADMIN", view: "users" },
         "admin-audit-log.html": { role: "ADMIN", view: "audit" },
@@ -1109,7 +1288,6 @@
       ADMIN: [
         ["dashboard", "Dashboard", "dashboard"],
         ["projects", "Projects / PDF Import", "project"],
-        ["qa", "QA Queue", "qa"],
         ["export", "Export", "export"],
         ["users", "Users", "user"],
         ["audit", "Audit Log", "audit"]
@@ -1226,15 +1404,22 @@
       }
       byId("dashboard").innerHTML = `
         <div class="grid grid-4">${metrics}</div>
-        <section class="card padded mt-16">
-          <h2 class="section-title">Luồng MVP theo role</h2>
-          <p class="body-copy">${flowText()}</p>
-          <div class="quick-actions">${shortcuts}</div>
-        </section>
         <section class="card mt-16">
           <div class="card-header"><h2>Task status snapshot</h2><span class="badge neutral">Mock Vivipedia</span></div>
           ${taskTable(tasks)}
         </section>`;
+    }
+
+    function workflowHint(label) {
+      const hints = {
+        "Import PDF": "Answer + Ref + Source Content",
+        Parse: "Raw text, metadata, warnings",
+        Claim: "Parent Task -> Claim Task",
+        "Pre-score": "6 Vivipedia dimensions",
+        Review: "Annotator submit, QA approve/return",
+        Export: "Approved only, CSV traceable"
+      };
+      return hints[label] || "";
     }
 
     function renderLogin() {
@@ -1325,10 +1510,13 @@
         return;
       }
       byId("projects").innerHTML = `
-        <div class="top-actions between mb-14">
-          <button class="btn" data-project-list>Quay lại Project List</button>
-          <div class="chip-row"><span class="chip active">Project Setup</span><span class="chip">Import PDF Bundle</span><span class="chip">Pipeline</span><span class="chip">Team Assignment</span><span class="chip">Project Detail</span></div>
-        </div>
+        <section class="page-intel">
+          <div>
+            <h2>Project Setup / Import PDF Bundle</h2>
+            <div class="small muted">ADMIN tạo project, cấu hình LLM, upload bundle PDF và đưa task vào pipeline nền.</div>
+          </div>
+          <div class="top-actions"><button class="btn" data-project-list>Quay lại Project List</button></div>
+        </section>
         <div class="stepper">
           ${["Thông tin project", "Cấu hình LLM", "Upload PDF", "Gán role / Validate", "Preview parse", "Confirm import", "Assignment"].map((label, i) => {
             const step = i + 1;
@@ -1403,18 +1591,18 @@
     function wizardBody() {
       if (state.wizardStep === 1) return `
         <div class="form-grid">
-          <div class="field"><label>Tên dự án</label><input id="projectName" value="${project.name}"></div>
+          <div class="field"><label class="required">Tên dự án</label><input id="projectName" value="${project.name}"></div>
           <div class="field"><label>Deadline</label><input type="date" value="2026-06-12"></div>
           <div class="field full"><label>Mô tả</label><textarea>Review claim-level cho câu trả lời Vivipedia, text-only trong MVP.</textarea></div>
-          <div class="field"><label>Modality type</label><select><option>Text</option><option disabled>Audio - Phase sau</option><option disabled>Image - Phase sau</option></select></div>
+          <div class="field"><label class="required">Modality type</label><select><option>Text</option><option disabled>Audio - Phase sau</option><option disabled>Image - Phase sau</option></select></div>
         </div>
         <div class="quick-actions"><button class="btn primary" data-next-step>Tiếp tục</button><button class="btn">Hủy</button></div>`;
       if (state.wizardStep === 2) return `
         <div class="form-grid">
-          <div class="field full"><label>LLM Endpoint URL</label><input value="https://llm-provider.example/v1/prescore"></div>
-          <div class="field"><label>API Key</label><input type="password" value="vsf-demo-key"></div>
+          <div class="field full"><label class="required">LLM Endpoint URL</label><input type="url" value="https://llm-provider.example/v1/prescore"></div>
+          <div class="field"><label class="required">API Key</label><input type="password" value="vsf-demo-key"></div>
           <div class="field"><label>Provider</label><select><option>Provider chưa chốt - dùng endpoint cấu hình</option></select></div>
-          <div class="field full"><label>Prompt template</label><textarea>Trích xuất claim từ Answer Context đã parse từ PDF và chấm 6 dimension SF, SC, NH, SQ, REL, COMP theo rubric MVP.</textarea></div>
+          <div class="field full"><label class="required">Prompt template</label><textarea>Trích xuất claim từ Answer Context đã parse từ PDF và chấm 6 dimension SF, SC, NH, SQ, REL, COMP theo rubric MVP.</textarea></div>
         </div>
         <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Tiếp tục</button></div>`;
       if (state.wizardStep === 3) return `
@@ -1436,14 +1624,15 @@
         <div class="quick-actions"><button class="btn" data-prev-step>Quay lại</button><button class="btn primary" data-next-step>Tiếp tục</button></div>`;
       if (state.wizardStep === 4) return `
         <div class="grid grid-2">
-          <section class="card padded">
+          <section class="detail-box">
             <h3 class="section-title">Bundle builder</h3>
             <div class="table-wrap mt-14"><table>
               <thead><tr><th>File</th><th>file_role</th><th>Validation</th></tr></thead>
               <tbody>
                 <tr><td>${project.answerPdf}</td><td><span class="badge ready">answer_pdf</span></td><td>Required, unique</td></tr>
                 <tr><td>${project.sourceRefPdf}</td><td><span class="badge ready">source_ref_pdf</span></td><td>Required, unique</td></tr>
-                ${project.sourceContentPdfs.map(file => `<tr><td>${file}</td><td><span class="badge ready">source_content_pdf</span></td><td>At least 1 required</td></tr>`).join("")}
+                ${(project.sourceContentPdfs && project.sourceContentPdfs.length ? project.sourceContentPdfs : []).map(file => `<tr><td>${file}</td><td><span class="badge ready">source_content_pdf</span></td><td>Optional (0..N) — evidence chính nếu có</td></tr>`).join("")}
+                ${(!project.sourceContentPdfs || project.sourceContentPdfs.length === 0) ? `<tr><td class="muted">(none)</td><td><span class="badge warn">source_content_pdf</span></td><td>Optional — không block import</td></tr>` : ""}
               </tbody>
             </table></div>
             <div class="quick-actions"><button class="btn primary" id="validateBundle">Validate bundle</button></div>
@@ -1482,7 +1671,7 @@
         return `<div class="error-panel">
           <strong>Bundle validation</strong>
           <div>Thiếu answer_pdf hoặc source_ref_pdf: block import.</div>
-          <div>Không có source_content_pdf: block import.</div>
+          <div>Không có source_content_pdf: vẫn cho import (optional); annotator sẽ dùng source_ref_pdf + URL.</div>
           <div>PDF corrupt hoặc không phải PDF: block import.</div>
           <div>source_url không parse được: warning, vẫn cho import.</div>
           <div>PDF scan/image: flag ocr_required.</div>
@@ -1541,8 +1730,15 @@
 
     function renderTasks() {
       byId("tasks").innerHTML = `
+        <section class="page-intel">
+          <div>
+            <h2>My Tasks</h2>
+            <div class="small muted">Danh sách chỉ gồm claim task được gán cho Annotator hiện tại, gồm Ready và Returned cần xử lý.</div>
+          </div>
+          <div class="chip-row"><span class="chip active">All</span><span class="chip">Ready</span><span class="chip">Returned</span></div>
+        </section>
         <section class="card">
-          <div class="card-header"><h2>My Tasks</h2><span class="badge neutral">Annotator chỉ thấy task được giao</span></div>
+          <div class="card-header"><h2>Assigned claim tasks</h2><span class="badge neutral">Annotator scope</span></div>
           ${taskTable(tasks.filter(t => t.annotator === "Annotator Mai"))}
         </section>`;
     }
@@ -1587,8 +1783,8 @@
               </div>
               <div class="mt-14">${scoreTable(t)}</div>
               <div class="grid grid-2 mt-14">
-                <div class="card padded"><span class="muted small">Composite score</span><div class="mt-8"><span id="compositeScore" class="score-pill ${scoreClass(composite(t))}">${fmtScore(composite(t))}</span></div></div>
-                <div class="card padded"><span class="muted small">Rule</span><div class="body-copy">Nếu lệch pre-score quá ±0.20, bắt buộc nhập lý do thay đổi.</div></div>
+                <div class="stat-box"><span class="muted small">Composite score</span><div class="mt-8"><span id="compositeScore" class="score-pill ${scoreClass(composite(t))}">${fmtScore(composite(t))}</span></div></div>
+                <div class="stat-box"><span class="muted small">Rule</span><div class="body-copy">Nếu lệch pre-score quá ±0.20, bắt buộc nhập lý do thay đổi.</div></div>
               </div>
               <div class="field mt-14"><label>Lý do thay đổi</label><textarea id="reasonText" placeholder="Bắt buộc nếu delta vượt ±0.20">${escapeHtml(t.reason)}</textarea></div>
               <div class="field"><label>Ghi chú annotator</label><textarea id="annotatorNotes" placeholder="Ghi chú bổ sung cho QA">${escapeHtml(t.notes)}</textarea></div>
@@ -1662,8 +1858,15 @@
     function renderQa() {
       const reviewableTasks = tasks.filter(t => t.status === "Submitted");
       byId("qa").innerHTML = `
+        <section class="page-intel">
+          <div>
+            <h2>QA Queue</h2>
+            <div class="small muted">QA chỉ xử lý task Submitted. Action trong MVP được khóa ở Approve hoặc Return.</div>
+          </div>
+          <div class="chip-row"><span class="chip active">Submitted ${reviewableTasks.length}</span><span class="chip">Returned ${tasks.filter(t => t.status === "Returned").length}</span><span class="chip">Approved ${tasks.filter(t => t.status === "Approved").length}</span></div>
+        </section>
         <section class="card">
-          <div class="card-header"><h2>QA Queue</h2><span class="badge neutral">Submitted only</span></div>
+          <div class="card-header"><h2>Submitted tasks</h2><span class="badge neutral">Submitted only</span></div>
           ${reviewableTasks.length ? taskTable(reviewableTasks) : `<div class="panel-body"><div class="success-panel"><strong>Không có task chờ review.</strong> Returned đã quay lại annotator, Approved đã đủ điều kiện export.</div></div>`}
         </section>`;
     }
@@ -1695,7 +1898,7 @@
           }).join("")}</div></div>
         </div>
         <div class="grid grid-2 mt-16">
-          <div class="card padded">
+          <div class="detail-box">
             <h3 class="section-title">Claim text cuối cùng ${t.edited ? "<span class='badge submitted'>Đã sửa claim</span>" : ""}</h3>
             <div class="chip-row mt-10">
               <span class="badge neutral">${escapeHtml(t.articleCode)}</span>
@@ -1705,7 +1908,7 @@
             <p class="body-copy">${escapeHtml(t.claimFinal)}</p>
             <p class="small muted">Annotator notes: ${escapeHtml(t.notes || "Không có ghi chú")}</p>
           </div>
-          <div class="card padded">
+          <div class="detail-box">
             <h3 class="section-title">Source list + status</h3>
             ${qaSourceRows(t)}
             <span class="badge neutral">${escapeHtml(t.sourceStatus || "Chưa chọn source status")}</span>
@@ -1736,6 +1939,13 @@
     function renderExport() {
       const approvedCount = tasks.filter(t => t.status === "Approved").length;
       byId("export").innerHTML = `
+        <section class="page-intel">
+          <div>
+            <h2>Export CSV claim-level</h2>
+            <div class="small muted">Export chỉ lấy task Approved và giữ trace về bundle_id, answer PDF, source reference PDF.</div>
+          </div>
+          <span class="score-pill ${approvedCount ? "score-good" : "score-warn"}">${approvedCount} eligible</span>
+        </section>
         <section class="card padded">
           <h2 class="section-title">Create Export Job</h2>
           <div class="form-grid mt-14">

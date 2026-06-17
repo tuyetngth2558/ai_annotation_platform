@@ -1,7 +1,7 @@
 # 01. ERD MVP and Extensible — PDF-native Import
 
 **Owner:** Phạm Đan Kha  
-**Phiên bản:** v0.4  
+**Phiên bản:** v0.6  
 **Mục tiêu:** ERD cho MVP khi input chính thức là PDF bundle.
 
 ---
@@ -11,7 +11,7 @@
 - Input chính của MVP là PDF bundle.
 - CSV/JSON không còn là import chính.
 - Sau upload, hệ thống parse PDF thành dữ liệu nội bộ có cấu trúc.
-- Export cuối là CSV claim-level.
+- Dữ liệu chuẩn được lưu trong DB/Supabase; dashboard, Excel workbook và CSV technical đều là output từ dữ liệu này.
 - Mọi claim/export phải trace được về file PDF gốc.
 - MVP build text/PDF only nhưng data model vẫn giữ hướng mở rộng multi-project/multi-modality.
 
@@ -39,9 +39,11 @@ erDiagram
     CLAIM_TASK ||--o{ LLM_PRE_SCORE : has
     CLAIM_TASK ||--o{ ANNOTATION_SUBMISSION : receives
     CLAIM_TASK ||--o{ QA_REVIEW : reviewed_by
+    PARENT_TASK ||--o{ ARTICLE_EVALUATION : has
 
     USER_ACCOUNT ||--o{ USER_PROJECT_ROLE : has
     USER_ACCOUNT ||--o{ ANNOTATION_SUBMISSION : submits
+    USER_ACCOUNT ||--o{ ARTICLE_EVALUATION : evaluates
     USER_ACCOUNT ||--o{ QA_REVIEW : performs
     USER_ACCOUNT ||--o{ AUDIT_LOG : triggers
 
@@ -110,7 +112,11 @@ erDiagram
       uuid bundle_id FK
       uuid batch_id FK
       string article_code
+      string article_url
       string title
+      string domain
+      string subdomain
+      string subdomain_id
       string category
       string tier
       decimal confidence_score
@@ -129,10 +135,11 @@ erDiagram
       string source_title
       string source_tier
       text source_url
+      string source_url_origin
       uuid source_file_id FK
       text source_text_extract
       string source_parse_status
-      string access_status
+      string source_access_status
     }
 
     CLAIM_TASK {
@@ -187,10 +194,27 @@ erDiagram
       decimal rel
       decimal comp
       decimal composite_score
+      string fact_check_status
+      text fact_check_source_url
       string source_access_status
       text annotator_note
       string status
       datetime submitted_at
+    }
+
+    ARTICLE_EVALUATION {
+      uuid article_evaluation_id PK
+      uuid parent_task_id FK
+      uuid bundle_id FK
+      decimal rel
+      string rel_band
+      text rel_note
+      decimal comp
+      string comp_band
+      text comp_note
+      text note
+      uuid annotator_id FK
+      datetime evaluated_at
     }
 
     QA_REVIEW {
@@ -198,6 +222,7 @@ erDiagram
       uuid claim_id FK
       uuid qa_id FK
       string decision
+      string error_category
       text qa_comment
       datetime reviewed_at
     }
@@ -259,6 +284,7 @@ erDiagram
 | CLAIM_SOURCE_MAP | Có | Map claim-source |
 | LLM_PRE_SCORE | Có | Điểm LLM gợi ý |
 | ANNOTATION_SUBMISSION | Có | Điểm annotator |
+| ARTICLE_EVALUATION | Có | Relevance/Completeness cấp bài để export Excel TA |
 | QA_REVIEW | Có | Approve/Return |
 | RUBRIC_VERSION | Có đơn giản | 6 tiêu chí fixed v1 |
 | USER_ACCOUNT | Có | User |
@@ -278,7 +304,7 @@ Vì một article input không còn là một row CSV mà là một nhóm file P
 Để lưu từng file trong bundle:
 - `answer_pdf`
 - `source_ref_pdf`
-- `source_content_pdf`
+- `source_content_pdf` (optional, 0..N)
 
 ### Vì sao cần PDF_PARSE_RESULT?
 
@@ -290,4 +316,12 @@ Vì một article input không còn là một row CSV mà là một nhóm file P
 
 ### Vì sao vẫn cần internal normalization?
 
-Dù không export/import CSV/JSON, hệ thống vẫn cần dữ liệu có cấu trúc trong database để chạy claim extraction, scoring, review, QA và export.
+Dù không dùng CSV/JSON làm input chính, hệ thống vẫn cần dữ liệu có cấu trúc trong database để chạy claim extraction, scoring, review, QA, dashboard và export.
+
+### Vì sao cần ARTICLE_EVALUATION?
+
+File Excel TA mẫu tách `REL` và `COMP` ra sheet `Article Evaluation` cấp bài, trong khi sheet `Annotation` chỉ chứa 4 metric claim-level `SF`, `SC`, `HR`, `SQ`. Vì vậy data model cần một entity riêng để lưu đánh giá cấp bài thay vì ép `REL/COMP` vào từng claim khi export stakeholder workbook.
+
+### Source URL và Source Content PDF dùng thế nào?
+
+Khi có, `source_text_extract` từ `source_content_pdf` là evidence chính trong MVP; `source_content_pdf` là optional (0..N) — nếu bundle không có, annotator/LLM dựa vào `source_ref_pdf` metadata + optional URL. `source_url` parse từ hyperlink trong `source_ref_pdf` là metadata optional để hiển thị/tham khảo, không bắt buộc fetch realtime và không được ghi đè nội dung PDF đã parse trong MVP.
