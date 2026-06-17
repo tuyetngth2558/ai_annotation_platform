@@ -83,6 +83,16 @@ class AssignMembersIn(BaseModel):
     members: list[AssignMemberIn] = Field(min_length=1)
 
 
+class AssignClaimsIn(BaseModel):
+    """Gán claim cho 1 annotator. claim_ids rỗng = gán TẤT CẢ claim của project."""
+
+    annotator_id: uuid.UUID
+    claim_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description="Claim cần gán. Rỗng = gán toàn bộ claim của project.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------------------------
@@ -126,3 +136,27 @@ class ProjectDetail(ProjectOut):
     """Chi tiết project gồm cả danh sách thành viên."""
 
     members: list[MemberOut]
+
+
+class ProjectClaimOut(BaseModel):
+    """1 claim trong project (cho trang chi tiết + gán annotator)."""
+
+    claim_id: uuid.UUID
+    claim_order: int
+    section_name: str | None
+    claim_text: str
+    status: str
+    article_code: str | None
+    title: str | None
+    assigned_annotator_id: uuid.UUID | None
+    assigned_annotator_email: str | None
+
+
+class ProjectClaimsOut(BaseModel):
+    items: list[ProjectClaimOut]
+    total: int
+
+
+class AssignClaimsOut(BaseModel):
+    assigned_count: int
+    annotator_id: uuid.UUID

@@ -17,8 +17,11 @@ from app.core.permissions import require_role
 from app.db.session import get_db
 from app.features.projects import service
 from app.features.projects.schemas import (
+    AssignClaimsIn,
+    AssignClaimsOut,
     AssignMembersIn,
     MemberOut,
+    ProjectClaimsOut,
     ProjectCreate,
     ProjectDetail,
     ProjectOut,
@@ -79,3 +82,26 @@ async def assign_members(
 ):
     """Gán Annotator/QA vào project (AC-1.3). Upsert — safe to call nhiều lần."""
     return await service.assign_members(db, project_id, payload)
+
+
+@router.get("/{project_id}/claims", response_model=ProjectClaimsOut)
+async def list_project_claims(
+    project_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Danh sách claim của project + annotator được gán (trang chi tiết project)."""
+    return await service.list_project_claims(db, project_id)
+
+
+@router.post(
+    "/{project_id}/assign-claims",
+    response_model=AssignClaimsOut,
+    status_code=status.HTTP_200_OK,
+)
+async def assign_claims(
+    project_id: uuid.UUID,
+    payload: AssignClaimsIn,
+    db: AsyncSession = Depends(get_db),
+):
+    """Gán claim cho 1 annotator (bù khâu auto-assign D3). claim_ids rỗng = gán tất cả."""
+    return await service.assign_claims(db, project_id, payload)

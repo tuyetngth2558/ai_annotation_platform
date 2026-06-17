@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -13,13 +13,20 @@ from app.core.crypto import decrypt_secret, encrypt_secret, mask_secret
 from app.core.exceptions import AppError, NotFoundError
 from app.core.logging import get_logger
 from app.features.projects.schemas import (
+    AssignClaimsIn,
+    AssignClaimsOut,
     AssignMembersIn,
     LlmConfigStatus,
     MemberOut,
+    ProjectClaimOut,
+    ProjectClaimsOut,
     ProjectCreate,
     ProjectDetail,
     ProjectOut,
 )
+from app.models.batch import Batch
+from app.models.claim_task import ClaimTask
+from app.models.parent_task import ParentTask
 from app.models.project import Project
 from app.models.user import UserAccount
 from app.models.user_project_role import UserProjectRole
@@ -252,3 +259,96 @@ def get_decrypted_llm_config(project: Project) -> dict:
         "model": project.llm_model,
         "prompt_template": project.llm_prompt_template,
     }
+
+
+async def _ensure_project(db: AsyncSession, project_id: uuid.UUID) -> Project:
+    res = await db.execute(select(Project).where(Project.id == project_id))
+    project = res.scalar_one_or_none()
+    if project is None:
+        raise NotFoundError("Không tìm thấy project.")
+    return project
+
+
+async def list_project_claims(
+    db: AsyncSession, project_id: uuid.UUID
+) -> ProjectClaimsOut:
+    """Danh sách claim của project (qua Batch.project_id) + email annotator được gán.
+
+    Dùng cho trang chi tiết project (xem claim + gán người). Chỉ ADMIN.
+    """
+    await _ensure_project(db, project_id)
+
+    rows = await db.execute(
+        select(ClaimTask, ParentTask.article_code, ParentTask.title, UserAccount.email)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .outerjoin(UserAccount, ClaimTask.assigned_annotator_id == UserAccount.id)
+        .where(Batch.project_id == project_id)
+        .order_by(ParentTask.article_code, ClaimTask.claim_order)
+    )
+    items: list[ProjectClaimOut] = []
+    for claim, article_code, title, email in rows.all():
+        items.append(
+            ProjectClaimOut(
+                claim_id=claim.id,
+                claim_order=claim.claim_order,
+                section_name=claim.section_name,
+                claim_text=claim.claim_text_final or claim.claim_text_original,
+                status=claim.status,
+                article_code=article_code,
+                title=title,
+                assigned_annotator_id=claim.assigned_annotator_id,
+                assigned_annotator_email=email,
+            )
+        )
+    return ProjectClaimsOut(items=items, total=len(items))
+
+
+async def assign_claims(
+    db: AsyncSession, project_id: uuid.UUID, payload: AssignClaimsIn
+) -> AssignClaimsOut:
+    """Gán claim cho 1 annotator (ADMIN). claim_ids rỗng = gán toàn bộ claim project.
+
+    Annotator phải có role ANNOTATOR trong project (BR-RBAC). Bù khâu D3 (auto-assign).
+    """
+    await _ensure_project(db, project_id)
+
+    # Annotator tồn tại + có role ANNOTATOR trong project này.
+    res = await db.execute(select(UserAccount).where(UserAccount.id == payload.annotator_id))
+    annotator = res.scalar_one_or_none()
+    if annotator is None:
+        raise NotFoundError("Không tìm thấy annotator.")
+    role_check = await db.execute(
+        select(UserProjectRole.id).where(
+            UserProjectRole.user_id == payload.annotator_id,
+            UserProjectRole.project_id == project_id,
+            UserProjectRole.role == "ANNOTATOR",
+        )
+    )
+    if role_check.scalar_one_or_none() is None:
+        raise AppError(
+            "Annotator chưa được gán vào project này (role ANNOTATOR).",
+            code="annotator_not_in_project",
+            status_code=422,
+        )
+
+    # Tập claim hợp lệ thuộc project.
+    claim_q = (
+        select(ClaimTask.id)
+        .join(ParentTask, ClaimTask.parent_task_id == ParentTask.id)
+        .join(Batch, ParentTask.batch_id == Batch.id)
+        .where(Batch.project_id == project_id)
+    )
+    if payload.claim_ids:
+        claim_q = claim_q.where(ClaimTask.id.in_(payload.claim_ids))
+    valid_ids = [row[0] for row in (await db.execute(claim_q)).all()]
+    if not valid_ids:
+        return AssignClaimsOut(assigned_count=0, annotator_id=payload.annotator_id)
+
+    await db.execute(
+        update(ClaimTask)
+        .where(ClaimTask.id.in_(valid_ids))
+        .values(assigned_annotator_id=payload.annotator_id)
+    )
+    await db.commit()
+    return AssignClaimsOut(assigned_count=len(valid_ids), annotator_id=payload.annotator_id)

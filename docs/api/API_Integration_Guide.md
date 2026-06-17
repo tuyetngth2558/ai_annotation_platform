@@ -181,6 +181,32 @@ Chỉ chạy khi DB chưa có user nào. Sau đó tự khóa.
 ```
 > Không gán `ADMIN` qua đây (→ 422).
 
+### GET `/projects/{project_id}/claims` → `ProjectClaimsOut`
+Danh sách claim của project (cho trang chi tiết + gán annotator).
+```json
+{
+  "items": [
+    { "claim_id": "uuid", "claim_order": 1, "section_name": "...", "claim_text": "...",
+      "status": "ready", "article_code": "ART_...", "title": "...",
+      "assigned_annotator_id": "uuid|null", "assigned_annotator_email": "ann@vsf.local|null" }
+  ],
+  "total": 6
+}
+```
+
+### POST `/projects/{project_id}/assign-claims` → 200 → `AssignClaimsOut`
+Gán claim cho 1 annotator (bù khâu auto-assign). `claim_ids` rỗng = gán **tất cả** claim của project.
+```json
+// Request — AssignClaimsIn
+{ "annotator_id": "uuid", "claim_ids": [] }
+```
+```json
+// Response
+{ "assigned_count": 6, "annotator_id": "uuid" }
+```
+- Annotator phải có role `ANNOTATOR` trong project (chưa gán → `422 annotator_not_in_project`).
+- Annotator không tồn tại → `404`.
+
 ---
 
 ## 4. Import Bundle (ADMIN) — luồng 4 bước
@@ -474,6 +500,8 @@ Form fields:
 | POST | `/projects` | ADMIN | JSON → 201 |
 | GET | `/projects/{id}` | ADMIN | — |
 | POST | `/projects/{id}/assignments` | ADMIN | JSON |
+| GET | `/projects/{id}/claims` | ADMIN | — |
+| POST | `/projects/{id}/assign-claims` | ADMIN | JSON |
 | POST | `/import-bundles/upload-file` | ADMIN | multipart |
 | POST | `/import-bundles/validate` | ADMIN | JSON + `?upload_tokens` |
 | POST | `/import-bundles/preview` | ADMIN | JSON + `?upload_tokens` |
