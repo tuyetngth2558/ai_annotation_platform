@@ -8,7 +8,7 @@
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
 
-**Cập nhật lần cuối:** 2026-06-17 · **Bởi:** Claude (Luồng import + auth + UI nhiều cải tiến. **Auth**: tắt mock (docker-compose + .env), login THẬT bằng DB; refresh token tự gia hạn khi 401 (FE single-flight), fix `_get_primary_role` fallback `default_role` khi user chưa thuộc project. **Project**: status `draft`→`active` (active khi confirm import xong); mã `proj_NNN` tự sinh; thêm `start_date` (migration c9d0e1f2a3b4) + validate start≤deadline; bỏ LLM config khỏi form (lấy từ .env, llm_config optional); DELETE /projects/{id} (chặn nếu có claim → 409). **Wizard import**: gộp 5→4 bước, stepper tròn-số trên header sticky (đã qua xanh/đang đỏ/chưa xám), DatePicker tròn đỏ (react-day-picker), gán thành viên tối đa 15, validate FE sớm (đuôi/size); **resume**: project draft bấm → /admin/import?projectId tiếp tục import, back không tạo lại. **FE chung**: header trang lên thanh app (usePageHeader), sidebar thu/mở, toast popup variant, empty state, card project có dropdown Xóa. 161 test pass. — Lịch sử cũ: Trang chi tiết project đầy đủ vai admin + phân trang toàn cục. BE: GET /projects/{id}/claims phân trang+filter(status/annotator/unassigned)+stats tiến độ, DELETE members/{id} gỡ thành viên (155 test pass). FE: ProjectDetailPage = header info + thống kê 6 ô + quản lý thành viên (thêm user đã có/xóa, annotator+QA) + gán claim + filter + phân trang 10; import xong vào thẳng project; wizard bước 1 chọn thành viên; phân trang 10/trang cho projects/users/audit (component Pagination); bước 2 import 2 ô kéo-thả cố định. — Lịch sử cũ: ) Claude (Tái cấu trúc FE chuẩn + giữ giao diện cam đỏ fe_ui (VinSmart Future). Chuyển từ App.tsx 722 dòng (hash routing, demo) sang **React Router + AuthProvider (session persist, hết văng login khi reload/back) + RoleGuard + AppLayout** — 14 feature page bọc component cam đỏ, nối API qua adapter. Thêm **BE endpoint** `GET /projects/{id}/claims` + `POST /projects/{id}/assign-claims` (gán claim cho annotator, bù D3) + trang **chi tiết project + gán nhân sự**. Import xong tự về /admin/projects. Pipeline LLM thật (OpenRouter gpt-4o-mini) verify chạy: bundle→6 claim, pre-score thật. Test: 152 PASS (+3), build FE xanh, navigation back/forward chuẩn. CÒN MỞ BE: per-project RBAC, pipeline dùng project LLM config)
+*Cập nhật lần cuối:** 2026-06-23 · **Bởi:** Kilo (Đan — BA). Sprint 3 BA docs xong cho 5 artifact (`docs/03_ba/dan/09_…13_…`). Sprint 1–2 BE pipeline vẫn trạng thái theo lần cập nhật trước (2026-06-17 Claude). nhân sự**. Import xong tự về /admin/projects. Pipeline LLM thật (OpenRouter gpt-4o-mini) verify chạy: bundle→6 claim, pre-score thật. Test: 152 PASS (+3), build FE xanh, navigation back/forward chuẩn. CÒN MỞ BE: per-project RBAC, pipeline dùng project LLM config)
 
 **Trước đó:** Điều chỉnh SQ [ADR 0008 A+D]: tách SQ → rule engine (sq_engine.py), LLM chấm 5 chiều, composite vẫn 6 (BR-7.2).
 
@@ -132,7 +132,39 @@ Quyết định ĐÃ chốt → xem [docs/adr/](adr/). Quyết gì mới → **t
 
 ---
 
-## 5. QUY ƯỚC CẬP NHẬT FILE NÀY (quan trọng)
+## 5. Sprint 3 — BA Deliverables (cập nhật 2026-06-23)
+
+**Phạm vi Sprint 3** ([Google Doc](https://docs.google.com/document/d/1XdRH8piPPo9mpB__a4yooFX5pHTyg42aFcVEpWgb8X4)) thêm 4 module: Notification · IAA · Dispute · Export Consolidated. Quyết định đã chốt: DEC-S3-01..06 (xem `docs/03_ba/tuyet/04_Open_Questions...md` §6).
+
+### BA deliverables (Đan — Data Model & Schema)
+| # | Artifact | File | Deadline | Trạng thái |
+|---:|---|---|---|:---:|
+| 1 | ERD bổ sung (3 bảng mới + 1 bảng export request) | `docs/03_ba/dan/09_Sprint3_ERD_Extensions.md` | Tuần 1 | ✅ draft v0.1 |
+| 2 | Data Dictionary 3 bảng mới | `docs/03_ba/dan/10_Sprint3_Data_Dictionary.md` | Tuần 1 | ✅ draft v0.1 |
+| 3 | Export Schema — Consolidated Report (6 sheet XLSX) | `docs/03_ba/dan/11_Sprint3_Export_Schema_Consolidated.md` | Tuần 1 | ✅ draft v0.1 |
+| 4 | Validation Rules — dispute + notification + IAA + export + Quality Gate | `docs/03_ba/dan/12_Sprint3_Validation_Rules_Dispute.md` | Tuần 2 | ✅ draft v0.1 |
+| 5 | Edge Cases — dispute SLA · IAA <2 annotator · export rỗng + cross-feature | `docs/03_ba/dan/13_Sprint3_Edge_Cases.md` | Tuần 2 | ✅ draft v0.1 |
+
+### Backend features (Sprint 4+ — sau khi Definition of Ready pass)
+| Feature | Backend (BE) | Frontend (FE) | Test | Ghi chú |
+|---|:---:|:---:|:---:|---|
+| **notification** | ⬜ TODO (Sprint 4) | ⬜ TODO Sau BE | ⬜ | Bảng `NOTIFICATION` (ERD #09); polling 10s (DEC-S3-04); trigger list xem artifact #10 §6.1.a |
+| **dispute** | ⬜ TODO (Sprint 4) | ⬜ TODO Sau BE | ⬜ | Flow MVP = Admin resolve (DEC-S3-02/06); bảng `DISPUTE` immutable; SLA 5 ngày |
+| **iaa** | ⬜ TODO (Sprint 4) | ⬜ TODO Sau BE | ⬜ | Krippendorff's Alpha (DEC-S3-01); bảng `IAA_OVERLAP_ASSIGN` + `IAA_SCORE` |
+| **export_consolidated** | ⬜ TODO (Sprint 4) | ⬜ TODO Sau BE | ⬜ | XLSX 6 sheet (DEC-S3-03); async qua `EXPORT_CONSOLIDATED_REQUEST`; RBAC Admin + QA trong project |
+
+### Chốt chặn chưa quyết → block Definition of Ready (Sprint 4)
+| ID | Hạng mục | Cần chốt | Trạng thái |
+|---|---|---|---|
+| B-01 | IAA: chốt metric (đề xuất Krippendorff Alpha) + scope_type | Đã có đề xuất; cần mentor xác nhận | 🟡 pending |
+| B-02 | Dispute: scope flow (MVP Admin resolve vs Full Policy) | DEC-S3-06 chốt Admin resolve; `policy_analyst` role hoãn | 🟢 MVP chốt · Full hoãn |
+| B-03 | Export Consolidated: 6 sheet chốt; cleanup policy file (giữ bao lâu?) | Chốt format; cleanup chưa rõ | 🟡 partial |
+| B-04 | Notification: Polling 10s vs SSE | DEC-S3-04 chốt Polling 10s | 🟢 |
+| B-05 | IAA: overlap assign — Admin chọn thủ công | DEC-S3-05 chốt Admin chọn | 🟢 |
+
+---
+
+## 6. QUY ƯỚC CẬP NHẬT FILE NÀY (quan trọng)
 
 **Khi nào cập nhật:** ngay khi trạng thái một feature/hạng mục đổi (xong 1 phần, bắt đầu
 làm, bị chặn, hết chặn).
