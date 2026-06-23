@@ -400,7 +400,7 @@ Hiển thị kết quả tính Krippendorff's Alpha sau khi các overlap task ho
 ├──────────────────────────────────────────────────────────────┤
 │ Metric: Krippendorff's Alpha · Overlap: 10% · 18 task       │
 ├──────────────────────────────────────────────────────────────┤
-│ Cặp annotator   │ SF   │ SC   │ NH   │ SQ  │ REL │ COMP │ Σ │
+│ Cặp annotator   │ SF   │ SC   │ HR   │ SQ  │ REL │ COMP │ Σ │
 ├─────────────────┼──────┼──────┼──────┼─────┼─────┼──────┼───┤
 │ Ann A ↔ Ann B   │ 0.81 │ 0.74 │ 0.79 │0.82 │0.76 │ 0.70 │🟡 │
 │ Ann A ↔ Ann C   │ 0.68 │ 0.61 │ 0.72 │0.65 │0.70 │ 0.55 │🔴 │
