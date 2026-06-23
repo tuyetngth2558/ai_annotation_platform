@@ -5,18 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Đăng nhập | VSF AI Annotation Platform</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
     :root {
-      --bg: #eff6ff;
+      --bg: #f8fbff;
       --surface: #ffffff;
-      --ink: #0f172a;
-      --muted: #475569;
-      --line: #dbe5f2;
-      --primary: #1e40af;
-      --primary-dark: #1e3a8a;
-      --cta: #22c55e;
-      --danger: #dc2626;
+      --surface-2: #f7fbff;
+      --surface-3: #eef4ff;
+      --ink: #132033;
+      --muted: #607086;
+      --line: #dce5f2;
+      --line-strong: #cbd6e6;
+      --primary: #2563eb;
+      --primary-2: #1d4ed8;
+      --accent: #0f9f8f;
+      --cta: #0f9f8f;
+      --good: #0f9f6e;
+      --bad: #b91c1c;
+      --danger: #b91c1c;
+      --shadow: 0 14px 36px rgba(37, 99, 235, .09), 0 2px 10px rgba(19, 32, 51, .05);
       --radius: 8px;
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     * { box-sizing: border-box; }
@@ -24,8 +33,13 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background: var(--bg);
+      background:
+        radial-gradient(circle at 8% 8%, rgba(37, 99, 235, .12), transparent 30%),
+        radial-gradient(circle at 92% 6%, rgba(15, 159, 143, .10), transparent 28%),
+        linear-gradient(135deg, #ffffff 0%, var(--bg) 48%, #eef5ff 100%);
       color: var(--ink);
+      overflow-x: hidden;
+      font-size: 14px;
     }
 
     button, input, select { font: inherit; }
@@ -37,7 +51,7 @@
     button:focus-visible,
     input:focus-visible,
     select:focus-visible {
-      outline: 3px solid rgba(59, 130, 246, .28);
+      outline: 3px solid rgba(37, 99, 235, .18);
       outline-offset: 2px;
     }
 
@@ -73,14 +87,16 @@
       display: grid;
       place-items: center;
       border-radius: var(--radius);
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
       color: #ffffff;
       font-weight: 800;
-      letter-spacing: .04em;
+      letter-spacing: 0;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, .22);
     }
 
     .brand strong {
       display: block;
+      color: var(--ink);
       font-size: 15px;
     }
 
@@ -119,7 +135,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      color: #1e3a8a;
+      color: #4b5c72;
       font-size: 14px;
     }
 
@@ -129,8 +145,9 @@
       display: grid;
       place-items: center;
       border-radius: 50%;
-      background: #dcfce7;
-      color: #166534;
+      border: 1px solid #a7f3d0;
+      background: #ecfdf5;
+      color: #047857;
       font-weight: 800;
       flex: 0 0 auto;
     }
@@ -141,6 +158,7 @@
       border: 1px solid var(--line);
       border-radius: var(--radius);
       background: var(--surface);
+      box-shadow: var(--shadow);
     }
 
     .login-card h2 {
@@ -167,7 +185,7 @@
     }
 
     label {
-      color: #334155;
+      color: #374151;
       font-size: 13px;
       font-weight: 700;
     }
@@ -180,6 +198,12 @@
       background: #ffffff;
       color: var(--ink);
       padding: 10px 12px;
+    }
+
+    input:focus-visible,
+    select:focus-visible {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .10);
     }
 
     input::placeholder {
@@ -212,8 +236,8 @@
     }
 
     .password-toggle:hover {
-      background: #eff6ff;
-      color: var(--primary-dark);
+      background: var(--surface-3);
+      color: var(--primary-2);
     }
 
     .password-toggle svg {
@@ -236,14 +260,16 @@
       border-radius: var(--radius);
       padding: 10px 14px;
       color: #ffffff;
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
       font-weight: 800;
-      transition: background .18s ease, border-color .18s ease;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, .18);
+      transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, filter .18s ease;
       width: 100%;
     }
 
     .btn:hover {
-      background: var(--primary-dark);
+      filter: brightness(.98) saturate(1.08);
+      box-shadow: 0 14px 30px rgba(37, 99, 235, .23);
     }
 
     .meta-row {
@@ -257,7 +283,7 @@
     }
 
     .meta-row a {
-      color: var(--primary-dark);
+      color: var(--primary-2);
       font-weight: 700;
       text-decoration: none;
     }
@@ -271,7 +297,7 @@
       padding: 12px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: #f8fafc;
+      background: var(--surface-2);
       color: #334155;
       font-size: 13px;
       line-height: 1.55;
@@ -288,11 +314,12 @@
     }
 
     .toast {
-      border: 1px solid #fecaca;
+      border: 1px solid #cbd5e1;
       border-left: 4px solid var(--danger);
       border-radius: var(--radius);
       background: #ffffff;
-      color: #7f1d1d;
+      color: var(--ink);
+      box-shadow: var(--shadow);
       padding: 12px 14px;
       font-size: 14px;
     }

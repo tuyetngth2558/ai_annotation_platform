@@ -1,35 +1,37 @@
 # 02. Import / Export Schema — PDF-native MVP
 
 **Owner:** Phạm Đan Kha  
-**Phiên bản:** v0.4  
-**Cập nhật:** Import chính là PDF Bundle Upload, không phải CSV/JSON.
+**Phiên bản:** v0.6  
+**Cập nhật:** 2026-06-12  
+**Baseline:** PDF Bundle import · Excel output theo mẫu Vivipedia TA · CSV claim-level kỹ thuật
 
 ---
 
 ## 1. Luồng import chính thức cho MVP
 
 ```text
-User uploads PDF Bundle
+PDF Bundle Upload
 → Validate required PDF files
 → Parse PDF files
 → Normalize answer/source data internally
 → Create Parent Task
 → Extract Source References
-→ Claim Extraction
+→ Claim Extraction (LLM #1)
 → Source Mapping
-→ LLM Pre-scoring
+→ LLM Pre-scoring (LLM #2)
 → Annotator Review
+→ Article Evaluation
 → QA Review
-→ Export CSV
+→ Result output: dashboard/report, Excel workbook, optional CSV claim-level
 ```
 
-CSV/JSON chỉ còn là **internal representation / debugging artifact**, không phải input chính từ user.
+CSV/JSON không phải input chính từ user. Hệ thống vẫn có internal normalized data để lưu DB, chạy LLM, review, QA và export.
 
 ---
 
 ## 2. PDF Bundle Upload Schema
 
-### 2.1 Bundle-level request
+### 2.1. Bundle-level request
 
 ```json
 {
@@ -58,19 +60,17 @@ CSV/JSON chỉ còn là **internal representation / debugging artifact**, không
 }
 ```
 
-### 2.2 File roles
+### 2.2. File roles
 
-| file_role | Required | Số lượng | Mô tả |
+| `file_role` | Required | Số lượng | Mô tả |
 |---|---:|---:|---|
-| `answer_pdf` | Yes | 1 | PDF câu trả lời nguyên bản |
-| `source_ref_pdf` | Yes | 1 | PDF danh sách nguồn tham khảo |
-| `source_content_pdf` | Yes | 1+ | PDF nội dung nguồn/văn bản gốc |
+| `answer_pdf` | Yes | 1 | PDF câu trả lời/bài viết nguyên bản |
+| `source_ref_pdf` | Yes | 1 | PDF danh sách nguồn, source order, title, tier và hyperlink nếu có |
+| `source_content_pdf` | No | 0..N | PDF nội dung nguồn/văn bản gốc để đối chiếu (optional; nếu có thì là evidence chính) |
 
 ---
 
 ## 3. PDF Parse Result Schema
-
-Sau khi upload, hệ thống parse PDF và tạo parse result.
 
 ```json
 {
@@ -79,8 +79,11 @@ Sau khi upload, hệ thống parse PDF và tạo parse result.
   "parse_status": "parsed_with_warnings",
   "metadata_extracted": {
     "article_code": "ENC_20260512_375DE786",
+    "article_url": "https://portal.v-app.vn/apps/miniportal.vsf.wikicms/articles/6040...",
     "title": "Thanh toán chi phí dự án ODA theo Nghị định 114/2021/NĐ-CP",
-    "category": "Hành chính",
+    "domain": "Pháp luật",
+    "subdomain": "Hành chính",
+    "subdomain_id": "law_03",
     "tier": "T3",
     "confidence_score": 0.10,
     "created_date": "2026-05-12"
@@ -92,7 +95,8 @@ Sau khi upload, hệ thống parse PDF và tạo parse result.
       "source_order": 1,
       "source_title": "Thông tư số 66/2023/TT-BTC của Bộ Tài chính",
       "source_tier": "Tier 1",
-      "source_url": null,
+      "source_url": "https://chinhphu.vn/...",
+      "source_url_origin": "source_ref_pdf_hyperlink",
       "source_file_ref": "1-1(1).pdf",
       "source_text_extract": "parsed source text",
       "source_parse_status": "parsed"
@@ -101,7 +105,7 @@ Sau khi upload, hệ thống parse PDF và tạo parse result.
   "parse_warnings": [
     {
       "warning_code": "SOURCE_URL_MISSING",
-      "message": "Source title parsed but source URL not found in PDF."
+      "message": "Source title parsed but source URL not found in Source Reference PDF."
     }
   ]
 }
@@ -109,27 +113,55 @@ Sau khi upload, hệ thống parse PDF và tạo parse result.
 
 ---
 
-## 4. Internal Parent Task Schema
+## 4. Source Rule — Ref Hyperlink URL vs Source Content PDF
+
+Rule canonical cho MVP theo Quang AC:
+
+1. `source_content_pdf` (nếu có) là nguồn chứng cứ chính để annotator/LLM đối chiếu claim qua `source_text_extract`. Bundle **không bắt buộc** có file này; nếu thiếu, annotator/LLM dựa vào `source_ref_pdf` metadata + optional hyperlink URL khi có.
+2. Hyperlink URL parse từ `source_ref_pdf` chỉ là metadata tham chiếu/phụ trợ trong MVP. Thiếu URL không block import.
+3. Hệ thống không yêu cầu annotator mở URL ngoài để submit.
+4. Nếu có URL, UI hiển thị URL như link tham khảo; không dùng URL fetch realtime để ghi đè `source_text_extract` trong MVP.
+5. Source fetch realtime, site-specific parser và relevance filtering là Design-Only/Post-MVP. Nếu sau này bật, kết quả fetch phải lưu trace riêng và không làm mất dữ liệu PDF gốc.
+
+Fallback chain một chiều:
+
+```text
+Source Content PDF parsed text
+→ nếu không parse được: Source Ref metadata + optional hyperlink URL để annotator tham khảo
+→ nếu vẫn không đủ căn cứ: source_access_status = unknown hoặc inaccessible
+→ nếu inaccessible: SC = 0.00 và source_note bắt buộc
+→ nếu claim không map được source: source_mapping_required trước khi vào annotation queue
+```
+
+Không fallback ngược theo kiểu fetch URL rồi sửa lại source order/title/tier đã parse từ PDF.
+
+---
+
+## 5. Internal Parent Task Schema
 
 ```json
 {
   "parent_task_id": "pt_001",
   "bundle_id": "bundle_001",
+  "batch_id": "batch_001",
   "article_code": "ENC_20260512_375DE786",
+  "article_url": "https://portal.v-app.vn/apps/miniportal.vsf.wikicms/articles/6040...",
   "title": "Thanh toán chi phí dự án ODA theo Nghị định 114/2021/NĐ-CP",
-  "category": "Hành chính",
+  "domain": "Pháp luật",
+  "subdomain": "Hành chính",
+  "subdomain_id": "law_03",
   "tier": "T3",
   "confidence_score": 0.10,
   "created_date": "2026-05-12",
   "answer_text_normalized": "cleaned answer text",
   "answer_reference": "answer_ref_001",
-  "status": "ready_for_claim_extraction"
+  "status": "claim_extracting"
 }
 ```
 
 ---
 
-## 5. Source Reference Schema
+## 6. Source Reference Schema
 
 ```json
 {
@@ -138,24 +170,31 @@ Sau khi upload, hệ thống parse PDF và tạo parse result.
   "source_order": 1,
   "source_title": "Thông tư số 66/2023/TT-BTC của Bộ Tài chính",
   "source_tier": "Tier 1",
-  "source_url": null,
+  "source_url": "https://chinhphu.vn/...",
+  "source_url_origin": "source_ref_pdf_hyperlink",
   "source_file_id": "file_003",
   "source_text_extract": "source text parsed from PDF",
   "source_parse_status": "parsed",
-  "access_status": "unknown"
+  "source_access_status": "source_text_parsed"
 }
 ```
 
-### Rule quan trọng
+Rules:
 
-- `source_order` và `source_title` là required.
-- `source_url` là optional vì PDF hiện tại có thể không expose URL.
-- `source_file_id` nên có nếu upload source content PDF.
-- Nếu không parse được source text, `source_parse_status = unparsed`.
+| Field | Rule |
+|---|---|
+| `source_order` | Required, unique within `parent_task_id`, starts at 1 |
+| `source_title` | Required |
+| `source_tier` | Optional; if unknown, set `unknown` |
+| `source_url` | Optional; must be `http/https` if present |
+| `source_url_origin` | `source_ref_pdf_hyperlink`, `manual`, `post_mvp_fetch`, or `unknown` |
+| `source_text_extract` | Preferred evidence text from Source Content PDF |
+| `source_parse_status` | `parsed`, `unparsed`, `ocr_required`, `failed`, `unknown` |
+| `source_access_status` | `source_text_parsed`, `inaccessible`, `unknown` |
 
 ---
 
-## 6. Claim Extraction Output Schema
+## 7. Claim Extraction Output Schema
 
 ```json
 {
@@ -179,13 +218,15 @@ Sau khi upload, hệ thống parse PDF và tạo parse result.
 
 ---
 
-## 7. LLM Pre-scoring Output Schema
+## 8. LLM Pre-scoring Output Schema
+
+MVP platform vẫn có thể pre-score đủ 6 dimension để hỗ trợ UI, nhưng Excel TA mẫu tách 4 metric claim-level và 2 metric article-level. Nếu Dev chỉ build theo Excel mẫu, `rel`/`comp` nên lấy từ `article_evaluation`, không lấy từ từng claim.
 
 ```json
 {
   "claim_id": "clm_001",
-  "provider": "fixed_provider_mvp",
-  "model": "model_name",
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
   "prompt_version": "pre_score_v1",
   "source_orders_used": [1],
   "scores": {
@@ -201,70 +242,189 @@ Sau khi upload, hệ thống parse PDF và tạo parse result.
     "sc": "Nguồn cover trực tiếp claim.",
     "hr": "Không phát hiện thông tin bịa đặt.",
     "sq": "Nguồn là văn bản pháp luật chính thức.",
-    "rel": "Claim liên quan trực tiếp câu hỏi.",
-    "comp": "Claim đầy đủ ở mức tốt."
+    "rel": "Article liên quan trực tiếp câu hỏi.",
+    "comp": "Article đầy đủ ở mức tốt."
   },
   "confidence": 0.86,
   "raw_response_reference": "llm_raw_001"
 }
 ```
 
+**Platform deviation cần ghi rõ:** nếu UI chấm `REL`/`COMP` trên từng claim, đó là biến thể platform để hỗ trợ workflow nội bộ. Khi export Excel theo mẫu TA, `REL`/`COMP` phải aggregate hoặc lấy từ bảng `article_evaluation`, không đưa vào sheet `Annotation`.
+
 ---
 
-## 8. Annotator Submission Schema
+## 9. Annotator Submission Schema
 
 ```json
 {
   "claim_id": "clm_001",
   "annotator_id": "user_ann_001",
   "claim_text_final": "Thông tư 66/2023/TT-BTC có hiệu lực thi hành từ ngày 14/12/2023.",
+  "fact_check_status": "XAC_NHAN",
+  "fact_check_source_url": "https://chinhphu.vn/...",
   "source_access_status": "source_text_parsed",
   "scores": {
     "sf": 1.00,
     "sc": 0.90,
     "hr": 1.00,
-    "sq": 0.90,
-    "rel": 1.00,
-    "comp": 0.85
+    "sq": 0.90
   },
-  "annotator_note": "Source text trong PDF xác nhận ngày hiệu lực.",
+  "annotator_note": "SF=1.00: Source text trong PDF xác nhận ngày hiệu lực.\nSC=0.90: Nguồn cover trực tiếp claim.\nHR=1.00: Không có hallucination.\nSQ=0.90: Nguồn chính phủ.",
   "submitted_at": "2026-06-04T09:00:00Z"
 }
 ```
 
+`fact_check_status` export ra Excel theo giá trị tiếng Việt không dấu để dễ filter:
+
+| Platform enum | Excel display |
+|---|---|
+| `confirmed` | `XAC NHAN` |
+| `deviated` | `LECH` |
+| `contradicted` | `MAU THUAN` |
+| `not_found` | `KHONG TIM THAY` |
+| `skipped` | `BO QUA` |
+
 ---
 
-## 9. QA Review Schema
+## 10. Article Evaluation Schema
 
-MVP chỉ build QA cơ bản Approve / Return.
+Sheet `Article Evaluation` trong Excel mẫu là cấp bài, không phải cấp claim. Platform cần entity riêng hoặc view riêng:
 
 ```json
 {
-  "claim_id": "clm_001",
-  "qa_id": "user_qa_001",
-  "decision": "approved",
-  "qa_comment": null,
-  "reviewed_at": "2026-06-04T10:00:00Z"
+  "article_evaluation_id": "ae_001",
+  "parent_task_id": "pt_001",
+  "bundle_id": "bundle_001",
+  "article_title": "Thanh toán chi phí dự án ODA theo Nghị định 114/2021/NĐ-CP",
+  "article_url": "https://portal.v-app.vn/apps/miniportal.vsf.wikicms/articles/6040...",
+  "domain": "Pháp luật",
+  "subdomain": "Hành chính",
+  "rel": 0.75,
+  "rel_band": "Good",
+  "rel_note": "Bài trả lời đúng trọng tâm nhưng chưa đi sâu quy trình thanh toán.",
+  "comp": 0.65,
+  "comp_band": "Borderline",
+  "comp_note": "Thiếu hồ sơ, bước thực hiện và đối tượng áp dụng.",
+  "note": null,
+  "annotator_id": "anhpt244",
+  "evaluated_at": "2026-05-13"
 }
 ```
 
-Return:
+Band rule:
+
+| Score range | Band |
+|---|---|
+| `0.00–0.24` | `Block` |
+| `0.25–0.49` | `Poor` |
+| `0.50–0.74` | `Borderline` |
+| `0.75–0.89` | `Good` |
+| `0.90–1.00` | `Excellent` |
+
+---
+
+## 11. QA Review Schema
 
 ```json
 {
   "claim_id": "clm_001",
   "qa_id": "user_qa_001",
   "decision": "returned",
+  "error_category": "incorrect_source_status",
   "qa_comment": "Claim cần kiểm tra lại mapping source.",
   "reviewed_at": "2026-06-04T10:00:00Z"
 }
 ```
 
+Rules:
+
+| Field | Rule |
+|---|---|
+| `decision` | `approved` or `returned` only |
+| `error_category` | Required when `decision = returned` |
+| `qa_comment` | Required when `decision = returned`, trim length >= 10 |
+| QA edit score | Not allowed in MVP |
+
+Allowed `error_category`:
+
+| Value | Meaning |
+|---|---|
+| `wrong_score` | Sai điểm số |
+| `missing_notes` | Thiếu ghi chú/justification |
+| `incorrect_source_status` | Sai trạng thái nguồn |
+| `bad_claim_text` | Claim text chưa đúng |
+
 ---
 
-## 10. Export CSV Claim-level Schema
+## 12. Excel Export Workbook Schema
 
-Mỗi row = 1 claim.
+MVP lưu dữ liệu chuẩn trong DB/Supabase trước; Excel workbook là một output option khi người dùng cần tải file `.xlsx` giống template `[Vivipedia] - Annonate Output - TA - 13.5.xlsx`.
+
+Rule bắt buộc để thống nhất rubric: workbook phải tách 2 sheet dữ liệu chính:
+
+1. `Annotation` cho claim-level metrics `SF/SC/HR/SQ`.
+2. `Article Evaluation` cho article-level metrics `REL/COMP`.
+
+Các sheet template hỗ trợ như scoring guide, domain list hoặc summary dashboard có thể được giữ trong workbook đầy đủ nếu team dùng lại template gốc.
+
+### 12.1. Sheet list
+
+| Sheet | Build source | Required in export | Notes |
+|---|---|---:|---|
+| `Annotation` | Claim tasks + submissions | Yes | 1 row = 1 claim; only `SF/SC/HR/SQ` |
+| `Article Evaluation` | `article_evaluation` | Yes | 1 row = 1 article; `REL/COMP` |
+| `Scoring Guide` | Static template | Optional template sheet | Rubric definitions and score anchors |
+| `Domain-Subdomain List` | Static seed/template | Optional template sheet | 13 domains, 69 sub-domains; dropdown source |
+| `Summary Dashboard` | Excel formulas/pivots or in-tool dashboard | Optional template sheet | Auto-calculated if included; dashboard can also live in the app |
+
+### 12.2. Sheet `Annotation` mapping
+
+| Excel col | Excel header | Platform field | CSV/debug field | Required |
+|---|---|---|---|---:|
+| A | `#` | `claim_task.claim_order` or export row index | `claim_order` | Yes |
+| B | `Article / Page Title` | `parent_task.title` | `title` | Yes |
+| C | `Domain` | `parent_task.domain` | `domain` | Yes |
+| D | `Sub-domain` | `parent_task.subdomain` | `subdomain` | Yes |
+| E | `Sub-domain / ID` | `parent_task.subdomain_id` | `subdomain_id` | Yes |
+| F | `Claim (block nguyên văn)` | `claim_task.claim_text_final` fallback `claim_text_original` | `claim_text_final` | Yes |
+| G | `Fact-check / Status` | `annotation_submission.fact_check_status` | `fact_check_status` | Yes |
+| H | `Fact-check / Source URL` | joined `source_reference.source_url` from mapped sources | `fact_check_source_url` | Optional |
+| I | `Source / Fidelity / (SF)` | `annotation_submission.sf` | `ann_sf` | Yes |
+| J | `Source / Coverage / (SC)` | `annotation_submission.sc` | `ann_sc` | Yes |
+| K | `Hallucination / Rate (HR) / (inv.)` | `annotation_submission.hr` | `ann_hr` | Yes |
+| L | `Source / Quality / (SQ)` | `annotation_submission.sq` | `ann_sq` | Yes |
+| M | `Annotator Notes` | `annotation_submission.annotator_note` | `annotator_note` | Optional |
+| N | `Annotator / ID` | `annotation_submission.annotator_id` | `annotator_id` | Yes |
+| O | `Date` | `annotation_submission.submitted_at` as date | `submitted_date` | Yes |
+| P | Reserved/blank in current template | blank | n/a | No |
+| Q | Reserved/blank in current template | blank | n/a | No |
+| R | Reserved/blank in current template | blank | n/a | No |
+
+### 12.3. Sheet `Article Evaluation` mapping
+
+| Excel col | Excel header | Platform field | CSV/debug field | Required |
+|---|---|---|---|---:|
+| A | `#` | row index per article | `article_row_index` | Yes |
+| B | `Tên bài viết` | `parent_task.title` | `title` | Yes |
+| C | `URL bài` | `parent_task.article_url` | `article_url` | Optional |
+| D | `Domain` | `parent_task.domain` | `domain` | Yes |
+| E | `Sub-domain` | `parent_task.subdomain` | `subdomain` | Yes |
+| F | `Rel / (0-1)` | `article_evaluation.rel` | `article_rel` | Yes |
+| G | `Rel Band / (auto)` | formula from `rel` | `article_rel_band` | Auto |
+| H | `Nhận xét Relevance` | `article_evaluation.rel_note` | `article_rel_note` | Optional |
+| I | `Comp / (0-1)` | `article_evaluation.comp` | `article_comp` | Yes |
+| J | `Comp Band / (auto)` | formula from `comp` | `article_comp_band` | Auto |
+| K | `Nhận xét Completeness` | `article_evaluation.comp_note` | `article_comp_note` | Optional |
+| L | `Note` | `article_evaluation.note` | `article_note` | Optional |
+| M | `Annotator / ID` | `article_evaluation.annotator_id` | `article_annotator_id` | Yes |
+| N | `Ngày` | `article_evaluation.evaluated_at` | `article_evaluated_date` | Yes |
+
+---
+
+## 13. CSV Claim-level Schema
+
+CSV là technical/debug export phẳng. Excel workbook là user-facing export option theo mẫu TA; dashboard trong tool là một cách xem kết quả khác từ cùng dữ liệu DB.
 
 | Column | Required | Description |
 |---|---:|---|
@@ -274,10 +434,14 @@ Mỗi row = 1 claim.
 | `answer_pdf_filename` | Yes | File answer PDF gốc |
 | `source_ref_pdf_filename` | Yes | File source reference PDF |
 | `article_code` | Yes | Mã bài |
+| `article_url` | Optional | URL bài trên portal nếu parse/nhập được |
 | `parent_task_id` | Yes | ID parent task |
 | `answer_reference` | Yes | Reference tới answer normalized/full text |
 | `title` | Yes | Tiêu đề |
-| `category` | Optional | Danh mục |
+| `domain` | Yes | Domain theo Vivipedia |
+| `subdomain` | Yes | Sub-domain |
+| `subdomain_id` | Optional | ID sub-domain, ví dụ `law_03` |
+| `category` | Optional | Backward-compatible category field |
 | `confidence_score` | Optional | Confidence từ portal |
 | `claim_id` | Yes | ID claim |
 | `claim_order` | Yes | Thứ tự claim |
@@ -288,38 +452,47 @@ Mỗi row = 1 claim.
 | `mapped_source_orders` | Yes | `1;3` |
 | `mapped_source_titles` | Yes | Tên nguồn |
 | `source_tiers` | Optional | Tier nguồn |
+| `source_urls` | Optional | URL nguồn, joined by `;` |
 | `source_file_refs` | Optional | File PDF nguồn liên quan |
-| `source_parse_status` | Yes | parsed/unparsed/ocr_required |
-| `source_access_status` | Yes | source_text_parsed/inaccessible/unknown |
+| `source_parse_status` | Yes | `parsed/unparsed/ocr_required/failed/unknown` |
+| `source_access_status` | Yes | `source_text_parsed/inaccessible/unknown` |
 | `source_note` | Optional | Note nguồn |
+| `fact_check_status` | Yes | `confirmed/deviated/contradicted/not_found/skipped` |
+| `fact_check_source_url` | Optional | URL dùng trong Excel col H |
 | `pre_sf` | Optional | LLM pre-score |
 | `pre_sc` | Optional | LLM pre-score |
 | `pre_hr` | Optional | LLM pre-score |
 | `pre_sq` | Optional | LLM pre-score |
-| `pre_rel` | Optional | LLM pre-score |
-| `pre_comp` | Optional | LLM pre-score |
+| `pre_rel` | Optional | LLM pre-score article/platform deviation |
+| `pre_comp` | Optional | LLM pre-score article/platform deviation |
 | `ann_sf` | Yes | Annotator score |
 | `ann_sc` | Yes | Annotator score |
 | `ann_hr` | Yes | Annotator score |
 | `ann_sq` | Yes | Annotator score |
-| `ann_rel` | Yes | Annotator score |
-| `ann_comp` | Yes | Annotator score |
-| `composite_score` | Yes | Điểm tổng hợp |
+| `article_rel` | Optional | From article evaluation |
+| `article_comp` | Optional | From article evaluation |
+| `claim_composite_score` | Optional | Average of `SF/SC/HR/SQ` if needed |
+| `article_composite_score` | Optional | Average of `REL/COMP` if needed |
 | `annotator_id` | Yes | Người annotate |
 | `annotator_note` | Optional | Note |
 | `qa_id` | Optional | QA reviewer |
-| `qa_decision` | Yes | approved/returned |
+| `qa_decision` | Yes | `approved/returned` |
+| `error_category` | Required if returned | QA return category |
 | `qa_comment` | Optional | Comment QA |
-| `status` | Yes | final status |
+| `status` | Yes | Final status |
 | `submitted_at` | Yes | Time submit |
 | `reviewed_at` | Optional | Time QA |
 
 ---
 
-## 11. Export behavior
+## 14. Export behavior
 
-- Default MVP export: only approved claims.
-- Returned claims không export mặc định.
-- CSV phải UTF-8.
-- Export phải quote đúng text có dấu phẩy/xuống dòng.
-- Export bắt buộc có `bundle_id` và file names để trace về PDF gốc.
+- Export module đọc từ normalized DB/Supabase, không đọc trực tiếp từ PDF.
+- User-facing output options: dashboard/report trong tool, Excel workbook `.xlsx` theo §12, và optional CSV claim-level theo §13.
+- Excel workbook phải có 2 sheet dữ liệu rubric bắt buộc: `Annotation` và `Article Evaluation`.
+- Optional technical export: CSV claim-level theo §13.
+- Export chỉ lấy task `approved` theo default MVP.
+- Returned/submitted/in-annotation không export mặc định.
+- CSV phải UTF-8, quote đúng text có dấu phẩy/xuống dòng.
+- Excel phải giữ sheet names/header rows của 2 sheet dữ liệu chính; nếu dùng full template thì giữ thêm formulas/bands và dashboard summary.
+- Export bắt buộc trace được về `bundle_id`, PDF filenames, `article_code` và `parent_task_id`.

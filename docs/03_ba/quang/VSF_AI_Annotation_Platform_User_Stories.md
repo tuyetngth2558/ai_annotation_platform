@@ -25,7 +25,7 @@
 
 **Acceptance Criteria:**
 
-1. Giao diện Import cho phép upload **nhiều file PDF** và gán `file_role`: `answer_pdf` (1), `source_ref_pdf` (1), `source_content_pdf` (≥1).
+1. Giao diện Import cho phép upload **nhiều file PDF** và gán `file_role`: `answer_pdf` (1), `source_ref_pdf` (1), `source_content_pdf` (0..N, optional).
 2. Validate theo `VR-UP-*`: PDF hợp lệ, `bundle_name` bắt buộc, đủ file role, không trùng role bắt buộc.
 3. Nếu PDF scan/image → `ocr_required` → **block import** với message rõ (OQ-PDF-004).
 4. **Parse preview** hiển thị: metadata answer, source list (`source_order`, `source_title`, `source_tier`), warnings (vd. `SOURCE_URL_MISSING` — không block).

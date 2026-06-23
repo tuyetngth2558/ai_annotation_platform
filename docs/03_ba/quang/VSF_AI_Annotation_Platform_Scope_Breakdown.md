@@ -88,7 +88,7 @@ PDF Bundle Upload → PDF Parsing → Normalization → Claim Extraction (LLM #1
   - Gán Annotator và QA vào dự án (**Assignment** — không User Management UI đầy đủ).
   - Xem danh sách và trạng thái tổng quan các project.
 - **PDF Bundle Import:**
-  - Upload nhiều file PDF; **bundle builder** gán `file_role`: `answer_pdf`, `source_ref_pdf`, `source_content_pdf` (≥1).
+  - Upload nhiều file PDF; **bundle builder** gán `file_role`: `answer_pdf` (1), `source_ref_pdf` (1), `source_content_pdf` (0..N, optional).
   - Validate theo `VR-UP-*`; **block import** nếu `ocr_required` (OQ-PDF-004).
   - Parse preview: metadata, source list, warnings (`SOURCE_URL_MISSING` không block).
   - Confirm import → tạo batch, `pdf_bundle`, trigger pipeline nền.

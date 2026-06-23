@@ -95,7 +95,7 @@ flowchart TB
 
 | # | Quy tắc | Ref |
 |---:|---|---|
-| 1 | Mỗi bundle: **1 answer_pdf + 1 source_ref_pdf + ≥1 source_content_pdf** | OQ-PDF-001, VR-UP-001..003 |
+| 1 | Mỗi bundle: **1 answer_pdf + 1 source_ref_pdf + 0..N source_content_pdf (optional)** | OQ-PDF-001, VR-UP-001..002 |
 | 2 | `source_url` thiếu → **warning**, không block import | OQ-PDF-003, VR-SRC-006 |
 | 3 | PDF scan → `ocr_required` → **block import** | OQ-PDF-004 |
 | 4 | Claim extraction và pre-scoring = **2 bước LLM** riêng | OQ-003 |
