@@ -1,8 +1,6 @@
 # Screen Flow — VSF AI Annotation Platform MVP
 
-**Owner:** Tuyết  
-**Phiên bản:** 2.0  
-**Ngày:** 06/06/2026  
+**Owner:** Nguyễn Thị Tuyết  
 **Trạng thái:** Ready for cross-review  
 
 ---
@@ -345,4 +343,16 @@ Nếu Return
 | QA Review Workspace | QA | review output annotator |
 | Export | ADMIN, QA | xuất CSV claim-level |
 
+---
+
+## 11. Sprint 3 — Mở rộng (Notification, Dispute, Export Consolidated)
+
+> MVP Sprint 1–2 **không** gồm dispute, notification center, export XLSX consolidated.  
+> Luồng và screen spec Sprint 3 xem:
+
+- [`01_Information_Architecture.md`](01_Information_Architecture.md) v3.0
+- [`05_Sprint3_Screen_Flow_Extensions.md`](05_Sprint3_Screen_Flow_Extensions.md)
+- [`06_Sprint3_Screen_Specification.md`](06_Sprint3_Screen_Specification.md)
+
+**Delta QA Workspace Sprint 3:** thêm action `Escalate Dispute` sau return lần 2 (giữ Approve / Return).
 

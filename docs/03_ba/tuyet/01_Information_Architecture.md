@@ -1,94 +1,55 @@
-# Information Architecture — VSF AI Annotation Platform MVP
+# Information Architecture — VSF AI Annotation Platform
 
-**Owner:** Tuyết  
-**Phiên bản:** 2.0  
-**Ngày:** 06/06/2026  
-**Trạng thái:** Ready for cross-review  
-
+**Owner:** Nguyễn Thị Tuyết  
+**Phiên bản:** Sprint 3 Extension  
+**Trạng thái:** Ready for Dev / Test review (Sprint 3)  
 
 ---
 
 ## 1. Mục đích tài liệu
 
-Tài liệu này mô tả cấu trúc thông tin tổng thể của VSF AI Annotation Platform MVP, thể hiện:
+Mô tả cấu trúc thông tin platform sau khi mở rộng Sprint 3 với 4 module:
 
-- cách tổ chức module và màn hình
-- quyền truy cập theo vai trò
-- luồng điều hướng chính của người dùng
-- ranh giới giữa phạm vi `build now`, `design now`, `build later`
+- **Notification** (in-app, polling 10s)
+- **IAA** (overlap assignment + dashboard)
+- **Dispute Management** (MVP flow: QA → Admin resolve)
+- **Export Consolidated Report** (XLSX 6 sheet)
 
-Tài liệu này là input trực tiếp cho:
-
-- Screen Flow
-- Screen Specification
-- Wireframe/Prototype
-- kế hoạch build của dev
+Tài liệu cập nhật IA MVP (v2.0) — không thay thế hoàn toàn, bổ sung module và URL mới.
 
 ---
 
-## 2. Phạm vi MVP được áp dụng trong IA
+## 2. Phạm vi theo giai đoạn
 
-### 2.1. Build now
+### 2.1. Đã build (Sprint 1–2)
 
-- 1 modality duy nhất: `text`
-- 1 use case duy nhất: `Vivipedia`
-- desktop web
-- import **PDF Bundle** (Answer PDF + Source Reference PDF + ít nhất 1 Source Content PDF)
-- hệ thống parse PDF → normalized data nội bộ → claim extraction → pre-scoring
-- annotation workspace cho claim-level review
-- QA review cơ bản với `Approve` và `Return`
-- export `CSV` claim-level
-- RBAC cơ bản
-- audit log mức tối thiểu
+- PDF import → Annotation → QA Approve/Return → Export CSV claim-level
+- RBAC Admin / Annotator / QA
+- 4 màn chính: Project Setup, Annotation Workspace, QA Review, Export CSV
 
-### 2.2. Design now, chưa build
+### 2.2. Design Sprint 3 — Build Sprint 4
 
-- mô hình đa dự án
-- mô hình đa modality (`audio`, `image`)
-- cấu trúc module có thể mở rộng cho dispute, policy, analytics
-- data model mở rộng cho asset đa loại
-
-### 2.3. Build later
-
-- dispute workflow
-- policy center
-- analytics nâng cao
-- notification center
-- audio/image workspace
-
----
-
-## 3. Thuật ngữ dùng thống nhất
-
-| Thuật ngữ | Ý nghĩa trong MVP |
-|---|---|
-| Project | Một dự án annotation thuộc 1 use case |
-| Batch | Một lần import dữ liệu vào project |
-| PDF Bundle | Một bài input gồm các file PDF liên quan (answer, source ref, source content) |
-| Parent Task | Đơn vị nghiệp vụ gốc sau parse PDF, tương ứng một bài/câu trả lời LLM |
-| Claim Task | Đơn vị annotation chính trong MVP |
-| Annotation Workspace | Màn hình annotator chấm và submit claim |
-| QA Review Workspace | Màn hình QA review kết quả annotator |
-| Approved | Trạng thái task đủ điều kiện export |
-| Returned | Task bị QA trả lại cho annotator |
-
-> **Quy ước dùng tài liệu:** Trong UI có thể hiển thị ngắn là `Task`, nhưng trong BA/spec nên hiểu task annotation chính của MVP là `Claim Task`.
-
----
-
-## 4. Người dùng và vai trò trong MVP
-
-| Vai trò | Viết tắt | Quyền truy cập chính |
+| Module | URL chính | Vai trò truy cập |
 |---|---|---|
-| Admin / Program Manager | ADMIN | Quản lý project, import, phân công, export, user, audit |
-| Annotator | ANN | Xem task được giao, mở workspace, submit, resubmit |
-| QA Specialist | QA | Xem QA queue, review, approve, return, export trong phạm vi được cấp |
+| Notification Center | `/notifications` | ALL (theo event) |
+| Dispute Queue | `/disputes` | QA, ADMIN |
+| Dispute Detail / Resolve | `/disputes/:id` | ADMIN (MVP resolve); reserve Policy Analyst |
+| Project IAA Settings | `/projects/:id/config/iaa` | ADMIN |
+| IAA Dashboard | `/projects/:id/iaa` | ADMIN, QA |
+| Export Consolidated | `/export/consolidated` | ADMIN, QA |
+| Export Job Status | `/export/jobs/:id` | Người tạo job |
 
-> **Ngoài phạm vi MVP:** Policy Analyst chưa có module riêng. Dispute workflow bị hoãn.
+### 2.3. Vẫn hoãn (Phase 2+)
+
+- Policy Center đầy đủ (Guideline Editor WYSIWYG)
+- Full Dispute flow (Policy Analyst → Guideline update)
+- SSE / WebSocket notification
+- Auto overlap assignment
+- PDF Summary export
 
 ---
 
-## 5. Sơ đồ Information Architecture tổng thể
+## 3. Sơ đồ IA tổng thể (cập nhật Sprint 3)
 
 ```text
 VSF AI Annotation Platform
@@ -97,18 +58,23 @@ VSF AI Annotation Platform
 │   ├── Login
 │   └── Đổi mật khẩu
 │
+├── Platform Shell [ALL]
+│   ├── Header: logo, breadcrumb, notification bell (badge), user menu
+│   └── Sidebar: role-based navigation
+│
 ├── Dashboard / Home
-│   ├── Dashboard Admin
+│   ├── Dashboard Admin (+ dispute rate, IAA summary widget)
 │   ├── Dashboard Annotator
 │   └── Dashboard QA
 │
 ├── Projects [ADMIN]
-│   ├── Project List
-│   ├── Project Setup
-│   ├── Project Detail
-│   ├── Import PDF Bundle
-│   ├── Batch List
-│   └── Team Assignment
+│   ├── Project List / Setup / Detail / Import
+│   ├── Team Assignment
+│   ├── Project Config
+│   │   ├── General
+│   │   ├── IAA Settings          ← Sprint 3
+│   │   └── SLA / Quality gates   ← reserve
+│   └── Project IAA Report        ← Sprint 3
 │
 ├── My Tasks [ANN]
 │   ├── Task List
@@ -116,195 +82,180 @@ VSF AI Annotation Platform
 │
 ├── QA Queue [QA, ADMIN]
 │   ├── QA Task List
-│   └── QA Review Workspace
+│   └── QA Review Workspace (+ Escalate Dispute)   ← Sprint 3
+│
+├── Disputes [QA, ADMIN]                          ← Sprint 3
+│   ├── Dispute Queue
+│   └── Dispute Detail / Resolve
 │
 ├── Export [ADMIN, QA]
-│   ├── Create Export Job
-│   └── Export History
+│   ├── Export CSV (MVP hiện có)
+│   ├── Export Consolidated (XLSX)                ← Sprint 3
+│   └── Export History / Job Status
 │
-├── User Management [ADMIN]
-│   ├── User List
-│   └── Role Assignment
+├── Notifications [ALL]                           ← Sprint 3
+│   └── Notification Center
 │
-└── Audit Log [ADMIN]
-    ├── Audit List
-    └── Audit Detail
+├── Users [ADMIN]
+├── Audit Log [ADMIN]
+│
+└── Policies [Phase 2 — reserve URL]
+    └── /policy/disputes → redirect /disputes (khi build Policy Center)
 ```
 
 ---
 
-## 6. Phân cấp màn hình MVP
+## 4. Bảng module — URL, vai trò, trạng thái build
 
-### 6.1. Cấp 0 — Platform Shell
+| Module | URL | ADMIN | QA | ANN | Sprint |
+|---|---|:---:|:---:|:---:|---|
+| Notification bell (shell) | global | ✓ | ✓ | ✓ | 3 design / 4 build |
+| Notification Center | `/notifications` | ✓ | ✓ | ✓ | 3 design / 4 build |
+| QA Review + Dispute action | `/qa/:id/review` | ✓ | ✓ | — | 3 design / 4 build |
+| Dispute Queue | `/disputes` | ✓ | ✓ | — | 3 design / 4 build |
+| Dispute Detail | `/disputes/:id` | ✓ | read | read* | 3 design / 4 build |
+| IAA Settings | `/projects/:id/config/iaa` | ✓ | — | — | 3 design / 4 build |
+| IAA Report | `/projects/:id/iaa` | ✓ | ✓ | — | 3 design / 4 build |
+| Export Consolidated | `/export/consolidated` | ✓ | ✓ | — | 3 design / 4 build |
+| Export Job Status | `/export/jobs/:id` | ✓ | ✓ | — | 3 design / 4 build |
 
-- header toàn cục
-- user menu
-- role-based sidebar
-- breadcrumb
-
-### 6.2. Cấp 1 — Module chính
-
-| Module | URL gợi ý | Vai trò | MVP |
-|---|---|---|---|
-| Dashboard | `/dashboard` | ALL | Build |
-| Projects | `/projects` | ADMIN | Build |
-| My Tasks | `/tasks` | ANN | Build |
-| QA Queue | `/qa` | QA, ADMIN | Build |
-| Export | `/export` | ADMIN, QA | Build |
-| Users | `/users` | ADMIN | Build |
-| Audit Log | `/audit` | ADMIN | Build |
-| Policies | `/policies` | N/A | Chưa build |
-| Analytics | `/analytics` | N/A | Chưa build |
-| Disputes | `/disputes` | N/A | Chưa build |
-
-### 6.3. Cấp 2 — Sub-module
-
-| Sub-module | URL gợi ý | Vai trò | Ghi chú |
-|---|---|---|---|
-| Project Setup | `/projects/new` | ADMIN | Màn chính #1 |
-| Project Detail | `/projects/:id` | ADMIN | Theo dõi tiến độ cơ bản |
-| Import PDF Bundle | `/projects/:id/import` | ADMIN | Màn chính #1 |
-| Task List | `/tasks` | ANN | Danh sách claim task |
-| Annotation Workspace | `/tasks/:id/annotate` | ANN | Màn chính #2 |
-| QA Queue List | `/qa` | QA, ADMIN | Danh sách task cần review |
-| QA Review Workspace | `/qa/:id/review` | QA, ADMIN | Màn chính #3 |
-| Export Form | `/export/new` | ADMIN, QA | Màn phụ build trong MVP |
+\* Annotator chỉ xem dispute liên quan task của mình (read-only summary), không vào queue.
 
 ---
 
-## 7. Vai trò và điều hướng chính
+## 5. Notification — cấu trúc thông tin
 
-### 7.1. Luồng ADMIN
+### 5.1. Entry points
 
-```text
-Login → Dashboard → Project Setup → Import PDF Bundle
-→ Theo dõi parse/extraction → Export → Audit Log
-```
-
-### 7.2. Luồng ANNOTATOR
-
-```text
-Login → Dashboard / My Tasks → Chọn task
-→ Annotation Workspace → Submit / Resubmit
-```
-
-### 7.3. Luồng QA
-
-```text
-Login → Dashboard / QA Queue → Chọn task
-→ QA Review Workspace → Approve / Return
-```
-
----
-
-## 8. Mô tả module và nội dung chính
-
-### 8.1. Dashboard / Home
-
-**Mục tiêu MVP:** làm landing page đơn giản theo vai trò, không phải dashboard analytics nâng cao.
-
-| Vai trò | Nội dung chính |
+| Vị trí | Hành vi |
 |---|---|
-| ADMIN | Số lượng project, batch, task theo trạng thái cơ bản |
-| ANN | Số task được giao, task đang làm, task bị return |
-| QA | Số task đang chờ review, đã approve, đã return |
+| Bell icon (header) | Badge số unread; click → Notification Center hoặc dropdown preview (tối đa 5 item) |
+| Toast in-app | Hiện khi polling phát hiện notification mới trong session |
+| Deep link | Mỗi notification → entity: task, dispute, export job, guideline |
 
-### 8.2. Projects
+### 5.2. Loại notification (theo PRD §14.4 + Sprint 3 scope)
 
-| Khu vực | Nội dung |
-|---|---|
-| Project List | Danh sách project, trạng thái, số batch, số task |
-| Project Setup | Tạo project mới với modality cố định là text |
-| Project Detail | Overview cơ bản, import entry point, batch list, team assignment |
-| Import PDF Bundle | Upload bundle PDF, gán file role, validate, preview parse, xác nhận import |
-
-### 8.3. My Tasks
-
-| Khu vực | Nội dung |
-|---|---|
-| Task List | Chỉ hiển thị task được giao cho annotator hiện tại |
-| Filter | all / in-progress / submitted / returned |
-| Sort | created time / updated time / deadline |
-| Annotation Workspace | khu vực làm việc chính của annotator |
-
-### 8.4. QA Queue
-
-| Khu vực | Nội dung |
-|---|---|
-| QA Task List | Danh sách task được đưa vào QA queue |
-| Filter | pending / in-review / approved / returned |
-| QA Review Workspace | so sánh LLM baseline và annotator output, rồi approve/return |
-
-### 8.5. Export
-
-| Khu vực | Nội dung |
-|---|---|
-| Export Form | Chọn project, batch tùy chọn, trạng thái Approved, format CSV |
-| Export History | Danh sách export job đã chạy |
-
-### 8.6. User Management
-
-| Khu vực | Nội dung |
-|---|---|
-| User List | Danh sách user, trạng thái, role |
-| Role Assignment | Gán role cơ bản theo MVP |
-
-### 8.7. Audit Log
-
-| Khu vực | Nội dung |
-|---|---|
-| Audit List | Lọc theo user, action, thời gian |
-| Audit Detail | Xem một action cụ thể |
-
----
-
-## 9. Mapping màn hình với tính năng MVP
-
-| Màn hình | Tính năng trong MVP | Chưa build |
+| type | Mô tả ngắn | Deep link target |
 |---|---|---|
-| Project Setup / Import PDF Bundle | Tạo project, upload PDF bundle, parse, claim extraction, pre-scoring | multi-modality config, CSV/JSON user import |
-| Annotation Workspace | review claim, chấm 6 dimension, source verification, submit | dispute, audio/image workspace |
-| QA Review Workspace | review diff, approve, return | dispute, sampling engine UI nâng cao |
-| Export | CSV claim-level | XLSX/JSON, bulk export |
-| Dashboard | số đếm cơ bản theo role | analytics real-time |
-| User Management | RBAC cơ bản | workload management |
-| Audit Log | log action chính | immutable/WORM |
+| `task_assigned` | Task mới được giao | `/tasks/:id/annotate` |
+| `task_returned` | QA return kèm lý do | `/tasks/:id/annotate` |
+| `dispute_created` | Dispute mới | `/disputes/:id` |
+| `dispute_resolved` | Dispute đã resolve | `/disputes/:id` hoặc task |
+| `guideline_published` | Rubric/guideline mới | `/policy/guidelines/:id` (reserve) |
+| `llm_job_done` / `llm_job_failed` | Pre-scoring job | `/projects/:id` |
+| `export_ready` | Export job hoàn tất | `/export/jobs/:id` |
+| `sla_warning` | Còn 24h deadline | task hoặc dispute |
+| `dispute_overdue` | Dispute quá SLA 5 ngày | `/disputes/:id` (cờ đỏ) |
+
+### 5.3. Trạng thái đọc
+
+- `unread` / `read`
+- Hành động: mark one read, mark all read
+- Polling: `GET /notifications/unread-count` mỗi 10 giây (B-04)
 
 ---
 
-## 10. Nguyên tắc thiết kế IA
+## 6. Dispute — cấu trúc thông tin (MVP)
 
-1. **Role-based navigation**  
-Mỗi role chỉ nhìn thấy các module liên quan trực tiếp đến công việc.
+### 6.1. Luồng thông tin
 
-2. **Task-first**  
-Annotator và QA vào app là đi nhanh tới nơi làm việc chính trong tối đa 3 click.
+```text
+QA Review Workspace
+  → Escalate Dispute (sau return lần 2)
+  → Dispute record tạo (immutable)
+  → Notify QA + Admin
+  → Dispute Queue
+  → Admin Resolve → Approved | Re-annotation Required
+  → Notify Annotator + QA
+```
 
-3. **Context-first workspace**  
-Workspace luôn giữ context câu trả lời gốc (từ Answer PDF), metadata bài (`article_code`, title, category), và nguồn tham chiếu (source order/title/tier, source text từ PDF) trong khi chấm điểm.
+### 6.2. Dispute record (view model UI)
 
-4. **PDF traceability**  
-Mọi claim task và export phải trace được về `bundle_id` và tên file PDF gốc.
+| Nhóm field | Nội dung hiển thị |
+|---|---|
+| Header | dispute_id, task_id, project, trạng thái, SLA countdown |
+| Context | claim text, annotator output, QA assessment, return history |
+| Dispute | lý do QA, error type, timestamp, người tạo |
+| Resolution | quyết định Admin, ghi chú, resolved_at (khi xong) |
+| Reserve Full flow | `assigned_to`, `policy_note`, `guideline_update_id` (ẩn hoặc disabled MVP) |
 
-5. **Extensible structure**  
-URL và module phải mở rộng được cho dispute, policies, analytics về sau mà không phá cấu trúc hiện tại.
+### 6.3. Trạng thái hiển thị
 
-6. **MVP-safe**  
-Không đưa vào IA các module khiến team hiểu nhầm là phải build trong 4 tuần, trừ khi được đánh dấu rõ là future phase.
+| Status code | Label UI |
+|---|---|
+| `disputed` | Chờ xử lý |
+| `dispute_in_review` | Đang review |
+| `dispute_resolved_approved` | Đã resolve — Chấp nhận |
+| `dispute_resolved_reannotation` | Đã resolve — Cần làm lại |
+| `dispute_overdue` | Quá SLA (cờ đỏ) |
 
 ---
 
-## 11. Hướng mở rộng sau MVP
+## 7. IAA — cấu trúc thông tin
 
-| Hạng mục | MVP | Phase sau |
-|---|---|---|
-| Policy Center | Chưa build | Phase 2 |
-| Dispute Management | Chưa build | Phase 2 |
-| Analytics nâng cao | Chưa build | Phase 2 |
-| Audio/Image Workspace | Chỉ design khung | Phase 2+ |
-| Notification Center | Chưa build | Phase 2 |
+### 7.1. Project Config → Tab IAA Settings
 
+- Overlap % (mặc định 10%)
+- Chọn 2 annotator overlap (admin thủ công — B-05)
+- Metric: Krippendorff's Alpha (read-only label, B-01)
+- Threshold action: <0.60 flag (hiển thị legend)
+
+### 7.2. IAA Report (`/projects/:id/iaa`)
+
+- Bảng cặp annotator + Alpha per dimension + composite
+- Ngưỡng màu: ≥0.75 xanh · 0.60–0.74 vàng · <0.60 đỏ
+- Link sang profile annotator (reserve Team module)
 
 ---
 
-*Tài liệu này là input nền cho `02_Screen_Flow.md` và `03_Screen_Specification.md`.*
+## 8. Export Consolidated — cấu trúc thông tin
+
+### 8.1. Màn tạo export
+
+| Filter | Mô tả |
+|---|---|
+| Project | Bắt buộc |
+| Batch | Tùy chọn |
+| Date range | submitted / approved |
+| Status include | Mặc định Approved; Admin có thể mở rộng |
+| Format | XLSX consolidated (6 sheet) — cố định Sprint 3 |
+
+### 8.2. Output structure (align Đan Export Schema)
+
+| Sheet | Mục đích |
+|---|---|
+| Summary | Tổng quan dự án |
+| Claim Level | Chi tiết claim + scores |
+| Answer Level | Parent task aggregate |
+| QA Review Log | Lịch sử QA action |
+| Dispute Log | Dispute trong scope export |
+| IAA Report | IAA snapshot |
+
+### 8.3. Export job lifecycle (UI)
+
+`Queued` → `Processing` (progress %) → `Ready` (download) | `Failed` (retry)
+
+---
+
+## 9. Cập nhật navigation sidebar
+
+| Vai trò | Item mới Sprint 3 |
+|---|---|
+| ALL | Notification (bell only — không cần menu riêng nếu dùng bell) |
+| ADMIN | Disputes, Export Consolidated, Project → IAA tab |
+| QA | Disputes (queue), Export Consolidated |
+| ANN | — (chỉ nhận notification, không có menu Disputes) |
+
+---
+
+## 10. Nguyên tắc IA Sprint 3
+
+1. **Bell-first notification** — không chiếm sidebar; center là đích đầy đủ.
+2. **Dispute gắn task context** — luôn trace về claim task và QA history.
+3. **MVP Admin resolve** — UI không ẩn field Policy Analyst nhưng disabled + tooltip "Phase 2".
+4. **Export một file** — user chọn filter một lần, nhận một XLSX nhiều sheet.
+5. **Extensible URLs** — `/disputes`, `/notifications` khớp PRD Screen Map §23.
+
+---
+
+*Tài liệu nội bộ VSF — Cập nhật IA Sprint 3 — Owner: Nguyễn Thị Tuyết*

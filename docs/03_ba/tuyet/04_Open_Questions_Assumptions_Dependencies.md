@@ -1,9 +1,7 @@
 # Open Questions / Assumptions / Dependencies Log
 # VSF AI Annotation Platform MVP
 
-**Owner:** Tuyết  
-**Phiên bản:** 2.1  
-**Ngày cập nhật:** 09/06/2026  
+**Owner:** Nguyễn Thị Tuyết  
 **Trạng thái:** Active log — OQ đã chốt theo `docs/00_project_management/Bao_cao_doi_chieu_scaffold_vs_scope_MVP.md` §6  
 
 
@@ -268,6 +266,7 @@ Log này dùng để:
 | DEC-008 | Export MVP chỉ export CSV claim-level | 03/06/2026 | Đồng bộ theo scope và spec |
 | DEC-009 | Không build Save Draft riêng và Skip riêng trong MVP | 03/06/2026 | Đồng bộ lại flow để giảm state |
 | DEC-010 | Không build QA direct correction trong MVP | 03/06/2026 | Giảm phức tạp workflow |
+| DEC-SQ-01 | SQ MVP = tier + domain heuristic từ PDF; không bắt buộc web search; LLM pre-score chỉ dùng signals đã parse | 15/06/2026 | `docs/03_ba/quang/DQ-SQ-001_Source_Quality_SQ_MVP.md` (draft chờ mentor) |
 | DEC-011 | Input chính MVP là **PDF Bundle Upload** | 06/06/2026 | Mentor chốt; đồng bộ `docs/03_ba/dan` v0.4 |
 | DEC-012 | Không dùng CSV/JSON làm user-facing import chính | 06/06/2026 | Portal chưa cung cấp CSV/JSON |
 | DEC-013 | Export CSV claim-level phải trace về `bundle_id` và PDF filenames | 06/06/2026 | Theo DRD-005 |
@@ -278,6 +277,12 @@ Log này dùng để:
 | DEC-015 | **Không** User Management UI đầy đủ — seed + Assignment | 09/06/2026 | Báo cáo PM §6.5 |
 | DEC-016 | LLM: **Gemini 2.5 Flash** qua `LLMProvider`; 2 bước extract + pre-score | 09/06/2026 | Báo cáo PM §6.2 |
 | DEC-017 | PDF scan `ocr_required` → **block import** | 09/06/2026 | Báo cáo PM §6.1 |
+| DEC-S3-01 | IAA metric: **Krippendorff's Alpha** | 17/06/2026 | Sprint_3 §B-01 |
+| DEC-S3-02 | Dispute: **MVP flow** QA → Admin resolve | 17/06/2026 | Sprint_3 §B-02 |
+| DEC-S3-03 | Export consolidated: **XLSX 6 sheet** | 17/06/2026 | Sprint_3 §B-03 |
+| DEC-S3-04 | Notification: **polling 10s** | 17/06/2026 | Sprint_3 §B-04 |
+| DEC-S3-05 | IAA overlap: **Admin chọn thủ công** | 17/06/2026 | Sprint_3 §B-05 |
+| DEC-S3-06 | Dispute UI MVP: **Admin resolve** (Policy Analyst fields reserve disabled) | 17/06/2026 | `06_Sprint3_Screen_Specification.md` §5 |
 
 ---
 

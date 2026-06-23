@@ -1,8 +1,6 @@
 # Screen Specification — VSF AI Annotation Platform MVP
 
-**Owner:** Tuyết  
-**Phiên bản:** 2.1  
-**Ngày:** 06/06/2026  
+**Owner:** Nguyễn Thị Tuyết   
 **Trạng thái:** Ready for cross-review  
 
 > Tài liệu này đặc tả chi tiết các màn hình chính trong MVP.  
