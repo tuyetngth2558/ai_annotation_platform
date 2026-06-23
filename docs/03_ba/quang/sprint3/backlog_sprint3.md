@@ -15,7 +15,7 @@ Bảng dưới đây đặc tả các User Stories cần triển khai trong Spri
 | **US-NOT-01** | Notification | Xem unread badge header & danh sách thông báo | 3 SP | High | Khải | Nhung |
 | **US-NOT-02** | Notification | Tự động tạo thông báo từ sự kiện hệ thống (10 events) | 3 SP | High | Khải | Nhung |
 | **US-NOT-03** | Notification | Đánh dấu đã đọc (đơn/loạt) & chuyển hướng deep link | 2 SP | Medium | Khải | Nhung |
-| **US-IAA-01** | IAA | Giao diện cấu hình tỷ lệ gán trùng & chọn cặp Annotator | 2 SP | Medium | Tuấn Anh | Hưng |
+| **US-IAA-01** | IAA | Giao diện cấu hình & cơ chế gán trùng thủ công | 2 SP | Medium | Tuấn Anh | Hưng |
 | **US-IAA-02** | IAA | Tự động tính điểm IAA (Krippendorff's Alpha) khi duyệt xong | 5 SP | High | Tuấn Anh | Hưng |
 | **US-IAA-03** | IAA | Giao diện báo cáo phân tích IAA (Color coding) | 3 SP | Medium | Tuấn Anh | Hưng |
 | **US-IAA-04** | IAA | Cơ chế cảnh báo chất lượng thấp (Flag annotator < 0.60) | 1 SP | Low | Tuấn Anh | Hưng |

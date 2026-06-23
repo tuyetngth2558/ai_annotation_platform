@@ -9,20 +9,21 @@
 
 ## 1. Danh sách User Stories
 
-### US-IAA-01: Cấu hình tỷ lệ gán trùng (Overlap Config) và nhân sự (Admin)
+### US-IAA-01: Cấu hình nhân sự (Overlap Config) và gán trùng thủ công (Admin)
 *   **Mô tả:**
     *   **As an** Admin,
-    *   **I want to** cấu hình tỷ lệ task gán trùng và lựa chọn cặp Annotator thực hiện gán trùng trong cấu hình dự án,
-    *   **So that** hệ thống có thể tự động phân phối các task gán trùng nhằm đo lường độ đồng thuận gán nhãn.
+    *   **I want to** lựa chọn cặp Annotator thực hiện gán trùng và cấu hình tỷ lệ gán trùng mong muốn, đồng thời tự tay phân phối gán trùng cho các task,
+    *   **So that** hệ thống thiết lập đúng các task gán trùng nhằm đo lường độ đồng thuận gán nhãn.
 *   **Tiêu chí nghiệm thu (Acceptance Criteria):**
     1.  **Giao diện Cấu hình:** Admin truy cập `Project Detail -> Config -> IAA Settings` để cấu hình các thông số:
-        *   Tỷ lệ gán trùng (`overlap_percent`): Ô nhập số, chấp nhận khoảng giá trị từ `5%` đến `30%` (mặc định là `10%`).
+        *   Tỷ lệ gán trùng mục tiêu (`overlap_percent`): Ô nhập số, chấp nhận khoảng giá trị từ `5%` đến `30%` (mặc định là `10%`). Thông số này đóng vai trò là chỉ số mục tiêu (Target Indicator) để Admin tham chiếu khi chia task.
         *   Cặp gán nhãn trùng (`overlap_annotator_ids`): Chọn chính xác hai (2) tài khoản người dùng có vai trò `Annotator` trong dự án. Hai annotator được chọn phải khác nhau.
         *   Phương pháp tính (`iaa_metric`): Mặc định hiển thị dưới dạng Read-only là `Krippendorff's Alpha`.
-    2.  **Cơ chế gán trùng tự động (System Assignment):** Khi Admin import một Batch mới:
-        *   Hệ thống tự động lấy ngẫu nhiên một lượng parent tasks tương ứng với tỷ lệ `overlap_percent` cấu hình của dự án (làm tròn lên số nguyên gần nhất).
-        *   Các task được chọn gán trùng này sẽ được phân phối đồng thời vào danh sách công việc của cả 2 annotator đã cấu hình (`overlap_annotator_ids`).
-        *   *Ví dụ:* Batch có 100 tasks, `overlap_percent` = 10%. Hệ thống sẽ chọn ngẫu nhiên 10 tasks để gán cho cả Annotator A và Annotator B cùng làm độc lập. 90 tasks còn lại gán đơn lẻ cho các annotator bình thường.
+    2.  **Cơ chế gán trùng thủ công (Manual Assignment):**
+        *   Hệ thống **không tự động** gán ngẫu nhiên các task khi import Batch mới.
+        *   Tại màn hình quản lý/gán task (Assign Task/Claims), Admin sẽ tự lựa chọn thủ công các task/claims để thực hiện overlap bằng cách gán task đó cho cả hai Annotator đã được cấu hình trong cặp gán trùng (`overlap_annotator_ids`).
+        *   Khi Admin gán một task cho cả hai Annotator, hệ thống hỗ trợ ghi nhận và tạo ra hai bản ghi luồng làm việc độc lập (ví dụ: tạo 2 bản ghi `ClaimTask` riêng biệt cho cùng một claim text hoặc cho phép gán song song) để cả hai Annotator có thể thấy task trong hàng đợi cá nhân và thực hiện gán nhãn hoàn toàn độc lập, không nhìn thấy kết quả của nhau.
+        *   Giao diện hiển thị tỷ lệ gán trùng thực tế (ví dụ: *"Đã gán trùng: 8% / Mục tiêu: 10%"*) để Admin theo dõi tiến độ chia task.
 
 ---
 

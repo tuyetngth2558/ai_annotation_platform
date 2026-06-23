@@ -48,7 +48,7 @@ graph TD
     Resolve_Approve --> Task_Approve[Task chuyển sang Approved]
     Resolve_Reann --> Task_Return[Task chuyển sang Returned]
     
-    Task_Approve --> Notify_Resolve[Notify: dispute_resolved gửi Annotator + QA]
+    Task_Approve --> Notify_Resolve[Notify: dispute_resolved gửi Annotator + QA + Admin]
     Task_Return --> Notify_Resolve
     
     Notify_Resolve --> End([Kết thúc Dispute])
