@@ -102,5 +102,109 @@
 
 ## 8. Mở / chưa chốt
 
+
+## 9. Error Code & HTTP Status Mapping (machine-readable)
+
+Các error code dưới đây dùng cho API response `error_code` field và `Problem Details (RFC 7807)` type URI. Backend nên map 1-1 với VR rule để client parse được.
+
+### 9.1 Dispute
+
+| Rule ID | Error Code | HTTP Status | Type URI |
+|---|---|---|---|
+| VR-DISP-001 | `DISPUTE_ROLE_INVALID` | 403 | `/errors/dispute/role-invalid` |
+| VR-DISP-002 | `DISPUTE_CLAIM_NOT_FOUND` | 404 | `/errors/dispute/claim-not-found` |
+| VR-DISP-003 | `DISPUTE_PRECONDITION_FAILED` | 422 | `/errors/dispute/precondition-failed` |
+| VR-DISP-004 | `DISPUTE_REASON_INVALID` | 422 | `/errors/dispute/reason-invalid` |
+| VR-DISP-005 | `DISPUTE_DUPLICATE_ACTIVE` | 409 | `/errors/dispute/duplicate-active` |
+| VR-DISP-006 | `DISPUTE_OVERRIDE_REASON_REQUIRED` | 422 | `/errors/dispute/override-reason-required` |
+| VR-DISP-007 | `DISPUTE_RESOLVE_ROLE_INVALID` | 403 | `/errors/dispute/resolve-role-invalid` |
+| VR-DISP-008 | `DISPUTE_RESOLUTION_DECISION_INVALID` | 422 | `/errors/dispute/resolution-decision-invalid` |
+| VR-DISP-009 | `DISPUTE_RESOLUTION_NOTE_REQUIRED` | 422 | `/errors/dispute/resolution-note-required` |
+| VR-DISP-010 | `DISPUTE_RESOLVED_AT_REQUIRED` | 422 | `/errors/dispute/resolved-at-required` |
+| VR-DISP-011 | `DISPUTE_STATUS_TRANSITION_INVALID` | 409 | `/errors/dispute/status-transition-invalid` |
+| VR-DISP-012 | `DISPUTE_SLA_EXCEEDED` | 200 | `/errors/dispute/sla-exceeded` |
+| VR-DISP-013 | `DISPUTE_SLA_MISSING` | 422 | `/errors/dispute/sla-missing` |
+| VR-DISP-014 | `DISPUTE_IMMUTABLE` | 403 | `/errors/dispute/immutable` |
+| VR-DISP-015 | `DISPUTE_AUDIT_MISSING` | 500 | `/errors/internal/audit-missing` |
+
+### 9.2 Notification
+
+| Rule ID | Error Code | HTTP Status |
+|---|---|---|
+| VR-NOTIF-001 | `NOTIF_RECIPIENT_INACTIVE` | 422 |
+| VR-NOTIF-002 | `NOTIF_TYPE_INVALID` | 422 |
+| VR-NOTIF-003 | `NOTIF_TITLE_INVALID` | 422 |
+| VR-NOTIF-004 | `NOTIF_BODY_TOO_LONG` | 422 |
+| VR-NOTIF-005 | `NOTIF_DUPLICATE` | 200 |
+| VR-NOTIF-006 | `NOTIF_NOT_YOURS` | 403 |
+| VR-NOTIF-007 | `NOTIF_READ_TIMESTAMP_INVALID` | 422 |
+| VR-NOTIF-008 | `NOTIF_DELETE_OK` | 204 |
+| VR-NOTIF-009 | `NOTIF_CLEANUP_CRON` | n/a |
+| VR-NOTIF-010 | `NOTIF_PAYLOAD_MISMATCH` | 422 |
+
+### 9.3 IAA
+
+| Rule ID | Error Code | HTTP Status |
+|---|---|---|
+| VR-IAA-001 | `IAA_INSUFFICIENT_ANNOTATORS` | 422 |
+| VR-IAA-002 | `IAA_NON_ANNOTATOR_IN_OVERLAP` | 422 |
+| VR-IAA-003 | `IAA_DUPLICATE_OVERLAP` | 409 |
+| VR-IAA-004 | `IAA_DRAFT_STILL_OPEN` | 422 |
+| VR-IAA-005 | `IAA_INVALID_METRIC` | 422 |
+| VR-IAA-006 | `IAA_INVALID_PERIOD` | 422 |
+| VR-IAA-007 | `IAA_SKIPPED_RECOMPUTE` | 200 |
+| VR-IAA-008 | `IAA_QUERY_PARAM_INVALID` | 422 |
+| VR-IAA-009 | `IAA_RBAC_DENIED` | 403 |
+| VR-IAA-010 | `IAA_THRESHOLD_FLAG` | 200 |
+
+### 9.4 Export Consolidated
+
+| Rule ID | Error Code | HTTP Status |
+|---|---|---|
+| VR-EXP-CONS-001 | `EXPORT_RBAC_DENIED` | 403 |
+| VR-EXP-CONS-002 | `EXPORT_FILTER_INVALID` | 422 |
+| VR-EXP-CONS-003 | `EXPORT_ASYNC_QUEUED` | 202 |
+| VR-EXP-CONS-004 | `EXPORT_SHEET_MISSING` | 500 |
+| VR-EXP-CONS-005 | `EXPORT_HEADER_MISMATCH` | 500 |
+| VR-EXP-CONS-006 | `EXPORT_ENCODING_MISSING` | 500 |
+| VR-EXP-CONS-007 | `EXPORT_EMPTY_DATASET` | 200 |
+| VR-EXP-CONS-008 | `EXPORT_STORAGE_REQUIRED` | 500 |
+| VR-EXP-CONS-009 | `EXPORT_BUILD_FAILED` | 500 |
+| VR-EXP-CONS-010 | `EXPORT_PRESIGNED_URL_REQUIRED` | 403 |
+| VR-EXP-CONS-011 | `EXPORT_AUDIT_MISSING` | 500 |
+
+### 9.5 Quality Gate
+
+| Rule ID | Error Code | HTTP Status |
+|---|---|---|
+| VR-QG-001 | `QG_DISPUTE_RATE_HIGH` | 200 |
+| VR-QG-002 | `QG_PROJECT_PAUSED` | 200 |
+| VR-QG-003 | `QG_ANNOTATOR_FLAGGED` | 200 |
+| VR-QG-004 | `QG_ADMIN_NOTIFIED` | 200 |
+
+> **Ghi chú:** Backend nên map các error code này vào response body theo format: `{"error_code": "...", "message": "...", "details": {...}}`. Client FE parse `error_code` để hiển thị message đã i18n thay vì hardcode message tiếng Anh.
+
+
+## 10. DB Constraint Mapping (đối chiếu với ERD #09 §9)
+
+Mỗi VR blocking (Yes) nên có DB-level constraint tương ứng để chống race condition/bug ở app layer:
+
+| VR Rule | DB Constraint Type | DDL gợi ý |
+|---|---|---|
+| VR-DISP-004 | CHECK | `CHECK (reason IN (...))` |
+| VR-DISP-005 | Partial UNIQUE INDEX | `CREATE UNIQUE INDEX ... WHERE status NOT IN (...)` |
+| VR-DISP-008 | CHECK | `CHECK (resolution_decision IS NULL OR resolution_decision IN (...))` |
+| VR-DISP-011 | CHECK + Trigger | `CHECK (status IN (...))` + trigger kiểm tra transition |
+| VR-DISP-014 | Trigger REVOKE | `REVOKE UPDATE, DELETE ON dispute FROM app_role` |
+| VR-NOTIF-002 | CHECK | `CHECK (type IN (...))` |
+| VR-NOTIF-005 | UNIQUE | `UNIQUE (user_id, entity_type, entity_id, type)` |
+| VR-IAA-003 | UNIQUE | `UNIQUE (claim_id, annotator_id, rubric_dimension)` |
+| VR-IAA-005 | CHECK | `CHECK (score >= 0.00 AND score <= 1.00)` |
+| VR-IAA-006 | CHECK | `CHECK (period_end > period_start)` |
+| VR-IAA-008 | CHECK | `CHECK (scope_type IN ('project','pair','annotator','dimension'))` |
+| VR-EXP-CONS-004 | App-level (verify at build) | Không DB constraint được (file XLSX verify sau build) |
+
+> **Ghi chú:** Các VR `No (Warning)` như VR-QG-001..004 không cần DB constraint — chỉ cần application-level check + dashboard flag.
+
 - Cron overdue & notification trigger: tech ownership (Backend/Khải) hay Build job (Tuấn Anh)?
 - Thresholds IAA có cần cấu hình per project (VR-IAA-010) trong Sprint 3 hay hardcode mặc định + Sprint 4 mở rộng?

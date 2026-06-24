@@ -8,7 +8,7 @@
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
 
-*Cập nhật lần cuối:** 2026-06-23 · **Bởi:** Kilo (Đan — BA). Sprint 3 BA docs xong cho 5 artifact (`docs/03_ba/dan/09_…13_…`). Sprint 1–2 BE pipeline vẫn trạng thái theo lần cập nhật trước (2026-06-17 Claude). nhân sự**. Import xong tự về /admin/projects. Pipeline LLM thật (OpenRouter gpt-4o-mini) verify chạy: bundle→6 claim, pre-score thật. Test: 152 PASS (+3), build FE xanh, navigation back/forward chuẩn. CÒN MỞ BE: per-project RBAC, pipeline dùng project LLM config)
+**Cập nhật lần cuối:** 2026-06-24 · **Bởi:** Antigravity (Đan — BA). Rà soát và đồng bộ toàn bộ tài liệu BA của Đan với yêu cầu Sprint 3 từ Google Doc (các tài liệu v0.2 và v0.1 đã căn chỉnh chuẩn).
 
 **Trước đó:** Điều chỉnh SQ [ADR 0008 A+D]: tách SQ → rule engine (sq_engine.py), LLM chấm 5 chiều, composite vẫn 6 (BR-7.2).
 
@@ -139,11 +139,11 @@ Quyết định ĐÃ chốt → xem [docs/adr/](adr/). Quyết gì mới → **t
 ### BA deliverables (Đan — Data Model & Schema)
 | # | Artifact | File | Deadline | Trạng thái |
 |---:|---|---|---|:---:|
-| 1 | ERD bổ sung (3 bảng mới + 1 bảng export request) | `docs/03_ba/dan/09_Sprint3_ERD_Extensions.md` | Tuần 1 | ✅ draft v0.1 |
-| 2 | Data Dictionary 3 bảng mới | `docs/03_ba/dan/10_Sprint3_Data_Dictionary.md` | Tuần 1 | ✅ draft v0.1 |
-| 3 | Export Schema — Consolidated Report (6 sheet XLSX) | `docs/03_ba/dan/11_Sprint3_Export_Schema_Consolidated.md` | Tuần 1 | ✅ draft v0.1 |
-| 4 | Validation Rules — dispute + notification + IAA + export + Quality Gate | `docs/03_ba/dan/12_Sprint3_Validation_Rules_Dispute.md` | Tuần 2 | ✅ draft v0.1 |
-| 5 | Edge Cases — dispute SLA · IAA <2 annotator · export rỗng + cross-feature | `docs/03_ba/dan/13_Sprint3_Edge_Cases.md` | Tuần 2 | ✅ draft v0.1 |
+| 1 | ERD bổ sung (3 bảng mới + 1 bảng export request) | `docs/03_ba/dan/09_Sprint3_ERD_Extensions.md` | Tuần 1 | ✅ v0.2 (đã rà soát) |
+| 2 | Data Dictionary 3 bảng mới | `docs/03_ba/dan/10_Sprint3_Data_Dictionary.md` | Tuần 1 | ✅ v0.2 (đã rà soát) |
+| 3 | Export Schema — Consolidated Report (6 sheet XLSX) | `docs/03_ba/dan/11_Sprint3_Export_Schema_Consolidated.md` | Tuần 1 | ✅ v0.1 (đã rà soát) |
+| 4 | Validation Rules — dispute + notification + IAA + export + Quality Gate | `docs/03_ba/dan/12_Sprint3_Validation_Rules_Dispute.md` | Tuần 2 | ✅ v0.1 (đã rà soát) |
+| 5 | Edge Cases — dispute SLA · IAA <2 annotator · export rỗng + cross-feature | `docs/03_ba/dan/13_Sprint3_Edge_Cases.md` | Tuần 2 | ✅ v0.1 (đã rà soát) |
 
 ### Backend features (Sprint 4+ — sau khi Definition of Ready pass)
 | Feature | Backend (BE) | Frontend (FE) | Test | Ghi chú |

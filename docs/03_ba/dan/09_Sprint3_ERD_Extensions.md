@@ -1,7 +1,7 @@
 # 09. ERD Extensions — Sprint 3 (Notification · IAA · Dispute)
 
 **Owner:** Phạm Đan Kha
-**Phiên bản:** v0.1 (Sprint 3 draft)
+**Phiên bản:** v0.2 (Sprint 3 draft)
 **Trạng thái:** Draft — Tuần 1
 **Phạm vi:** Bổ sung 3 entity mới vào ERD `01_ERD_MVP_and_Extensible.md` (v0.6). Không đụng các entity Sprint 1–2.
 **Quyết định chốt tham chiếu:** `docs/03_ba/tuyet/04_Open_Questions...md` §6 (DEC-S3-01..06)
@@ -180,7 +180,51 @@ Không nhồi vào `CLAIM_TASK` vì:
 | **Immutable trigger** | DISPUTE table: DB trigger `REVOKE UPDATE, DELETE` (giống AUDIT_LOG) | VR-DISP-014; app-level chỉ cho phép status transition + resolved_by/at |
 | **Cleanup policy** | NOTIFICATION: unread 90 ngày, read 30 ngày | VR-NOTIF-009; cron auto-cleanup |
 
-## 9. Mở / chưa chốt (cần Q&A / Sprint 4)
+## 9. DB Constraint DDL gợi ý (cho Backend / Postgres Admin)
+
+Các constraint dưới đây mirror các VR trong artifact #12. Backend nên tạo migration riêng trong Sprint 4.
+
+### 9.1 UNIQUE constraints
+
+| Entity | Constraint | Mục đích |
+|---|---|---|
+| `NOTIFICATION` | `UNIQUE (user_id, entity_type, entity_id, type)` | Chống duplicate (VR-NOTIF-005) |
+| `IAA_OVERLAP_ASSIGN` | `UNIQUE (claim_id, annotator_id, rubric_dimension)` | 1 annotator 1 dim / claim (DD §6.3) |
+| `IAA_SCORE` | `UNIQUE (project_id, scope_type, scope_id, rubric_dimension, period_start, period_end)` | UPSERT idempotent (EC-IAA-009) |
+| `DISPUTE` | `UNIQUE (claim_id) WHERE status NOT IN ('dispute_resolved_approved', 'dispute_resolved_re_annotation', 'dispute_overdue')` | Chỉ 1 dispute active / claim (VR-DISP-005) |
+
+### 9.2 CHECK constraints
+
+| Entity | Constraint | VR ref |
+|---|---|---|
+| `DISPUTE.status` | `CHECK (status IN ('disputed','dispute_in_review','dispute_resolved_approved','dispute_resolved_re_annotation','dispute_overdue'))` | VR-DISP-011 |
+| `DISPUTE.reason` | `CHECK (reason IN ('guideline_unclear','unresolved_score_disagreement','extraction_mapping_error','repeated_error_pattern','other'))` | VR-DISP-004 |
+| `DISPUTE.resolution_decision` | `CHECK (resolution_decision IS NULL OR resolution_decision IN ('approved','re_annotation_required'))` | VR-DISP-008 |
+| `IAA_SCORE.score` | `CHECK (score >= 0.00 AND score <= 1.00)` | VR-IAA-005 |
+| `IAA_SCORE.period_end` | `CHECK (period_end > period_start)` | VR-IAA-006 |
+| `IAA_SCORE.scope_type` | `CHECK (scope_type IN ('project','pair','annotator','dimension'))` | DD §6.4.a |
+| `NOTIFICATION.type` | `CHECK (type IN ('task_assigned','task_returned','dispute_created','dispute_resolved','llm_pre_scoring_done','llm_pre_scoring_failed','rubric_published','export_done','sla_approaching','dispute_overdue'))` | VR-NOTIF-002 |
+| `EXPORT_CONSOLIDATED_REQUEST.status` | `CHECK (status IN ('queued','running','done','failed'))` | VR-EXP-CONS-001/008/009 |
+
+### 9.3 FK ON DELETE behavior
+
+| FK | ON DELETE | Lý do |
+|---|---|---|
+| Tất cả FK → `USER_ACCOUNT` | `RESTRICT` hoặc `SET NULL` (tùy field required) | Không cascade xóa user; giữ audit trace |
+| FK → `PROJECT` | `RESTRICT` | Không xóa project khi còn dữ liệu |
+| FK → `CLAIM_TASK` | `CASCADE` (cho DISPUTE, IAA_OVERLAP_ASSIGN) | Xóa claim → xóa dispute/overlap liên quan |
+| FK → `ANNOTATION_SUBMISSION`, `QA_REVIEW` (nullable) | `SET NULL` | Dispute vẫn tồn tại dù submission/review bị xóa |
+
+### 9.4 Trigger DB
+
+| Trigger | Entity | Chi tiết |
+|---|---|---|
+| `trg_dispute_immutable` | `DISPUTE` | `REVOKE UPDATE, DELETE` (giống `AUDIT_LOG`); app-level bypass qua function `resolve_dispute()` với `SECURITY DEFINER` |
+| `trg_dispute_overdue` | `DISPUTE` | Cron hoặc pg_cron: `UPDATE status = 'dispute_overdue', overdue_at = now() WHERE status IN ('disputed','dispute_in_review') AND now() > sla_due_at` |
+
+---
+
+## 10. Mở / chưa chốt (cần Q&A / Sprint 4)
 
 - `policy_analyst` user role — hiện chưa có trong `USER_PROJECT_ROLE.role` enum (chỉ `admin/annotator/qa`). Có chốt bổ sung trong Sprint 3 hay giữ "Admin đóng vai Policy" tạm thời? (DEC-S3-06 chỉ nói UI MVP Admin resolve; role riêng hoãn)
 - `NOTIFICATION.type` enum: liệt kê chi tiết ở artifact #10 — đã xác nhận.

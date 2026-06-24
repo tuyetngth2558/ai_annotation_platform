@@ -95,11 +95,12 @@
 | `task_returned` | `claim_task` | `/tasks/{entity_id}/annotate?tab=qa_feedback` | Annotation Workspace (tab QA) |
 | `dispute_created` | `dispute` | `/disputes/{entity_id}` | Dispute Detail |
 | `dispute_resolved` | `dispute` | `/disputes/{entity_id}` | Dispute Detail (read-only) |
-| `export_ready` | `export_job` | `/export/jobs/{entity_id}` | Export Job Status |
-| `llm_job_done` | `project` | `/projects/{entity_id}` | Project Detail |
-| `llm_job_failed` | `project` | `/projects/{entity_id}` | Project Detail |
-| `sla_warning` | `claim_task` | `/tasks/{entity_id}/annotate` | Annotation Workspace |
+| `export_done` | `export_job` | `/export/jobs/{entity_id}` | Export Job Status |
+| `llm_pre_scoring_done` | `project` | `/projects/{entity_id}` | Project Detail |
+| `llm_pre_scoring_failed` | `project` | `/projects/{entity_id}` | Project Detail |
+| `sla_approaching` | `claim_task` | `/tasks/{entity_id}/annotate` | Annotation Workspace |
 | `dispute_overdue` | `dispute` | `/disputes/{entity_id}` | Dispute Detail |
+| `rubric_published` | `project` | `/projects/{entity_id}/rubrics` | Project Rubric |
 
 ---
 

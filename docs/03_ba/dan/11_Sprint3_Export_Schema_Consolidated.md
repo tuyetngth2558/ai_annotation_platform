@@ -105,9 +105,9 @@ Mỗi row = 1 claim có final status = `approved` hoặc `dispute_resolved_appro
 | `qa_decision` | enum | `QA_REVIEW.decision` (latest non-pending) | `approved` / `returned` |
 | `qa_final_decision` | derived | xem §6 | `approved` / `rejected` / `disputed` |
 | `qa_approved_at` | datetime | `QA_REVIEW.reviewed_at` (decision=approved final) | |
-| `dispute_id` | uuid | `DISPUTE.dispute_id` (nếu có resolved) | nullable |
-| `dispute_status` | enum | `DISPUTE.status` | nullable |
-| `dispute_resolution` | enum | `DISPUTE.resolution_decision` | nullable |
+| `dispute_id` | uuid | `DISPUTE.dispute_id` | nullable; nếu có nhiều dispute, lấy dispute mới nhất (active hoặc resolved) |
+| `dispute_status` | enum | `DISPUTE.status` | nullable; lấy dispute mới nhất |
+| `dispute_resolution` | enum | `DISPUTE.resolution_decision` | nullable; lấy dispute mới nhất |
 | `final_recommendation` | enum | xem §7 | `ACCEPTED` / `NEEDS_REVISION` / `REJECTED` |
 | `quality_band` | enum | xem §7 | `HIGH` / `MEDIUM` / `LOW` |
 | `submitted_at` | datetime | `ANNOTATION_SUBMISSION.submitted_at` (final) | |
@@ -286,6 +286,126 @@ ELSE -> NULL  # đang pipeline
 ---
 
 ## 11. Mở / chưa chốt
+
+
+## 12. Sample Data Rows (minh họa — cho Dev/QA verify format)
+
+Các sample dưới đây dùng dữ liệu giả, mục đích kiểm tra format cột và derived field.
+
+### 12.1 Sheet `Summary` (1 row)
+
+| project_code | project_name | rubric_version | export_date | total_parent_tasks | total_claims | approved_claims | disputed_claims | dispute_rate | quality_band_high | quality_band_medium | quality_band_low | iaa_composite_score |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `VIVI-01` | Vivipedia Pilot | v2.1 | 2026-06-24T10:00:00Z | 500 | 10000 | 9200 | 150 | 1.5% | 6800 | 2100 | 300 | 0.82 |
+
+### 12.2 Sheet `Claim Level` (2 rows)
+
+| claim_id | article_code | domain | claim_text | pre_score_sf | pre_score_sc | pre_score_hr | pre_score_sq | pre_score_composite | annotation_sf | annotation_sc | annotation_hr | annotation_sq | annotation_composite | fact_check_status | qa_final_decision | final_recommendation | quality_band |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `a1b2...` | LAW-001 | law | Việt Nam có 63 tỉnh thành | 0.90 | 0.85 | 0.95 | 0.60 | 0.80 | 0.90 | 0.85 | 0.95 | 0.70 | 0.83 | verified | approved | ACCEPTED | HIGH |
+| `c3d4...` | LAW-005 | law | Luật XYZ có hiệu lực từ 2025 | 0.50 | 0.60 | 0.75 | 0.15 | 0.48 | 0.45 | 0.55 | 0.70 | 0.40 | 0.51 | needs_review | rejected | REJECTED | LOW |
+
+### 12.3 Sheet `Answer Level` (1 row)
+
+| parent_task_id | article_code | article_title | domain | total_claims | approved_claims | disputed_claims | avg_annotation_composite | rel | comp | quality_band | final_recommendation |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `p001...` | LAW-001 | Luật Tổ chức Chính phủ | law | 20 | 18 | 2 | 0.78 | 0.85 | 0.82 | MEDIUM | ACCEPTED |
+
+### 12.4 Sheet `QA Review Log` (2 rows)
+
+| qa_review_id | claim_id | qa_email | decision | error_category | qa_comment | linked_dispute_id | reviewed_at |
+|---|---|---|---|---|---|---|---|---|
+| `qr01...` | `a1b2...` | qa1@vsf.vn | returned | guideline_unclear | Điểm SF quá cao so với nguồn | null | 2026-06-20T09:00:00Z |
+| `qr02...` | `a1b2...` | qa1@vsf.vn | approved | — | OK sau sửa | null | 2026-06-22T14:00:00Z |
+
+### 12.5 Sheet `Dispute Log` (1 row)
+
+| dispute_id | claim_id | flagged_by_email | reason | status | resolution_decision | resolution_note | flagged_at | sla_due_at | resolved_at | resolved_by_email | sla_status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `d001...` | `c3d4...` | qa2@vsf.vn | repeated_error_pattern | dispute_resolved_re_annotation | re_annotation_required | Annotator sai hệ thống, cần train lại | 2026-06-15T08:00:00Z | 2026-06-22T08:00:00Z | 2026-06-18T10:00:00Z | admin@vsf.vn | resolved |
+
+### 12.6 Sheet `IAA Report` (2 rows)
+
+| iaa_score_id | project_id | scope_type | rubric_dimension | score | metric_used | annotator_a_email | annotator_b_email | period_start | period_end | computed_at | action_required |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `i001...` | `proj-01...` | project | composite | 0.82 | krippendorff_alpha | a1@vsf.vn | a2@vsf.vn | 2026-06-01 | 2026-06-24 | 2026-06-24T12:00:00Z | ok |
+| `i002...` | `proj-01...` | dimension | sf | 0.55 | krippendorff_alpha | a1@vsf.vn | a2@vsf.vn | 2026-06-01 | 2026-06-24 | 2026-06-24T12:00:00Z | flag |
+
+
+## 13. Build Pipeline Outline (cho Backend Dev — Khải / Tuấn Anh)
+
+Dưới đây là outline logic build file XLSX. Backend implement chi tiết theo ARQ job pattern giống `process_bundle`.
+
+```
+EXPORT BUILD PIPELINE (pseudocode)
+────────────────────────────────────
+Input:  export_request_id (uuid)
+Output: file XLSX lưu MinIO/S3 + update EXPORT_CONSOLIDATED_REQUEST
+
+1. LOAD request
+   - SELECT * FROM export_consolidated_request WHERE export_id = :id
+   - SET status = 'running'
+   - Parse filter_json → filter_params
+
+2. BUILD Sheet 1 — Summary (aggregate 1 row)
+   - COUNT parent_tasks, claims (WHERE filter_params)
+   - COUNT approved_claims (final_status = approved | dispute_resolved_approved)
+   - COUNT disputed_claims (EXISTS dispute)
+   - COMPUTE dispute_rate, quality_band buckets
+   - GET latest iaa_composite_score (scope_type=project, rubric_dimension=composite)
+   - GET rubric_version from project config
+   → Write 1 row
+
+3. BUILD Sheet 2 — Claim Level (iterative, chunking nếu >10k rows)
+   - SELECT claims JOIN annotation_submission (final) JOIN qa_review (latest)
+     WHERE claim meets filter AND final_status IN (approved, dispute_resolved_approved)
+   - LEFT JOIN dispute (latest resolved) → dispute columns
+   - LEFT JOIN llm_pre_score → pre_score columns
+   - For each row: compute qa_final_decision (§7.e), final_recommendation (§7.d), quality_band (§7.c)
+   → Write row-by-row in chunks (5000 rows/chunk)
+
+4. BUILD Sheet 3 — Answer Level
+   - SELECT parent_tasks JOIN article_evaluation
+   - AGGREGATE: COUNT claims, AVG annotation_composite
+   - COMPUTE quality_band, final_recommendation per article
+   → Write rows
+
+5. BUILD Sheet 4 — QA Review Log
+   - SELECT qa_reviews (ALL, không filter) WHERE claim IN project
+   - LEFT JOIN dispute (nếu có)
+   → Write rows
+
+6. BUILD Sheet 5 — Dispute Log
+   - SELECT disputes (ALL status) WHERE project_id = :project_id
+   - COMPUTE sla_status (§7.b)
+   → Write rows
+
+7. BUILD Sheet 6 — IAA Report
+   - SELECT iaa_scores WHERE project_id = :project_id AND computed_at IN filter range
+   - COMPUTE action_required (§7.a)
+   → Write rows
+
+8. SAVE & FINALIZE
+   - Save workbook to temp file (openpyxl)
+   - Upload to MinIO/S3 via FileStorage interface
+   - UPDATE export_consolidated_request:
+       status = 'done', storage_path = :path,
+       row_count_summary = len(sheet1_rows) + len(sheet2_rows) + ...,
+       completed_at = now()
+   - INSERT audit_log (action_type = 'export_consolidated_done')
+
+9. ON ERROR → UPDATE status = 'failed', error_detail = traceback[:1000], completed_at = now()
+```
+
+### 13.1 Performance notes (cho Backend)
+
+| Mối lo | Giải pháp |
+|---|---|
+| Sheet Claim Level >10k rows | Dùng server-side cursor hoặc chunk query (`LIMIT 5000 OFFSET`) |
+| File XLSX quá lớn (>100MB) | Tạm dừng: validate row count trước khi build; nếu >100k claim → cảnh báo Admin |
+| Memory OOM trên ARQ worker | Tăng `mem_limit` worker; chunk write thay vì build toàn bộ trong RAM |
+| Idempotent retry | Nếu status=failed, user tạo request mới (export_id mới); không retry request cũ |
+| Concurrent build | Mỗi export_id chạy ARQ job độc lập; không lock toàn project |
 
 - **Async generator pattern:** job chạy nền (ARQ giống pipeline import), poll status qua `EXPORT_CONSOLIDATED_REQUEST.status`. — cần Khải confirm.
 - **Cleanup policy:** giữ file bao lâu? 30 / 90 ngày? Hay user tự xóa? — DEC chưa có.

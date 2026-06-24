@@ -1,8 +1,8 @@
 # Danh sách Tài liệu Thành phần — PDF-native MVP
 
 **Owner:** Phạm Đan Kha  
-**Phiên bản:** v0.6  
-**Cập nhật:** 2026-06-12  
+**Phiên bản:** v0.7 (bổ sung Sprint 3)  
+**Cập nhật:** 2026-06-24  
 **Trạng thái:** Active
 
 ---
@@ -19,7 +19,13 @@
 | 05 | `05_Data_Risk_Notes.md` | Active v0.6 | Đã gộp `05_Data_Risk_Notes_Updated.md` |
 | 06 | `06_Data_Dictionary.md` | Active v0.6 | Data dictionary markdown đã đồng bộ entity/field v0.6 |
 | 07 | `07_Design_Only_Source_Fetch_and_LLM_Optimization.md` | Design-Only | Gộp Source Fetch, Content Extraction, LLM batching/token optimization |
-| 08 | `08_Danh_Sach_Tai_Lieu_Thanh_Phan.md` | Active v0.6 | File index này |
+| 08 | `08_Danh_Sach_Tai_Lieu_Thanh_Phan.md` | Active v0.7 | File index này |
+| 09 | `09_Sprint3_ERD_Extensions.md` | Active v0.2 | ERD mở rộng cho Notification, IAA, Dispute (Sprint 3) |
+| 10 | `10_Sprint3_Data_Dictionary.md` | Active v0.2 | Data Dictionary cho các bảng mới (Sprint 3) |
+| 11 | `11_Sprint3_Export_Schema_Consolidated.md` | Active v0.1 | Export Schema Consolidated Report 6 sheet (Sprint 3) |
+| 12 | `12_Sprint3_Validation_Rules_Dispute.md` | Active v0.1 | Quy tắc xác thực mở rộng & Mã lỗi API (Sprint 3) |
+| 13 | `13_Sprint3_Edge_Cases.md` | Active v0.1 | Nhật ký các Edge Case mở rộng (Sprint 3) |
+| 14 | `14_Sprint3_Notification_API_Spec.md` | Active v0.1 | API Spec cho Notification Center & Polling (Sprint 3) |
 
 ---
 

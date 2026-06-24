@@ -1,7 +1,7 @@
 # 10. Data Dictionary — Sprint 3 Extensions (Notification · IAA · Dispute · Export)
 
 **Owner:** Phạm Đan Kha
-**Phiên bản:** v0.1 (Sprint 3 draft)
+**Phiên bản:** v0.2 (Sprint 3 draft)
 **Trạng thái:** Draft — Tuần 1
 **Bổ sung cho:** `docs/03_ba/dan/06_Data_Dictionary.md` (Sprint 1–2 v0.6). Không đụng entity cũ.
 
@@ -211,5 +211,27 @@ Tham chiếu ngược entity Sprint 1–2:
 ## 9. Mở / chưa chốt (cần BA/Dev xác nhận)
 
 - `NOTIFICATION.type` đã liệt kê — cần BA Tuyết xác nhận đủ trigger (B-?).
+  - *Lưu ý*: Có sự lệch tên sự kiện export giữa DB enum (`export_done` ở DD §6.1.a) và Screen Flow của Tuyết (`export_ready` ở `05_Sprint3_Screen_Flow_Extensions.md` §3.2). Đề xuất thống nhất tên gọi.
 - `IAA_SCORE.scope_type` & `scope_id`: cần chốt cụ thể query shape (B-01).
 - `EXPORT_CONSOLIDATED_REQUEST.filter_json` keys: cần đồng bộ với UI filter screen (Tuyết) và API spec (Khải tuần 1).
+
+
+
+## 10. Version History
+
+| Version | Date | Author | Changes |
+|---|---|---|---|
+| v0.1 | 2026-06-23 | Phạm Đan Kha | Initial draft: NOTIFICATION, DISPUTE, IAA_OVERLAP_ASSIGN, IAA_SCORE, EXPORT_CONSOLIDATED_REQUEST |
+| v0.2 | 2026-06-24 | Phạm Đan Kha | Thêm C01–C03 đã chốt; bổ sung version history & cross-ref footer |
+
+## 11. Cross-reference Index
+
+| Artifact # | File | Áp dụng cho |
+|---|---|---|
+| #09 | `09_Sprint3_ERD_Extensions.md` | ERD entity list, FK map, DB constraint DDL |
+| #10 | File này | Field-level definition, enum, index |
+| #11 | `11_Sprint3_Export_Schema_Consolidated.md` | 6 sheet XLSX schema, derived field rules |
+| #12 | `12_Sprint3_Validation_Rules_Dispute.md` | VR cho dispute/notif/iaa/export/QG, error codes |
+| #13 | `13_Sprint3_Edge_Cases.md` | Edge case log 4 module + cross-feature |
+| #14 | `14_Sprint3_Notification_API_Spec.md` | API spec Notification Center |
+| Sprint 1–2 ref | `06_Data_Dictionary.md` | Entity Sprint 1–2 (không đụng) |
