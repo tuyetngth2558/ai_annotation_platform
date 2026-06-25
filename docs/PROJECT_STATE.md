@@ -8,7 +8,7 @@
 > trong `CLAUDE.md` / `AGENTS.md`. Cập nhật stale → cả team lệch.
 
 
-**Cập nhật lần cuối:** 2026-06-24 · **Bởi:** Antigravity (Đan — BA). Rà soát và đồng bộ toàn bộ tài liệu BA của Đan với yêu cầu Sprint 3 từ Google Doc (các tài liệu v0.2 và v0.1 đã căn chỉnh chuẩn).
+**Cập nhật lần cuối:** 2026-06-25 · **Bởi:** Antigravity (Đan — BA). Hoàn thành rà soát chéo đồng bộ 100% giữa tài liệu DB/Schema của Đan với Screen Flow/Spec của Tuyết và AC của Quang. Đã xử lý tất cả các điểm không nhất quán để sẵn sàng bàn giao cho Dev.
 
 **Trước đó:** Điều chỉnh SQ [ADR 0008 A+D]: tách SQ → rule engine (sq_engine.py), LLM chấm 5 chiều, composite vẫn 6 (BR-7.2).
 
