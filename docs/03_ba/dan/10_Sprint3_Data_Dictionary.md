@@ -213,7 +213,10 @@ Tham chiếu ngược entity Sprint 1–2:
 - `NOTIFICATION.type` đã liệt kê — cần BA Tuyết xác nhận đủ trigger (B-?).
   - *Lưu ý*: Có sự lệch tên sự kiện export giữa DB enum (`export_done` ở DD §6.1.a) và Screen Flow của Tuyết (`export_ready` ở `05_Sprint3_Screen_Flow_Extensions.md` §3.2). Đề xuất thống nhất tên gọi.
 - `IAA_SCORE.scope_type` & `scope_id`: cần chốt cụ thể query shape (B-01).
+  - *Chốt*: Giữ scope `pair` để vẽ bảng báo cáo theo cặp annotator (Tuyết spec màn hình 12). Backend giới hạn tính toán theo các cặp thực tế giao overlap trong `IAA_OVERLAP_ASSIGN`.
 - `EXPORT_CONSOLIDATED_REQUEST.filter_json` keys: cần đồng bộ với UI filter screen (Tuyết) và API spec (Khải tuần 1).
+- **Ràng buộc mô tả dispute**: Đồng bộ độ dài `dispute_description` từ 20–2000 ký tự cho MỌI lý do dispute (align với Screen Spec của Tuyết).
+
 
 
 

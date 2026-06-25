@@ -13,8 +13,8 @@
 |---|---|---|:---:|---|
 | VR-DISP-001 | Tạo dispute | Chỉ QA (`role = "qa"`) được phép tạo | Yes | Only QA can create a dispute |
 | VR-DISP-002 | Tạo dispute | `DISPUTE.claim_id` phải tồn tại và thuộc project | Yes | Claim not found in project |
-| VR-DISP-003 | Tạo dispute | `claim_id` phải có ít nhất 1 `QA_REVIEW.decision = "returned"` và 1 `ANNOTATION_SUBMISSION` resubmit gần nhất. **Tối đa 3 lần return/resubmit** (align `05_Sprint3_Screen_Flow_Extensions.md` §4.1) | Yes | Dispute precondition not met (need return + resubmit, max 3 cycles) |
-| VR-DISP-004 | Tạo dispute | `reason` phải thuộc enum §6.2.b (`10_Data_Dictionary.md`); nếu `other` thì `dispute_description` ≥ 20 ký tự | Yes | Invalid dispute reason or description too short |
+| VR-DISP-003 | Tạo dispute | `claim_id` phải có ít nhất 1 `QA_REVIEW.decision = "returned"` và 1 `ANNOTATION_SUBMISSION` resubmit gần nhất. **Tối đa 3 lần return/resubmit** (Lưu ý: Escalation khả dụng ngay tại lần review thứ 2 sau khi đã có 1 lần return và 1 lần resubmit thành công trong history) | Yes | Dispute precondition not met (need return + resubmit, max 3 cycles) |
+| VR-DISP-004 | Tạo dispute | `reason` phải thuộc enum §6.2.b (`10_Data_Dictionary.md`); mô tả `dispute_description` bắt buộc có độ dài từ 20–2000 ký tự (align với Tuyết Screen Spec) | Yes | Invalid dispute reason or description must be 20-2000 characters |
 | VR-DISP-005 | Tạo dispute | Trước khi tạo, chưa có `DISPUTE` `status` active khác cho cùng `claim_id` (tránh double-flag) | Yes | An active dispute already exists for this claim |
 | VR-DISP-006 | Tạo dispute (admin override) | Nếu Admin override qua điều kiện (VR-DISP-003) thì phải có `audit_log.reason` text ≥ 10 ký tự | Yes | Override requires recorded reason |
 | VR-DISP-007 | Resolve | Chỉ Admin (`resolved_by.role = "admin"`) trong MVP (DEC-S3-02/06) | Yes | Only Admin can resolve disputes (Policy role later) |
